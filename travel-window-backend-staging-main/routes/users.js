@@ -1,0 +1,146 @@
+const express = require('express');
+const { auth, authorize } = require('../middleware/auth');
+const User = require('../models/User');
+
+const router = express.Router();
+
+// Get all users (Admin only) – includes active and inactive
+router.get('/', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password').sort({ name: 1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get agents (Admin only)
+router.get('/agents', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const agents = await User.find({ 
+      role: { $in: ['AGENT1', 'AGENT2'] },
+      isActive: true 
+    }).select('-password');
+    res.json(agents);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get users that current user can assign a booking to (Account, Agent2, Admin)
+// Admin → Agent1, Agent2, Account; Account (Rajesh) → Agent1, Agent2; Agent2 (Rakesh) → Agent1
+router.get('/assignable', auth, authorize('ACCOUNT', 'AGENT2', 'ADMIN'), async (req, res) => {
+  try {
+    let roles = [];
+    if (req.user.role === 'ADMIN') {
+      roles = ['AGENT1', 'AGENT2', 'ACCOUNT'];
+    } else if (req.user.role === 'ACCOUNT') {
+      roles = ['AGENT1', 'AGENT2'];
+    } else if (req.user.role === 'AGENT2') {
+      roles = ['AGENT1'];
+    }
+    const users = await User.find({ role: { $in: roles }, isActive: true })
+      .select('_id name email role')
+      .sort({ role: 1, name: 1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create user (Admin only)
+router.post('/', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const { email, password, role, name } = req.body;
+    
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    
+    const user = new User({
+      email: email.toLowerCase(),
+      password,
+      role,
+      name
+    });
+    
+    await user.save();
+    
+    res.status(201).json({
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update user (Admin only) — optional `password` sets a new password (min 6 chars)
+router.put('/:id', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const { email, role, name, isActive, password } = req.body;
+    
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+      user.email = email.toLowerCase();
+    }
+    
+    if (role) user.role = role;
+    if (name) user.name = name;
+    if (isActive !== undefined) user.isActive = isActive;
+
+    if (password !== undefined && password !== null && String(password).trim() !== '') {
+      const pw = String(password).trim();
+      if (pw.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+      }
+      user.password = pw;
+    }
+    
+    await user.save();
+    
+    res.json({
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isActive: user.isActive
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete user (Admin only)
+router.delete('/:id', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Prevent deleting own account
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'Cannot delete your own account' });
+    }
+    
+    await User.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+module.exports = router;

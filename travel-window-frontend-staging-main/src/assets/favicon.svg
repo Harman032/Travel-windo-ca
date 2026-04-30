@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0284c7"/>
+  <!-- Airplane: nose top-right, tail bottom-left, wing middle -->
+  <path fill="white" d="M8 20 L14 12 L22 8 L24 10 L18 14 L16 20 L14 18 Z"/>
+</svg>

@@ -1,0 +1,61 @@
+/* Global styles – Tailwind is built from tailwind-input.css via build:tailwind */
+body {
+  margin: 0;
+  font-family: 'Lato', sans-serif;
+}
+
+/* Toaster – gradient (red → blue) to match app, readable, high contrast */
+$toast-gradient: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #38bdf8 100%);
+
+.toast-container .ngx-toastr {
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 1rem 1.25rem;
+  font-family: 'Lato', sans-serif;
+  background: $toast-gradient !important;
+  background-color: transparent !important;
+  background-clip: padding-box;
+  opacity: 1;
+  color: #fff !important;
+  border-left: 4px solid rgba(255, 255, 255, 0.5);
+}
+.toast-container .ngx-toastr .toast-title {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #fff !important;
+}
+.toast-container .ngx-toastr .toast-message {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin-top: 0.25rem;
+  color: #fff !important;
+}
+.toast-container .toast-success,
+.toast-container .toast-error,
+.toast-container .toast-warning,
+.toast-container .toast-info {
+  background: $toast-gradient !important;
+  background-color: transparent !important;
+  color: #fff !important;
+  border-left: 4px solid rgba(255, 255, 255, 0.6);
+}
+.toast-container .toast-success { border-left-color: #86efac; }
+.toast-container .toast-error { border-left-color: #fca5a5; }
+.toast-container .toast-warning { border-left-color: #fde047; }
+.toast-container .toast-info { border-left-color: #7dd3fc; }
+.toast-container .toast-close-button {
+  color: #fff !important;
+  opacity: 0.95;
+  font-size: 1.25rem;
+  right: 0.5rem;
+  top: 0.5rem;
+  text-shadow: none;
+}
+.toast-container .toast-close-button:hover {
+  opacity: 1;
+  color: #fff !important;
+}
+.toast-container .toast-progress {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-radius: 0 0 0.75rem 0;
+}

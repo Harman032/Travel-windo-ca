@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 sm:px-6 py-2 sm:py-3 rounded-full font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base;
+    font-family: 'Lato', sans-serif;
+  }
+  
+  .btn-primary {
+    @apply text-white focus:ring-blue-400 border-0;
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #38bdf8 100%);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 40%, #0ea5e9 100%);
+  }
+  
+  .btn-primary:active {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 40%, #0284c7 100%);
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500 rounded-full;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 rounded-full;
+  }
+  
+  .input {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-all bg-white;
+  }
+
+  /* Guaranteed eye-icon placement for password inputs */
+  .password-eye-btn {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    left: auto;
+    transform: translateY(-50%);
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100;
+  }
+
+  /* Page title card – lighter gradient (red → blue) */
+  .page-title-card {
+    @apply rounded-xl shadow-md px-4 sm:px-6 py-3 sm:py-4 mb-4 sm:mb-6;
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 35%, #38bdf8 100%);
+    color: white;
+  }
+  .page-title-card .page-title {
+    @apply text-2xl md:text-3xl font-bold m-0;
+    color: white;
+  }
+  .page-title-card .btn-on-gradient {
+    @apply px-4 py-2 rounded-full font-medium border-2 border-white text-white hover:bg-white/20 transition-colors;
+  }
+
+  .badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  /* Logo-style gradient – lighter (red → blue) */
+  .gradient-logo {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #38bdf8 100%);
+    color: white;
+  }
+  .gradient-logo:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 40%, #0ea5e9 100%);
+    color: white;
+  }
+
+  /* Sidebar active – lighter gradient */
+  a[routerLinkActive].gradient-logo-active {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #38bdf8 100%) !important;
+    color: white !important;
+  }
+  a[routerLinkActive].gradient-logo-active svg,
+  a[routerLinkActive].gradient-logo-active span {
+    color: white !important;
+  }
+  a[routerLinkActive].gradient-logo-active:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 40%, #0ea5e9 100%) !important;
+    color: white !important;
+  }
+  a[routerLinkActive].gradient-logo-active:hover svg,
+  a[routerLinkActive].gradient-logo-active:hover span {
+    color: white !important;
+  }
+
+  /* Toggle switch – active state gradient (red → blue) */
+  .toggle-active {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #38bdf8 100%) !important;
+  }
+  .toggle-active:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 40%, #0ea5e9 100%) !important;
+  }
+
+  /* Shimmer/Skeleton loading animation - consistent across app */
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 45%, #e5e7eb 100%);
+    background-size: 220% 100%;
+    animation: shimmer 1.35s linear infinite;
+    will-change: background-position;
+  }
+
+  .skeleton-card {
+    @apply bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100;
+  }
+
+  .skeleton-line {
+    @apply h-4 rounded-md shimmer block;
+  }
+
+  .skeleton-circle {
+    @apply rounded-full shimmer block;
+  }
+}
