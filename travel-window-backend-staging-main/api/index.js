@@ -13,6 +13,7 @@ app.use(cors({
     
     const allowedOrigins = [
       'https://travel-window-frontend.vercel.app',
+      'https://travel-windo-ca.vercel.app',
       'http://localhost:4200',
       'http://localhost:3000'
     ];

@@ -9,8 +9,8 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    'https://travelwindow-flax.vercel.app',
-    'https://travelwindow.vercel.app',
+    'https://travel-window-frontend.vercel.app',
+    'https://travel-windo-ca.vercel.app',
     'http://localhost:4200',
     'http://localhost:3000'
   ],
