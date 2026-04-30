@@ -7,10 +7,10 @@ const User = require('../models/User');
 const Supplier = require('../models/Supplier');
 
 const users = [
-  { email: 'admin@travel.com', password: 'admin123', role: 'ADMIN', name: 'Admin User' },
-  { email: 'account@travel.com', password: 'account123', role: 'ACCOUNT', name: 'Account User' },
-  { email: 'agent1@travel.com', password: 'agent1123', role: 'AGENT1', name: 'Agent 1' },
-  { email: 'agent2@travel.com', password: 'agent2123', role: 'AGENT2', name: 'Agent 2' },
+  { email: 'admin@travel.com', password: '123456789', role: 'ADMIN', name: 'Admin User' },
+  { email: 'account@travel.com', password: '123456789', role: 'ACCOUNT', name: 'Account User' },
+  { email: 'agent1@travel.com', password: '123456789', role: 'AGENT1', name: 'Agent 1' },
+  { email: 'agent2@travel.com', password: '123456789', role: 'AGENT2', name: 'Agent 2' },
 ];
 
 const suppliers = [
