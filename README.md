@@ -60,12 +60,7 @@ Set these in your Vercel Dashboard:
    npm start # Runs on http://localhost:4200
    ```
 
-## 🧪 Database Seeding
-The system includes an idempotent seeding script to initialize default users and suppliers.
 
-1. Set a `SEED_SECRET` in your backend environment variables.
-2. Visit the following URL in your browser:
-   `https://travel-windo-ca-s5b9.vercel.app/api/seed?secret=YOUR_SEED_SECRET`
 
 ### Default Access (After Seeding)
 - **Admin**: `admin@travel.com` / `123456789`
