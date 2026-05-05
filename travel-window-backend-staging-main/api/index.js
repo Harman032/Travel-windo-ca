@@ -129,6 +129,34 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Diagnostic route for DB
+app.get('/api/test-db', async (req, res) => {
+  const uri = process.env.MONGODB_URI || process.env.travel_window_MONGODB_URI;
+  const status = {
+    env_uri_exists: !!uri,
+    env_uri_prefix: uri ? uri.substring(0, 15) + '...' : 'none',
+    readyState: mongoose.connection.readyState,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    console.log('=> Manual test-db connection start...');
+    if (uri) {
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+      status.success = true;
+      status.connected_to = mongoose.connection.name;
+    } else {
+      status.success = false;
+      status.error = 'No URI found in environment';
+    }
+  } catch (err) {
+    status.success = false;
+    status.error = err.message;
+  }
+
+  res.json(status);
+});
+
 // Health check (without DB dependency) - handle both /health and /api/health
 app.get('/health', (req, res) => {
   res.json({ 
