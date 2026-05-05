@@ -7,10 +7,7 @@ const app = express();
 
 // CORS middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    // Reflect the request origin if it exists, otherwise allow (e.g. for curl)
-    callback(null, origin || true);
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],

@@ -8,12 +8,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: [
-    'https://travel-window-frontend.vercel.app',
-    'https://travel-windo-ca.vercel.app',
-    'http://localhost:4200',
-    'http://localhost:3000'
-  ],
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
