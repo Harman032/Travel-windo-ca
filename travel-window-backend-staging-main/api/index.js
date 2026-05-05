@@ -6,21 +6,26 @@ const cors = require('cors');
 const app = express();
 
 // CORS middleware
+const allowedOrigins = [
+  'https://travel-windo-ca.vercel.app',
+  'https://travel-windo-ca-s5b9.vercel.app',
+  'http://localhost:4200',
+  'http://localhost:3000'
+];
+
 app.use(cors({
-  origin: '*',
-  credentials: false,
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin || true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Authorization']
 }));
-
-// Handle preflight OPTIONS requests explicitly
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-  res.sendStatus(204);
-});
 
 // Basic middleware
 app.use(express.json());
