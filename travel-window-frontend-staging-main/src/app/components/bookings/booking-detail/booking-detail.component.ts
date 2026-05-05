@@ -1295,15 +1295,10 @@ export class BookingDetailComponent implements OnInit {
     const formValue = this.cancelForm.getRawValue();
     if (this.booking && formValue.paymentModeWas) {
       const isCC = formValue.paymentModeWas === 'Credit Card';
-      let computedCommittedToClient = this.refundCommittedToClientNonCC;
-      if (isCC) {
-        computedCommittedToClient = this.cancelRefundCommittedToClient;
-      }
-
       this.bookingService.cancelBooking(this.booking._id!, {
         paymentModeWas: formValue.paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
-        committedToClient: computedCommittedToClient,
+        committedToClient: isCC ? formValue.committedToClient : this.refundCommittedToClientNonCC,
         chargeFromClient: formValue.chargeFromClient,
         supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
         ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
@@ -1421,7 +1416,7 @@ export class BookingDetailComponent implements OnInit {
     return Math.max(0, this.refundablePortionOfSalePrice - this.cancelTotalCancellationCharges);
   }
 
-  /** Non–Credit Card: Refund Committed To Client */
+  /** Non–Credit Card: Refund Committed To Client = Total Sale Price − Total Cancellation Charges (read-only, no textbox) */
   get refundCommittedToClientNonCC(): number {
     return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
   }
