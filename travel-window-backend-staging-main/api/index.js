@@ -5,22 +5,14 @@ const cors = require('cors');
 
 const app = express();
 
-// CORS middleware - Manual implementation for maximum control on Vercel
-const allowedOrigins = [
-  'https://travel-windo-ca.vercel.app',
-  'https://travel-windo-ca-s5b9.vercel.app',
-  'http://localhost:4200',
-  'http://localhost:3000'
-];
-
+// CORS middleware - Allow ALL origins by reflecting the request origin
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log(`=> Incoming request: ${req.method} ${req.url} | Origin: ${origin}`);
   
-  if (allowedOrigins.includes(origin)) {
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    // Allow non-browser requests (like server-to-server or tools)
+  } else {
+    // Allow non-browser requests
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
