@@ -5,7 +5,7 @@ const cors = require('cors');
 
 const app = express();
 
-// CORS middleware
+// CORS middleware - Manual implementation for maximum control on Vercel
 const allowedOrigins = [
   'https://travel-windo-ca.vercel.app',
   'https://travel-windo-ca-s5b9.vercel.app',
@@ -13,19 +13,28 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, origin || true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Authorization']
-}));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  console.log(`=> Incoming request: ${req.method} ${req.url} | Origin: ${origin}`);
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // Allow non-browser requests (like server-to-server or tools)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
+  next();
+});
 
 // Basic middleware
 app.use(express.json());
@@ -73,7 +82,7 @@ const connectDB = async () => {
 
   // Set a timeout for the connection promise itself to avoid Vercel 504
   const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Database connection timed out (10s)')), 10000)
+    setTimeout(() => reject(new Error('Database connection timed out (8s)')), 8000)
   );
 
   try {
