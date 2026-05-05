@@ -178,8 +178,8 @@ const bookingSchema = new mongoose.Schema({
   // Status & Verification
   status: {
     type: String,
-    enum: ['Draft', 'Submitted', 'Pending Verification', 'Account Verified', 'Admin Verified', 'Billed', 'Paid', 'Unticketed', 'Ticked', 'Cancelled'],
-    default: 'Draft'
+    enum: ['Draft', 'Submitted', 'Pending Verification', 'Account Verified', 'Admin Verified', 'Billed', 'Paid', 'Unticketed', 'Ticked', 'Ticketed', 'Cancelled'],
+    default: 'Pending Verification'
   },
   verifiedByAccount: {
     type: Boolean,
@@ -276,6 +276,19 @@ const bookingSchema = new mongoose.Schema({
     isCancelled: {
       type: Boolean,
       default: false
+    },
+    refundType: {
+      type: String,
+      enum: ['Full Cancellation', 'Refund committed from supplier', 'Partial cancellation (one leg flown)'],
+      default: 'Full Cancellation'
+    },
+    refundReceivedFromSupplier: {
+      type: Number,
+      default: 0
+    },
+    refundPaidToClient: {
+      type: Number,
+      default: 0
     },
     paymentModeWas: {
       type: String,

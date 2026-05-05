@@ -165,4 +165,96 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   }
 });
 
+// Report A: Date-wise Payment to Supplier
+router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    const query = {};
+    if (dateFrom || dateTo) {
+      query.dateOfSubmission = {};
+      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+    }
+    
+    const bookings = await Booking.find(query).populate('supplier', 'name').sort({ dateOfSubmission: -1 });
+    
+    const reportData = [];
+    bookings.forEach(b => {
+      if (!b.supplier) return;
+      const dateStr = new Date(b.dateOfSubmission).toISOString().split('T')[0];
+      const supplierName = b.supplier.name || 'Unknown';
+      
+      let existing = reportData.find(r => r.date === dateStr && r.supplierName === supplierName);
+      if (!existing) {
+        existing = { date: dateStr, supplierName, paymentPaid: 0, totalBookingCost: 0 };
+        reportData.push(existing);
+      }
+      
+      existing.paymentPaid += (b.ourCost || 0); // Assuming ourCost is what we pay supplier
+      existing.totalBookingCost += (b.totalSalePrice || 0);
+    });
+    
+    reportData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    res.json(reportData);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report B: Unverified Payments
+router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const bookings = await Booking.find({ verifiedByAccount: false, status: { $ne: 'Cancelled' } }).sort({ dateOfSubmission: -1 });
+    const unverifiedPayments = [];
+    
+    bookings.forEach(b => {
+      if (b.payments && b.payments.length > 0) {
+        b.payments.forEach(p => {
+          unverifiedPayments.push({
+            bookingId: b.pnr,
+            passengerName: b.paxName,
+            paymentAmount: p.paidAmount,
+            paymentMode: p.paymentMode,
+            status: b.status
+          });
+        });
+      }
+    });
+    
+    res.json(unverifiedPayments);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report C: Agent Margin Report
+router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    const query = { status: { $ne: 'Cancelled' } };
+    if (dateFrom || dateTo) {
+      query.dateOfSubmission = {};
+      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+    }
+    
+    const bookings = await Booking.find(query).populate('submittedBy', 'name');
+    
+    const agentMap = {};
+    bookings.forEach(b => {
+      const agentName = b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown');
+      if (!agentMap[agentName]) {
+        agentMap[agentName] = { agentName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0 };
+      }
+      agentMap[agentName].totalBookings += 1;
+      agentMap[agentName].totalSalePrice += (b.totalSalePrice || 0);
+      agentMap[agentName].totalMargin += ((b.salePrice || 0) - (b.ourCost || 0));
+    });
+    
+    res.json(Object.values(agentMap));
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

@@ -136,15 +136,8 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       ? additionalServices.map(x => ({ serviceName: (x.serviceName || '').toString(), serviceCost: typeof x.serviceCost === 'number' ? x.serviceCost : parseFloat(x.serviceCost) || 0 }))
       : (additionalService ? [{ serviceName: additionalService, serviceCost: additionalServicePrice ?? 0 }] : []);
 
-    let initialStatus = 'Draft';
-    let dateOfSubmissionVal = undefined;
-    if (isAgent2Supplier) {
-      initialStatus = 'Unticketed';
-      dateOfSubmissionVal = new Date();
-    } else if (isAdminOrAccount) {
-      initialStatus = 'Pending Verification';
-      dateOfSubmissionVal = new Date();
-    }
+    let initialStatus = isAgent2Supplier ? 'Unticketed' : 'Pending Verification';
+    let dateOfSubmissionVal = new Date();
 
     const booking = new Booking({
       paxName: paxName.toUpperCase(),
@@ -940,7 +933,7 @@ router.post('/:id/seat-book', auth, async (req, res) => {
         if (supplierDoc.name === 'Agent2') {
           booking.status = 'Unticketed';
         } else if (oldSupplierName === 'Agent2' && supplierDoc.name !== 'Agent2') {
-          booking.status = 'Ticked';
+          booking.status = 'Ticketed';
         }
       }
     }
@@ -974,6 +967,9 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       chargeFromClient,
       supplierCancellationCharges = 0,
       ourCancellationCharges = 0,
+      refundType = 'Full Cancellation',
+      refundReceivedFromSupplier = 0,
+      refundPaidToClient = 0,
       remarks
     } = req.body;
     
@@ -1024,6 +1020,9 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     booking.cancellation = {
       isCancelled: true,
+      refundType,
+      refundReceivedFromSupplier: parseFloat(refundReceivedFromSupplier) || 0,
+      refundPaidToClient: parseFloat(refundPaidToClient) || 0,
       paymentModeWas,
       totalAmountPaidByClient: totalAmountPaid,
       refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),

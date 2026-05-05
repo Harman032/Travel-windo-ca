@@ -32,7 +32,7 @@ import { AuthService } from '../../../services/auth.service';
             <select formControlName="status" class="input">
               <option value="">All Status</option>
               <option value="Pending Verification">Pending Verification</option>
-              <option value="Ticked">Ticked</option>
+              <option value="Ticketed">Ticketed</option>
               <option value="Unticketed">Unticketed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
@@ -322,22 +322,22 @@ export class BookingListComponent implements OnInit {
     return pages;
   }
 
-  /** Display status: only Ticked / Unticketed / Cancelled (no Draft, Pending Verification, etc.) */
+  /** Display status: only Ticketed / Unticketed / Cancelled (no Draft, Pending Verification, etc.) */
   getDisplayStatus(booking: Booking): string {
     if (booking.cancellation?.isCancelled) return 'Cancelled';
-    // Use actual status from database if it's Ticked or Unticketed
-    if (booking.status === 'Ticked' || booking.status === 'Unticketed') {
+    // Use actual status from database if it's Ticketed or Unticketed
+    if (booking.status === 'Ticketed' || booking.status === 'Unticketed') {
       return booking.status;
     }
-    // Default: show Unticketed for Agent2 supplier, Ticked for others
+    // Default: show Unticketed for Agent2 supplier, Ticketed for others
     if (booking.supplierName === 'Agent2') return 'Unticketed';
-    return 'Ticked';
+    return 'Ticketed';
   }
 
   getStatusClass(status: string): string {
     const statusMap: { [key: string]: string } = {
       'Cancelled': 'bg-red-100 text-red-800',
-      'Ticked': 'bg-green-100 text-green-800',
+      'Ticketed': 'bg-green-100 text-green-800',
       'Unticketed': 'bg-orange-100 text-orange-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';

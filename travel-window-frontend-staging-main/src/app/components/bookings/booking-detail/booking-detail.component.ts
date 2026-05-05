@@ -78,7 +78,7 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-500 mb-1">Admin Verified</label>
               <span [ngClass]="booking.verifiedByAdmin ? 'text-green-600 font-medium' : 'text-gray-500'">{{ booking.verifiedByAdmin ? 'Verified' : 'Not Verified' }}</span>
             </div>
-            <!-- Admin: change status (Ticked / Unticketed / Cancelled) -->
+            <!-- Admin: change status (Ticketed / Unticketed / Cancelled) -->
             <div *ngIf="isAdmin()" class="col-span-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
               <label class="block text-sm font-medium text-gray-700 mb-2">Admin: Change status</label>
               <div class="flex flex-wrap items-center gap-2">
@@ -498,6 +498,49 @@ import { ToastrService } from 'ngx-toastr';
         <div *ngIf="showCancelForm" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancel Booking</h3>
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
+            <!-- Refund Type Options -->
+            <div class="col-span-full mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Refund Type</label>
+              <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6 space-y-2 sm:space-y-0">
+                <label class="inline-flex items-center">
+                  <input type="radio" formControlName="refundType" value="Full Cancellation" class="form-radio text-primary-600">
+                  <span class="ml-2 text-sm text-gray-700">Full Cancellation</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" formControlName="refundType" value="Refund committed from supplier" class="form-radio text-primary-600">
+                  <span class="ml-2 text-sm text-gray-700">Refund committed from supplier</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" formControlName="refundType" value="Partial cancellation (one leg flown)" class="form-radio text-primary-600">
+                  <span class="ml-2 text-sm text-gray-700">Partial cancellation (one leg flown)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Special Refund Types Inputs -->
+            <div *ngIf="cancelForm.get('refundType')?.value !== 'Full Cancellation'" class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 border border-blue-200 rounded-lg bg-blue-50">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Committed from Supplier</label>
+                <input type="number" formControlName="refundCommittedFromSupplierInput" class="input" step="0.01" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">New Margin</label>
+                <input type="number" formControlName="newMarginInput" class="input" step="0.01" />
+              </div>
+            </div>
+
+            <!-- Admin/Account Only Refund Tracking -->
+            <div *ngIf="isAdmin() || isAccount()" class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 border border-gray-200 rounded-lg bg-white">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Received from Supplier</label>
+                <input type="number" formControlName="refundReceivedFromSupplier" class="input" step="0.01" min="0" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Paid to Client (via cheque/book)</label>
+                <input type="number" formControlName="refundPaidToClient" class="input" step="0.01" min="0" />
+              </div>
+            </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
               <select formControlName="paymentModeWas" class="input bg-gray-100 cursor-not-allowed" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
@@ -633,8 +676,8 @@ export class BookingDetailComponent implements OnInit {
   flightChangeForm: FormGroup;
   cancelForm: FormGroup;
   adminStatus = '';
-  /** Full status flow for Admin: Draft → … → Billed → Paid, plus Ticked/Unticketed/Cancelled */
-  statusOptions = ['Pending Verification', 'Account Verified', 'Admin Verified', 'Billed', 'Paid', 'Ticked', 'Unticketed', 'Cancelled'];
+  /** Full status flow for Admin: Draft → … → Billed → Paid, plus Ticketed/Unticketed/Cancelled */
+  statusOptions = ['Pending Verification', 'Account Verified', 'Admin Verified', 'Billed', 'Paid', 'Ticketed', 'Unticketed', 'Cancelled'];
   assignableUsers: User[] = [];
   assignToUserId = '';
   assignComment = '';
@@ -673,6 +716,11 @@ export class BookingDetailComponent implements OnInit {
     });
 
     this.cancelForm = this.fb.group({
+      refundType: ['Full Cancellation'],
+      refundCommittedFromSupplierInput: [null],
+      newMarginInput: [null],
+      refundReceivedFromSupplier: [0],
+      refundPaidToClient: [0],
       paymentModeWas: ['', Validators.required],
       refundableAmount: [0],
       committedToClient: [null],
@@ -854,17 +902,17 @@ export class BookingDetailComponent implements OnInit {
     return user?.role === 'ADMIN';
   }
 
-  /** Display status: only Ticked / Unticketed / Cancelled */
+  /** Display status: only Ticketed / Unticketed / Cancelled */
   getDisplayStatus(): string {
-    if (!this.booking) return 'Ticked';
+    if (!this.booking) return 'Ticketed';
     if (this.booking.cancellation?.isCancelled) return 'Cancelled';
-    // Use actual status from database if it's Ticked or Unticketed
-    if (this.booking.status === 'Ticked' || this.booking.status === 'Unticketed') {
+    // Use actual status from database if it's Ticketed or Unticketed
+    if (this.booking.status === 'Ticketed' || this.booking.status === 'Unticketed') {
       return this.booking.status;
     }
-    // Default: show Unticketed for Agent2 supplier, Ticked for others
+    // Default: show Unticketed for Agent2 supplier, Ticketed for others
     if (this.booking.supplierName === 'Agent2') return 'Unticketed';
-    return 'Ticked';
+    return 'Ticketed';
   }
 
   saveAdminStatus() {
@@ -874,7 +922,7 @@ export class BookingDetailComponent implements OnInit {
     const payload: any = { status: this.adminStatus };
     if (this.adminStatus === 'Cancelled') {
       payload.cancellation = { isCancelled: true };
-    } else if (this.adminStatus === 'Ticked' || this.adminStatus === 'Unticketed') {
+    } else if (this.adminStatus === 'Ticketed' || this.adminStatus === 'Unticketed') {
       if (this.booking.cancellation?.isCancelled) {
         payload.cancellation = { isCancelled: false };
       }
@@ -940,7 +988,7 @@ export class BookingDetailComponent implements OnInit {
     if (!user) return false;
 
     if (user.role === 'ACCOUNT' && !this.booking.verifiedByAccount) {
-      return this.booking.status === 'Ticked';
+      return this.booking.status === 'Ticketed';
     }
     if (user.role === 'ADMIN' && !this.booking.verifiedByAdmin) {
       return this.booking.status !== 'Billed' && this.booking.status !== 'Paid';
@@ -1290,10 +1338,18 @@ export class BookingDetailComponent implements OnInit {
     const formValue = this.cancelForm.getRawValue();
     if (this.booking && formValue.paymentModeWas) {
       const isCC = formValue.paymentModeWas === 'Credit Card';
+      let computedCommittedToClient = this.refundCommittedToClientNonCC;
+      if (isCC) {
+        computedCommittedToClient = this.cancelRefundCommittedToClient;
+      }
+
       this.bookingService.cancelBooking(this.booking._id!, {
+        refundType: formValue.refundType,
+        refundReceivedFromSupplier: formValue.refundReceivedFromSupplier,
+        refundPaidToClient: formValue.refundPaidToClient,
         paymentModeWas: formValue.paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
-        committedToClient: isCC ? formValue.committedToClient : this.refundCommittedToClientNonCC,
+        committedToClient: computedCommittedToClient,
         chargeFromClient: formValue.chargeFromClient,
         supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
         ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
@@ -1395,6 +1451,12 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelRefundCommittedToClient(): number {
+    const refundType = this.cancelForm?.get('refundType')?.value;
+    if (refundType === 'Refund committed from supplier' || refundType === 'Partial cancellation (one leg flown)') {
+      const refundSupplier = this.cancelForm?.get('refundCommittedFromSupplierInput')?.value || 0;
+      const nm = this.cancelForm?.get('newMarginInput')?.value || 0;
+      return Math.max(0, refundSupplier - nm);
+    }
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const charge = this.cancelForm?.get('chargeFromClient')?.value ?? 0;
     const chargeNum = typeof charge === 'number' ? charge : parseFloat(charge) || 0;
@@ -1411,8 +1473,14 @@ export class BookingDetailComponent implements OnInit {
     return Math.max(0, this.refundablePortionOfSalePrice - this.cancelTotalCancellationCharges);
   }
 
-  /** Non–Credit Card: Refund Committed To Client = Total Sale Price − Total Cancellation Charges (read-only, no textbox) */
+  /** Non–Credit Card: Refund Committed To Client */
   get refundCommittedToClientNonCC(): number {
+    const refundType = this.cancelForm?.get('refundType')?.value;
+    if (refundType === 'Refund committed from supplier' || refundType === 'Partial cancellation (one leg flown)') {
+      const refundSupplier = this.cancelForm?.get('refundCommittedFromSupplierInput')?.value || 0;
+      const nm = this.cancelForm?.get('newMarginInput')?.value || 0;
+      return Math.max(0, refundSupplier - nm);
+    }
     return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
   }
 
@@ -1434,7 +1502,7 @@ export class BookingDetailComponent implements OnInit {
 
   getStatusDisplay(status: string): string {
     if (status === 'Unticketed') return 'Unticketed';
-    if (status === 'Ticked') return 'Ticked';
+    if (status === 'Ticketed') return 'Ticketed';
     return status || 'Draft';
   }
 
@@ -1448,7 +1516,7 @@ export class BookingDetailComponent implements OnInit {
       'Billed': 'bg-purple-100 text-purple-800',
       'Paid': 'bg-green-200 text-green-900',
       'Cancelled': 'bg-red-100 text-red-800',
-      'Ticked': 'bg-green-100 text-green-800',
+      'Ticketed': 'bg-green-100 text-green-800',
       'Unticketed': 'bg-orange-100 text-orange-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';

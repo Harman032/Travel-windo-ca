@@ -42,4 +42,22 @@ export class ReportService {
   getOutstandingBalanceReport(): Observable<any> {
     return this.http.get(`${this.apiUrl}/reports/outstanding-balance`);
   }
+
+  getPaymentToSupplierReport(dateFrom?: string, dateTo?: string): Observable<any> {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    return this.http.get(`${this.apiUrl}/reports/payment-to-supplier`, { params });
+  }
+
+  getUnverifiedPaymentsReport(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/reports/unverified-payments`);
+  }
+
+  getAgentMarginReport(dateFrom?: string, dateTo?: string): Observable<any> {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    return this.http.get(`${this.apiUrl}/reports/agent-margin`, { params });
+  }
 }

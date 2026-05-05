@@ -175,7 +175,7 @@ export class SearchBookingComponent implements OnInit {
 
   getStatusDisplay(status: string): string {
     if (status === 'Unticketed') return 'Unticketed';
-    if (status === 'Ticked') return 'Ticked';
+    if (status === 'Ticketed') return 'Ticketed';
     return status || 'Draft';
   }
 
@@ -189,7 +189,7 @@ export class SearchBookingComponent implements OnInit {
       'Billed': 'bg-purple-100 text-purple-800',
       'Paid': 'bg-green-200 text-green-900',
       'Cancelled': 'bg-red-100 text-red-800',
-      'Ticked': 'bg-green-100 text-green-800',
+      'Ticketed': 'bg-green-100 text-green-800',
       'Unticketed': 'bg-orange-100 text-orange-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';

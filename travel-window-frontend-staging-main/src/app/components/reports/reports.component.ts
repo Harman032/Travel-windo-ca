@@ -56,6 +56,29 @@ import { AuthService } from '../../services/auth.service';
           >
             Outstanding Balance
           </button>
+          <ng-container *ngIf="isAdmin() || isAccount()">
+            <button 
+              (click)="selectReportType('payment-supplier')" 
+              class="btn" 
+              [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'"
+            >
+              Payment to Supplier
+            </button>
+            <button 
+              (click)="selectReportType('unverified-payments')" 
+              class="btn" 
+              [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'"
+            >
+              Unverified Payments
+            </button>
+            <button 
+              (click)="selectReportType('agent-margin')" 
+              class="btn" 
+              [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'"
+            >
+              Agent Margin
+            </button>
+          </ng-container>
         </div>
       </div>
 
@@ -113,6 +136,42 @@ import { AuthService } from '../../services/auth.service';
               <option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option>
             </select>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <input type="date" formControlName="dateFrom" class="input" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <input type="date" formControlName="dateTo" class="input" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="btn btn-primary w-full">Generate Report</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Payment to Supplier Report Filter -->
+      <div *ngIf="selectedReportType === 'payment-supplier'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Date-wise Payment to Supplier Report</h3>
+        <form [formGroup]="paymentSupplierForm" (ngSubmit)="loadPaymentSupplierReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <input type="date" formControlName="dateFrom" class="input" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <input type="date" formControlName="dateTo" class="input" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="btn btn-primary w-full">Generate Report</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Agent Margin Report Filter -->
+      <div *ngIf="selectedReportType === 'agent-margin'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Agent Margin Report</h3>
+        <form [formGroup]="agentMarginForm" (ngSubmit)="loadAgentMarginReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
             <input type="date" formControlName="dateFrom" class="input" />
@@ -354,6 +413,89 @@ import { AuthService } from '../../services/auth.service';
           </div>
         </div>
       </div>
+      <!-- Payment to Supplier Results -->
+      <div *ngIf="selectedReportType === 'payment-supplier' && paymentSupplierData && !loading" class="card">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Payment to Supplier Report Results</h3>
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Name</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Paid (Our Cost)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Booking Cost (Sale Price)</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr *ngFor="let item of paymentSupplierData">
+                <td class="px-4 py-2 text-sm">{{ item.date | date:'shortDate' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
+                <td class="px-4 py-2 text-sm text-blue-600">{{ item.paymentPaid | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.totalBookingCost | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Unverified Payments Results -->
+      <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Unverified Payments</h3>
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Booking ID (PNR)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger Name</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Amount</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr *ngFor="let item of unverifiedPaymentsData">
+                <td class="px-4 py-2 text-sm">{{ item.bookingId }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
+                <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.paymentAmount | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.paymentMode }}</td>
+                <td class="px-4 py-2 text-sm">
+                  <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
+                </td>
+              </tr>
+              <tr *ngIf="unverifiedPaymentsData.length === 0">
+                <td colspan="5" class="px-4 py-4 text-sm text-center text-gray-500">No unverified payments found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Agent Margin Results -->
+      <div *ngIf="selectedReportType === 'agent-margin' && agentMarginData && !loading" class="card">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Agent Margin Report Results</h3>
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Agent Name</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Bookings</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Sale Price</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Margin</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr *ngFor="let item of agentMarginData">
+                <td class="px-4 py-2 text-sm">{{ item.agentName }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.totalBookings }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.totalSalePrice | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm font-semibold" [ngClass]="{'text-green-600': item.totalMargin > 0, 'text-red-600': item.totalMargin < 0}">
+                  {{ item.totalMargin | number:'1.2-2' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   `
 })
@@ -366,12 +508,17 @@ export class ReportsComponent implements OnInit {
   dateWiseForm: FormGroup;
   supplierWiseForm: FormGroup;
   employeeWiseForm: FormGroup;
+  paymentSupplierForm: FormGroup;
+  agentMarginForm: FormGroup;
 
   dateWiseData: any = null;
   supplierWiseData: any = null;
   employeeWiseData: any = null;
   pendingVerificationData: any = null;
   outstandingBalanceData: any = null;
+  paymentSupplierData: any = null;
+  unverifiedPaymentsData: any = null;
+  agentMarginData: any = null;
 
   constructor(
     private reportService: ReportService,
@@ -396,6 +543,26 @@ export class ReportsComponent implements OnInit {
       dateFrom: [''],
       dateTo: ['']
     });
+
+    this.paymentSupplierForm = this.fb.group({
+      dateFrom: [''],
+      dateTo: ['']
+    });
+
+    this.agentMarginForm = this.fb.group({
+      dateFrom: [''],
+      dateTo: ['']
+    });
+  }
+
+  isAdmin(): boolean {
+    const user = this.authService.getCurrentUserValue();
+    return user?.role === 'ADMIN';
+  }
+
+  isAccount(): boolean {
+    const user = this.authService.getCurrentUserValue();
+    return user?.role === 'ACCOUNT';
   }
 
   ngOnInit() {
@@ -405,10 +572,14 @@ export class ReportsComponent implements OnInit {
     // Auto-load reports that don't need filters
     this.loadPendingVerificationReport();
     this.loadOutstandingBalanceReport();
+    this.loadUnverifiedPaymentsReport();
   }
 
   selectReportType(type: string) {
     this.selectedReportType = type;
+    if (type === 'unverified-payments' && !this.unverifiedPaymentsData) {
+      this.loadUnverifiedPaymentsReport();
+    }
   }
 
   loadSuppliers() {
@@ -500,6 +671,47 @@ export class ReportsComponent implements OnInit {
     });
   }
 
+  loadPaymentSupplierReport() {
+    const { dateFrom, dateTo } = this.paymentSupplierForm.value;
+    this.loading = true;
+    this.reportService.getPaymentToSupplierReport(dateFrom || undefined, dateTo || undefined).subscribe({
+      next: (data) => {
+        this.paymentSupplierData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  loadUnverifiedPaymentsReport() {
+    this.loading = true;
+    this.reportService.getUnverifiedPaymentsReport().subscribe({
+      next: (data) => {
+        this.unverifiedPaymentsData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  loadAgentMarginReport() {
+    const { dateFrom, dateTo } = this.agentMarginForm.value;
+    this.loading = true;
+    this.reportService.getAgentMarginReport(dateFrom || undefined, dateTo || undefined).subscribe({
+      next: (data) => {
+        this.agentMarginData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
   getStatusClass(status: string): string {
     const statusMap: { [key: string]: string } = {
       'Draft': 'bg-gray-100 text-gray-800',
@@ -510,7 +722,7 @@ export class ReportsComponent implements OnInit {
       'Billed': 'bg-purple-100 text-purple-800',
       'Paid': 'bg-green-200 text-green-900',
       'Cancelled': 'bg-red-100 text-red-800',
-      'Ticked': 'bg-green-100 text-green-800',
+      'Ticketed': 'bg-green-100 text-green-800',
       'Unticketed': 'bg-orange-100 text-orange-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';
