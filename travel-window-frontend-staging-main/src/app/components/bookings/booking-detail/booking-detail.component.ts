@@ -584,6 +584,77 @@ import { ToastrService } from 'ngx-toastr';
           </form>
         </div>
 
+        <!-- Refund Status Section (only shown when booking is cancelled) -->
+        <div *ngIf="booking.cancellation?.isCancelled" class="card bg-orange-50 border border-orange-200">
+          <h3 class="text-xl font-semibold mb-4 text-orange-700">Refund Status</h3>
+          <div class="space-y-6">
+
+            <!-- 1. Refund Awaited from Supplier -->
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 h-4 w-4 rounded-full bg-orange-400 flex-shrink-0"></span>
+              <div>
+                <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
+                <p class="text-xs text-gray-500 mt-0.5">Automatically set when cancellation is confirmed</p>
+              </div>
+            </div>
+
+            <!-- 2. Refund Received from Supplier -->
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 h-4 w-4 rounded-full flex-shrink-0" [ngClass]="booking.cancellation?.refundReceivedFromSupplier?.date ? 'bg-green-500' : 'bg-gray-300'"></span>
+              <div class="flex-1">
+                <p class="font-medium text-gray-800 mb-2">Refund Received from Supplier</p>
+                <div *ngIf="booking.cancellation?.refundReceivedFromSupplier?.date" class="text-sm text-gray-600 mb-2">
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundReceivedFromSupplier.date | date:'shortDate' }}
+                  <span *ngIf="booking.cancellation.refundReceivedFromSupplier.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundReceivedFromSupplier.remarks }}</span>
+                </div>
+                <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                    <input type="date" [(ngModel)]="refundReceivedDate" [ngModelOptions]="{standalone: true}" class="input" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Remarks</label>
+                    <input type="text" [(ngModel)]="refundReceivedRemarks" [ngModelOptions]="{standalone: true}" class="input" placeholder="Optional remarks" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <button type="button" (click)="saveRefundReceived()" [disabled]="savingRefundReceived || !refundReceivedDate" class="btn btn-primary text-sm" [class.opacity-50]="savingRefundReceived || !refundReceivedDate">
+                      {{ savingRefundReceived ? 'Saving...' : 'Save' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Refund Paid to Client -->
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 h-4 w-4 rounded-full flex-shrink-0" [ngClass]="booking.cancellation?.refundPaidToClient?.date ? 'bg-green-500' : 'bg-gray-300'"></span>
+              <div class="flex-1">
+                <p class="font-medium text-gray-800 mb-2">Refund Paid to Client</p>
+                <div *ngIf="booking.cancellation?.refundPaidToClient?.date" class="text-sm text-gray-600 mb-2">
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundPaidToClient.date | date:'shortDate' }}
+                  <span *ngIf="booking.cancellation.refundPaidToClient.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundPaidToClient.remarks }}</span>
+                </div>
+                <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                    <input type="date" [(ngModel)]="refundPaidDate" [ngModelOptions]="{standalone: true}" class="input" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Remarks</label>
+                    <input type="text" [(ngModel)]="refundPaidRemarks" [ngModelOptions]="{standalone: true}" class="input" placeholder="Optional remarks" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <button type="button" (click)="saveRefundPaid()" [disabled]="savingRefundPaid || !refundPaidDate" class="btn btn-primary text-sm" [class.opacity-50]="savingRefundPaid || !refundPaidDate">
+                      {{ savingRefundPaid ? 'Saving...' : 'Save' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         <!-- Progress History -->
         <div class="card overflow-hidden">
           <h3 class="text-xl font-semibold text-gray-800 mb-1">Progress History</h3>
@@ -659,6 +730,14 @@ export class BookingDetailComponent implements OnInit {
   assignToUserId = '';
   assignComment = '';
   assigning = false;
+
+  // Refund status form state
+  refundReceivedDate = '';
+  refundReceivedRemarks = '';
+  refundPaidDate = '';
+  refundPaidRemarks = '';
+  savingRefundReceived = false;
+  savingRefundPaid = false;
 
   constructor(
     private bookingService: BookingService,
@@ -944,6 +1023,16 @@ export class BookingDetailComponent implements OnInit {
         paymentModeWas: paymentModeWas || ''
       });
       this.cancelForm.get('paymentModeWas')?.disable();
+      // Pre-fill refund status fields from existing data
+      const c = this.booking.cancellation;
+      if (c?.refundReceivedFromSupplier?.date) {
+        this.refundReceivedDate = new Date(c.refundReceivedFromSupplier.date).toISOString().split('T')[0];
+        this.refundReceivedRemarks = c.refundReceivedFromSupplier.remarks || '';
+      }
+      if (c?.refundPaidToClient?.date) {
+        this.refundPaidDate = new Date(c.refundPaidToClient.date).toISOString().split('T')[0];
+        this.refundPaidRemarks = c.refundPaidToClient.remarks || '';
+      }
     }
   }
 
@@ -1342,6 +1431,42 @@ export class BookingDetailComponent implements OnInit {
         }
       });
     }
+  }
+
+  saveRefundReceived() {
+    if (!this.booking || !this.refundReceivedDate) return;
+    this.savingRefundReceived = true;
+    this.bookingService.updateRefundStatus(this.booking._id!, {
+      refundReceivedFromSupplier: { date: this.refundReceivedDate, remarks: this.refundReceivedRemarks }
+    }).subscribe({
+      next: () => {
+        this.savingRefundReceived = false;
+        this.toastr.success('Refund Received from Supplier saved', 'Success');
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => {
+        this.savingRefundReceived = false;
+        this.toastr.error(err?.error?.message || 'Failed to save', 'Error');
+      }
+    });
+  }
+
+  saveRefundPaid() {
+    if (!this.booking || !this.refundPaidDate) return;
+    this.savingRefundPaid = true;
+    this.bookingService.updateRefundStatus(this.booking._id!, {
+      refundPaidToClient: { date: this.refundPaidDate, remarks: this.refundPaidRemarks }
+    }).subscribe({
+      next: () => {
+        this.savingRefundPaid = false;
+        this.toastr.success('Refund Paid to Client saved', 'Success');
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => {
+        this.savingRefundPaid = false;
+        this.toastr.error(err?.error?.message || 'Failed to save', 'Error');
+      }
+    });
   }
 
   get oldMargin(): number {

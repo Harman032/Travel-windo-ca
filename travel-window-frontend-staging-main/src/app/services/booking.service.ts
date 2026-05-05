@@ -122,4 +122,8 @@ export class BookingService {
   assignBooking(id: string, assignToUserId: string, comment?: string): Observable<Booking> {
     return this.http.post<Booking>(`${this.apiUrl}/bookings/${id}/assign`, { assignToUserId, comment });
   }
+
+  updateRefundStatus(id: string, data: { refundReceivedFromSupplier?: { date?: string; remarks?: string }; refundPaidToClient?: { date?: string; remarks?: string } }): Observable<Booking> {
+    return this.http.put<Booking>(`${this.apiUrl}/bookings/${id}/refund-status`, data);
+  }
 }

@@ -1085,4 +1085,39 @@ router.post('/:id/process-refund', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   }
 });
 
+// Update refund status (Admin and Account only)
+router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!booking.cancellation || !booking.cancellation.isCancelled) {
+      return res.status(400).json({ message: 'Booking is not cancelled' });
+    }
+
+    const { refundReceivedFromSupplier, refundPaidToClient } = req.body;
+
+    if (refundReceivedFromSupplier !== undefined) {
+      booking.cancellation.refundReceivedFromSupplier = {
+        date: refundReceivedFromSupplier.date || booking.cancellation.refundReceivedFromSupplier?.date,
+        remarks: refundReceivedFromSupplier.remarks ?? booking.cancellation.refundReceivedFromSupplier?.remarks ?? ''
+      };
+      addProgressHistory(booking, 'Refund Received from Supplier Updated', req.user, { refundReceivedFromSupplier }, '');
+    }
+
+    if (refundPaidToClient !== undefined) {
+      booking.cancellation.refundPaidToClient = {
+        date: refundPaidToClient.date || booking.cancellation.refundPaidToClient?.date,
+        remarks: refundPaidToClient.remarks ?? booking.cancellation.refundPaidToClient?.remarks ?? ''
+      };
+      addProgressHistory(booking, 'Refund Paid to Client Updated', req.user, { refundPaidToClient }, '');
+    }
+
+    await booking.save();
+    res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
+  } catch (error) {
+    console.error('Update refund status error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

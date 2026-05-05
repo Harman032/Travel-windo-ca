@@ -333,6 +333,15 @@ const bookingSchema = new mongoose.Schema({
     },
     cancelledAt: {
       type: Date
+    },
+    refundAwaitedFromSupplier: { type: Boolean, default: true },
+    refundReceivedFromSupplier: {
+      date: { type: Date },
+      remarks: { type: String, default: '' }
+    },
+    refundPaidToClient: {
+      date: { type: Date },
+      remarks: { type: String, default: '' }
     }
   }
 }, {
