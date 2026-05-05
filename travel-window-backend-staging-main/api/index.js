@@ -7,22 +7,26 @@ const app = express();
 
 // CORS middleware
 app.use(cors({
-  origin: (origin, callback) => callback(null, true),
-  credentials: true,
+  origin: '*',
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Authorization']
 }));
 
 // Handle preflight OPTIONS requests explicitly
-app.options('*', cors());
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  res.sendStatus(204);
+});
 
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection - Optimized for serverless (Official Pattern)
-// Use global cache to reuse connection across function invocations
 let cached = global.mongoose;
 
 if (!cached) {
@@ -31,7 +35,6 @@ if (!cached) {
 
 const connectDB = async () => {
   if (cached.conn) {
-    console.log('=> Using cached database connection');
     return cached.conn;
   }
 
@@ -39,21 +42,22 @@ const connectDB = async () => {
     const uri = process.env.MONGODB_URI || process.env.travel_window_MONGODB_URI;
     
     if (!uri) {
-      console.error('=> ERROR: MONGODB_URI is not defined in environment variables');
-      throw new Error('Missing MONGODB_URI');
+      console.error('=> ERROR: MONGODB_URI is not defined');
+      throw new Error('Missing MONGODB_URI environment variable');
     }
 
-    console.log('=> Connecting to MongoDB...');
     const opts = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of hanging
+      serverSelectionTimeoutMS: 5000,
       heartbeatFrequencyMS: 1000,
+      connectTimeoutMS: 10000,
     };
 
+    console.log('=> Starting new MongoDB connection...');
     cached.promise = mongoose.connect(uri, opts).then((mongoose) => {
-      console.log('=> MongoDB connected successfully');
+      console.log('=> MongoDB connected');
       return mongoose;
     }).catch((error) => {
       console.error('=> MongoDB connection error:', error.message);
@@ -62,8 +66,13 @@ const connectDB = async () => {
     });
   }
 
+  // Set a timeout for the connection promise itself to avoid Vercel 504
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Database connection timed out (10s)')), 10000)
+  );
+
   try {
-    cached.conn = await cached.promise;
+    cached.conn = await Promise.race([cached.promise, timeoutPromise]);
   } catch (e) {
     cached.promise = null;
     throw e;
