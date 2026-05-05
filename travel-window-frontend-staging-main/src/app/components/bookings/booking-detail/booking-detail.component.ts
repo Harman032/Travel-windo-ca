@@ -566,7 +566,8 @@ import { ToastrService } from 'ngx-toastr';
                   <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Total Cancellation Charges</p></div>
                 </ng-container>
                 <ng-container *ngIf="cancelForm.get('cancellationType')?.value === 'supplierRefundAmount'">
-                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Our Old Margin − Supplier Refund Amount − Our Cancellation Charges</p></div>
+                  <div><label class="block text-sm text-gray-600">Supplier Deducted (Not Editable)</label><p class="font-semibold">{{ supplierDeductedRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Our Cost − Supplier Refund Amount</p></div>
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Supplier Refund Amount − Our New Margin</p></div>
                 </ng-container>
               </div>
             </div>
@@ -1441,11 +1442,17 @@ export class BookingDetailComponent implements OnInit {
     return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
   }
 
-  /** Supplier Refund Amount mode: Refund Committed To Client = Base Sale Price − Our Old Margin − Supplier Refund Amount − Our Cancellation Charges */
+  /** Supplier Refund Amount mode: Supplier Deducted = Our Cost − Supplier Refund Amount */
+  get supplierDeductedRefundMode(): number {
+    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
+    const ourCost = Number(this.booking?.ourCost) || 0;
+    return ourCost - Number(sra);
+  }
+
+  /** Supplier Refund Amount mode: Refund Committed To Client = Supplier Refund Amount − Our New Margin */
   get refundCommittedToClientRefundMode(): number {
     const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
-    return Math.max(0, this.baseSalePrice - this.baseMargin - Number(sra) - Number(occ));
+    return Number(sra) - this.newMargin;
   }
 
   get newMargin(): number {
