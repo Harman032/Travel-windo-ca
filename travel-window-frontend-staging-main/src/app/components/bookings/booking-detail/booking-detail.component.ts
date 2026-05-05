@@ -890,6 +890,11 @@ export class BookingDetailComponent implements OnInit {
     return user?.role === 'ADMIN';
   }
 
+  isAccount(): boolean {
+    const user = this.authService.getCurrentUserValue();
+    return user?.role === 'ACCOUNT';
+  }
+
   /** Account verified visible to Admin + Account only */
   canShowAccountVerified(): boolean {
     const user = this.authService.getCurrentUserValue();
