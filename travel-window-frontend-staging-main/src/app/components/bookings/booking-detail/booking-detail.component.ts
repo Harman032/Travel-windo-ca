@@ -536,19 +536,38 @@ import { ToastrService } from 'ngx-toastr';
 
             <!-- Non–Credit Card flow -->
             <div *ngIf="cancelForm.get('paymentModeWas')?.value && cancelForm.get('paymentModeWas')?.value !== 'Credit Card'" class="mt-4 space-y-4">
+              <!-- Radio: Cancellation Type -->
+              <div class="flex items-center gap-6 py-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" formControlName="cancellationType" value="supplierCancellationCharges" class="h-4 w-4 accent-red-600" />
+                  <span class="text-sm font-medium text-gray-700">Supplier Cancellation Charges</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" formControlName="cancellationType" value="supplierRefundAmount" class="h-4 w-4 accent-red-600" />
+                  <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
+                </label>
+              </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label class="block text-sm text-gray-600">Base Sale Price (Not Editable)</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Our Old Margin (Not Editable)</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }} <span class="text-xs text-gray-500">(on base only)</span></p></div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ cancelForm.get('cancellationType')?.value === 'supplierRefundAmount' ? 'Supplier Refund Amount' : 'Supplier Cancellation Charges' }}
+                    <span class="text-red-500">*</span>
+                  </label>
                   <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
                   <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                 </div>
-                <div><label class="block text-sm text-gray-600">Total Cancellation Charges (Not Editable)</label><p class="font-semibold">{{ cancelTotalCancellationCharges | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Total Cancellation Charges</p></div>
+                <ng-container *ngIf="cancelForm.get('cancellationType')?.value !== 'supplierRefundAmount'">
+                  <div><label class="block text-sm text-gray-600">Total Cancellation Charges (Not Editable)</label><p class="font-semibold">{{ cancelTotalCancellationCharges | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Total Cancellation Charges</p></div>
+                </ng-container>
+                <ng-container *ngIf="cancelForm.get('cancellationType')?.value === 'supplierRefundAmount'">
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Our Old Margin − Supplier Refund Amount − Our Cancellation Charges</p></div>
+                </ng-container>
               </div>
             </div>
 
@@ -677,6 +696,7 @@ export class BookingDetailComponent implements OnInit {
       refundableAmount: [0],
       committedToClient: [null],
       chargeFromClient: [null],
+      cancellationType: ['supplierCancellationCharges'],
       supplierCancellationCharges: [0],
       ourCancellationCharges: [0],
       remarks: ['', Validators.required]
@@ -1419,6 +1439,13 @@ export class BookingDetailComponent implements OnInit {
   /** Non–Credit Card: Refund Committed To Client = Total Sale Price − Total Cancellation Charges (read-only, no textbox) */
   get refundCommittedToClientNonCC(): number {
     return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
+  }
+
+  /** Supplier Refund Amount mode: Refund Committed To Client = Base Sale Price − Our Old Margin − Supplier Refund Amount − Our Cancellation Charges */
+  get refundCommittedToClientRefundMode(): number {
+    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
+    const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
+    return Math.max(0, this.baseSalePrice - this.baseMargin - Number(sra) - Number(occ));
   }
 
   get newMargin(): number {
