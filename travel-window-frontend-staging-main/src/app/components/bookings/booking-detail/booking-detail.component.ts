@@ -494,52 +494,9 @@ import { ToastrService } from 'ngx-toastr';
           </form>
         </div>
 
-        <!-- Cancel Form (Ticket Cancellation – Credit Card vs Non-Credit Card per spec) -->
         <div *ngIf="showCancelForm" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancel Booking</h3>
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
-            <!-- Refund Type Options -->
-            <div class="col-span-full mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Refund Type</label>
-              <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6 space-y-2 sm:space-y-0">
-                <label class="inline-flex items-center">
-                  <input type="radio" formControlName="refundType" value="Full Cancellation" class="form-radio text-primary-600">
-                  <span class="ml-2 text-sm text-gray-700">Full Cancellation</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" formControlName="refundType" value="Refund committed from supplier" class="form-radio text-primary-600">
-                  <span class="ml-2 text-sm text-gray-700">Refund committed from supplier</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" formControlName="refundType" value="Partial cancellation (one leg flown)" class="form-radio text-primary-600">
-                  <span class="ml-2 text-sm text-gray-700">Partial cancellation (one leg flown)</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Special Refund Types Inputs -->
-            <div *ngIf="cancelForm.get('refundType')?.value !== 'Full Cancellation'" class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 border border-blue-200 rounded-lg bg-blue-50">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Committed from Supplier</label>
-                <input type="number" formControlName="refundCommittedFromSupplierInput" class="input" step="0.01" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">New Margin</label>
-                <input type="number" formControlName="newMarginInput" class="input" step="0.01" />
-              </div>
-            </div>
-
-            <!-- Admin/Account Only Refund Tracking -->
-            <div *ngIf="isAdmin() || isAccount()" class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 border border-gray-200 rounded-lg bg-white">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Received from Supplier</label>
-                <input type="number" formControlName="refundReceivedFromSupplier" class="input" step="0.01" min="0" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Refund Paid to Client (via cheque/book)</label>
-                <input type="number" formControlName="refundPaidToClient" class="input" step="0.01" min="0" />
-              </div>
-            </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
@@ -716,11 +673,6 @@ export class BookingDetailComponent implements OnInit {
     });
 
     this.cancelForm = this.fb.group({
-      refundType: ['Full Cancellation'],
-      refundCommittedFromSupplierInput: [null],
-      newMarginInput: [null],
-      refundReceivedFromSupplier: [0],
-      refundPaidToClient: [0],
       paymentModeWas: ['', Validators.required],
       refundableAmount: [0],
       committedToClient: [null],
@@ -1349,9 +1301,6 @@ export class BookingDetailComponent implements OnInit {
       }
 
       this.bookingService.cancelBooking(this.booking._id!, {
-        refundType: formValue.refundType,
-        refundReceivedFromSupplier: formValue.refundReceivedFromSupplier,
-        refundPaidToClient: formValue.refundPaidToClient,
         paymentModeWas: formValue.paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
         committedToClient: computedCommittedToClient,
@@ -1456,12 +1405,6 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelRefundCommittedToClient(): number {
-    const refundType = this.cancelForm?.get('refundType')?.value;
-    if (refundType === 'Refund committed from supplier' || refundType === 'Partial cancellation (one leg flown)') {
-      const refundSupplier = this.cancelForm?.get('refundCommittedFromSupplierInput')?.value || 0;
-      const nm = this.cancelForm?.get('newMarginInput')?.value || 0;
-      return Math.max(0, refundSupplier - nm);
-    }
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const charge = this.cancelForm?.get('chargeFromClient')?.value ?? 0;
     const chargeNum = typeof charge === 'number' ? charge : parseFloat(charge) || 0;
@@ -1480,12 +1423,6 @@ export class BookingDetailComponent implements OnInit {
 
   /** Non–Credit Card: Refund Committed To Client */
   get refundCommittedToClientNonCC(): number {
-    const refundType = this.cancelForm?.get('refundType')?.value;
-    if (refundType === 'Refund committed from supplier' || refundType === 'Partial cancellation (one leg flown)') {
-      const refundSupplier = this.cancelForm?.get('refundCommittedFromSupplierInput')?.value || 0;
-      const nm = this.cancelForm?.get('newMarginInput')?.value || 0;
-      return Math.max(0, refundSupplier - nm);
-    }
     return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
   }
 

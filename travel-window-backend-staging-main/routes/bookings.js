@@ -967,9 +967,6 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       chargeFromClient,
       supplierCancellationCharges = 0,
       ourCancellationCharges = 0,
-      refundType = 'Full Cancellation',
-      refundReceivedFromSupplier = 0,
-      refundPaidToClient = 0,
       remarks
     } = req.body;
     
@@ -1020,9 +1017,6 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     booking.cancellation = {
       isCancelled: true,
-      refundType,
-      refundReceivedFromSupplier: parseFloat(refundReceivedFromSupplier) || 0,
-      refundPaidToClient: parseFloat(refundPaidToClient) || 0,
       paymentModeWas,
       totalAmountPaidByClient: totalAmountPaid,
       refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),

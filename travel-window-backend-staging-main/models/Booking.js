@@ -277,19 +277,6 @@ const bookingSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
-    refundType: {
-      type: String,
-      enum: ['Full Cancellation', 'Refund committed from supplier', 'Partial cancellation (one leg flown)'],
-      default: 'Full Cancellation'
-    },
-    refundReceivedFromSupplier: {
-      type: Number,
-      default: 0
-    },
-    refundPaidToClient: {
-      type: Number,
-      default: 0
-    },
     paymentModeWas: {
       type: String,
       enum: ['Cash', 'Cheque', 'Credit Card']
