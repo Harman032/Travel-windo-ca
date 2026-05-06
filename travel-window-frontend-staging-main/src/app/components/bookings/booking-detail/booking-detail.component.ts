@@ -594,7 +594,18 @@ import { ToastrService } from 'ngx-toastr';
               <span class="mt-0.5 h-4 w-4 rounded-full bg-orange-400 flex-shrink-0"></span>
               <div>
                 <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
-                <p class="text-xs text-gray-500 mt-0.5">Automatically set when cancellation is confirmed</p>
+                <div class="mt-2 space-y-1">
+                  <p class="text-sm font-semibold text-orange-800">
+                    Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
+                  </p>
+                  <p *ngIf="booking.cancellation?.cancellationType === 'supplierRefundAmount'" class="text-xs text-orange-700">
+                    Supplier Deducted: CAD {{ (booking.cancellation?.supplierDeducted || 0) | number:'1.2-2' }}
+                  </p>
+                  <p class="text-xs text-orange-700">
+                    Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || 0) | number:'1.2-2' }}
+                  </p>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 italic">Automatically set when cancellation is confirmed</p>
               </div>
             </div>
 
@@ -1604,6 +1615,17 @@ export class BookingDetailComponent implements OnInit {
       const outflow = this.baseOurCost - supplierRefund;
       
       return inflow - outflow;
+    }
+  }
+
+  get expectedSupplierReturn(): number {
+    if (!this.booking?.cancellation) return 0;
+    const c = this.booking.cancellation;
+    if (c.cancellationType === 'supplierRefundAmount') {
+      return c.supplierRefundAmount || 0;
+    } else {
+      // Base Sale Price (excluding add-ons) - Supplier Cancellation Charges
+      return this.totalSalePriceForCancel - (c.supplierCancellationCharges || 0);
     }
   }
 

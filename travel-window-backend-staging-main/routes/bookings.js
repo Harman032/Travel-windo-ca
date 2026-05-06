@@ -1043,6 +1043,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       supplierRefundAmount: (cancellationType === 'supplierRefundAmount' ? scc : 0),
       supplierDeducted,
       ourCancellationCharges: occ,
+      cancellationType,
       currentMargin,
       totalCancellationCharges,
       refundableAmountToClient,
