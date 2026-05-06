@@ -567,7 +567,7 @@ import { ToastrService } from 'ngx-toastr';
                 </ng-container>
                 <ng-container *ngIf="cancelForm.get('cancellationType')?.value === 'supplierRefundAmount'">
                   <div><label class="block text-sm text-gray-600">Supplier Deducted (Not Editable)</label><p class="font-semibold">{{ supplierDeductedRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Our Cost − Supplier Refund Amount</p></div>
-                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Supplier Deducted – Our Cancellation Charges</p></div>
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Supplier Refund Amount – Our Cancellation Charges</p></div>
                 </ng-container>
               </div>
             </div>
@@ -1575,10 +1575,11 @@ export class BookingDetailComponent implements OnInit {
     return ourCost - Number(sra);
   }
 
-  /** Supplier Refund Amount mode: Refund Committed To Client = Supplier Deducted − Our Cancellation Charges */
+  /** Supplier Refund Amount mode: Refund Committed To Client = Supplier Refund Amount − Our Cancellation Charges */
   get refundCommittedToClientRefundMode(): number {
+    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
-    return Math.max(0, this.supplierDeductedRefundMode - Number(occ));
+    return Math.max(0, Number(sra) - Number(occ));
   }
 
   get newMargin(): number {
