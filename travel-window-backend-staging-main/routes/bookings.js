@@ -1079,7 +1079,9 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       refundProcessed: false,
       remarks,
       cancelledBy: req.user._id,
-      cancelledAt: new Date()
+      cancelledAt: new Date(),
+      refundReceivedFromSupplier: { date: null, remarks: '' },
+      refundPaidToClient: { date: null, remarks: '' }
     };
     
     booking.status = 'Cancelled';
@@ -1142,18 +1144,26 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     const { refundReceivedFromSupplier, refundPaidToClient } = req.body;
 
     if (refundReceivedFromSupplier !== undefined) {
+      const existing = (booking.cancellation.refundReceivedFromSupplier && typeof booking.cancellation.refundReceivedFromSupplier === 'object') 
+        ? booking.cancellation.refundReceivedFromSupplier 
+        : {};
       booking.cancellation.refundReceivedFromSupplier = {
-        date: refundReceivedFromSupplier.date || booking.cancellation.refundReceivedFromSupplier?.date,
-        remarks: refundReceivedFromSupplier.remarks ?? booking.cancellation.refundReceivedFromSupplier?.remarks ?? ''
+        date: refundReceivedFromSupplier.date || existing.date,
+        remarks: refundReceivedFromSupplier.remarks ?? existing.remarks ?? ''
       };
+      booking.markModified('cancellation.refundReceivedFromSupplier');
       addProgressHistory(booking, 'Refund Received from Supplier Updated', req.user, { refundReceivedFromSupplier }, '');
     }
 
     if (refundPaidToClient !== undefined) {
+      const existing = (booking.cancellation.refundPaidToClient && typeof booking.cancellation.refundPaidToClient === 'object') 
+        ? booking.cancellation.refundPaidToClient 
+        : {};
       booking.cancellation.refundPaidToClient = {
-        date: refundPaidToClient.date || booking.cancellation.refundPaidToClient?.date,
-        remarks: refundPaidToClient.remarks ?? booking.cancellation.refundPaidToClient?.remarks ?? ''
+        date: refundPaidToClient.date || existing.date,
+        remarks: refundPaidToClient.remarks ?? existing.remarks ?? ''
       };
+      booking.markModified('cancellation.refundPaidToClient');
       addProgressHistory(booking, 'Refund Paid to Client Updated', req.user, { refundPaidToClient }, '');
     }
 
