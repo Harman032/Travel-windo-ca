@@ -536,7 +536,7 @@ router.put('/:id', auth, async (req, res) => {
       }
       const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
-        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus'];
+        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified'];
       allowedKeys.forEach(key => {
         if (updates[key] === undefined) return;
         if (key === 'additionalServices') {
