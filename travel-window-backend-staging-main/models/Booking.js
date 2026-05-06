@@ -306,6 +306,8 @@ const bookingSchema = new mongoose.Schema({
       default: 0
     },
     supplierCancellationCharges: { type: Number, default: 0 },
+    supplierRefundAmount: { type: Number, default: 0 },
+    supplierDeducted: { type: Number, default: 0 },
     ourCancellationCharges: { type: Number, default: 0 },
     currentMargin: { type: Number, default: 0 },
     totalCancellationCharges: { type: Number, default: 0 },

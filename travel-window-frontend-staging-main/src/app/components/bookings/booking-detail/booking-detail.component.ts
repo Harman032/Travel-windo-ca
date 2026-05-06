@@ -1412,7 +1412,8 @@ export class BookingDetailComponent implements OnInit {
         chargeFromClient: formValue.chargeFromClient,
         supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
         ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
-        remarks: formValue.remarks
+        remarks: formValue.remarks,
+        cancellationType: formValue.cancellationType
       }).subscribe({
         next: () => {
           this.showCancelForm = false;
@@ -1591,8 +1592,17 @@ export class BookingDetailComponent implements OnInit {
       const base = this.baseMargin;
       return charge > base ? charge - base : 0;
     } else {
-      const committed = this.refundCommittedToClientNonCC;
-      return this.refundablePortionOfSalePrice - committed;
+      const isRefundMode = formValue.cancellationType === 'supplierRefundAmount';
+      const sra = Number(formValue.supplierCancellationCharges) || 0; // scc field used for refund amount in refund mode
+      const occ = Number(formValue.ourCancellationCharges) || 0;
+      const committed = isRefundMode ? this.refundCommittedToClientRefundMode : this.refundCommittedToClientNonCC;
+      
+      // Profit = (Sale Price - Committed to Client) - (Our Cost - Supplier Refund)
+      const inflow = this.refundablePortionOfSalePrice - committed;
+      const supplierRefund = isRefundMode ? sra : (this.baseOurCost - sra); // In charge mode, supplier refund = our cost - charge
+      const outflow = this.baseOurCost - supplierRefund;
+      
+      return inflow - outflow;
     }
   }
 

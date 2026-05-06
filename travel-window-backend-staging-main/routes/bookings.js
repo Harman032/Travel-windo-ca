@@ -967,6 +967,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       chargeFromClient,
       supplierCancellationCharges = 0,
       ourCancellationCharges = 0,
+      cancellationType = 'supplierCancellationCharges',
       remarks
     } = req.body;
     
@@ -988,7 +989,6 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     const scc = parseFloat(supplierCancellationCharges) || 0;
     const occ = parseFloat(ourCancellationCharges) || 0;
     const chargeFromClientVal = chargeFromClient != null ? parseFloat(chargeFromClient) : 0;
-    const committedToClientVal = committedToClient != null ? parseFloat(committedToClient) : 0;
     
     let refundableAmountToClient = 0;
     let currentMargin = oldMargin;
@@ -996,23 +996,38 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     let refundCommittedToClient = 0;
     let totalCancellationCharges = 0;
     let refundableAmountCommittedToClient = 0;
-    
+    let supplierDeducted = 0;
+    let finalCommittedToClient = 0;
+
+    if (cancellationType === 'supplierRefundAmount') {
+      // New Mode: Supplier Refund Amount logic
+      supplierDeducted = baseOurCost - scc; // here scc is actually "Supplier Refund Amount"
+      finalCommittedToClient = scc - occ;
+    } else {
+      // Legacy Mode: Supplier Cancellation Charges logic
+      supplierDeducted = scc;
+      finalCommittedToClient = totalSalePrice - (oldMargin + supplierDeducted + occ);
+    }
+
     if (paymentModeWas === 'Credit Card') {
-      refundableAmountToClient = totalSalePrice - scc;
+      refundableAmountToClient = totalSalePrice - supplierDeducted;
       const base = oldMargin;
       currentMargin = chargeFromClientVal > 0 ? (chargeFromClientVal < base ? base - chargeFromClientVal : base) : 0;
       newMargin = chargeFromClientVal > base ? chargeFromClientVal - base : 0;
-      refundCommittedToClient = totalSalePrice - scc - chargeFromClientVal;
+      refundCommittedToClient = totalSalePrice - supplierDeducted - chargeFromClientVal;
+      finalCommittedToClient = refundCommittedToClient;
       if (chargeFromClient === undefined || chargeFromClient === null) {
         return res.status(400).json({ message: 'Charge from client is required for credit card payments' });
       }
     } else {
-      totalCancellationCharges = oldMargin + scc + occ;
-      refundableAmountCommittedToClient = totalSalePrice - totalCancellationCharges;
-      newMargin = totalSalePrice - committedToClientVal;
-      if (committedToClient === undefined && committedToClientVal === 0) {
-        return res.status(400).json({ message: 'Committed to client (refundable amount) is required for non-credit card' });
-      }
+      totalCancellationCharges = oldMargin + supplierDeducted + occ;
+      refundableAmountCommittedToClient = finalCommittedToClient;
+      // New Margin = Total Inflow - Total Outflow
+      // Total Inflow = Sale Price - Committed to Client
+      // Total Outflow = Our Cost - Supplier Refund
+      // Supplier Refund = Our Cost - Supplier Deducted
+      // Total Outflow = Our Cost - (Our Cost - Supplier Deducted) = Supplier Deducted
+      newMargin = (totalSalePrice - finalCommittedToClient) - supplierDeducted;
     }
     
     booking.cancellation = {
@@ -1021,10 +1036,12 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       totalAmountPaidByClient: totalAmountPaid,
       refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),
       oldMargin,
-      committedToClient: paymentModeWas === 'Credit Card' ? refundCommittedToClient : committedToClientVal,
+      committedToClient: finalCommittedToClient,
       chargeFromClient: chargeFromClientVal,
       newMargin,
-      supplierCancellationCharges: scc,
+      supplierCancellationCharges: (cancellationType === 'supplierRefundAmount' ? 0 : scc),
+      supplierRefundAmount: (cancellationType === 'supplierRefundAmount' ? scc : 0),
+      supplierDeducted,
       ourCancellationCharges: occ,
       currentMargin,
       totalCancellationCharges,
