@@ -1624,8 +1624,11 @@ export class BookingDetailComponent implements OnInit {
     if (c.cancellationType === 'supplierRefundAmount') {
       return c.supplierRefundAmount || 0;
     } else {
-      // Base Sale Price (excluding add-ons) - Supplier Cancellation Charges
-      return this.totalSalePriceForCancel - (c.supplierCancellationCharges || 0);
+      // Amount Supplier Will Return = Base Sale Price - Supplier Cancellation Charges - Our Old Margin
+      const baseSale = this.totalSalePriceForCancel;
+      const scc = c.supplierCancellationCharges || 0;
+      const oldMargin = c.oldMargin || 0;
+      return baseSale - scc - oldMargin;
     }
   }
 
