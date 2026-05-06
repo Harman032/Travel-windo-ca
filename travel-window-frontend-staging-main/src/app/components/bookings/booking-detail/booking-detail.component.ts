@@ -780,7 +780,7 @@ export class BookingDetailComponent implements OnInit {
   cancelForm: FormGroup;
   adminStatus = '';
   /** Full status flow for Admin: Draft → … → Billed → Paid, plus Ticketed/Unticketed/Cancelled */
-  statusOptions = ['Pending Verification', 'Account Verified', 'Admin Verified', 'Billed', 'Paid', 'Ticketed', 'Unticketed', 'Cancelled'];
+  statusOptions = ['Pending Verification', 'Billed', 'Paid', 'Ticketed', 'Unticketed', 'Cancelled'];
   assignableUsers: User[] = [];
   assignToUserId = '';
   assignComment = '';
