@@ -203,6 +203,14 @@ const bookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  adminVerified: {
+    type: Boolean,
+    default: false
+  },
+  accountVerified: {
+    type: Boolean,
+    default: false
+  },
   
   // Assignment
   assignedTo: {

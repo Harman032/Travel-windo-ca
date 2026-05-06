@@ -560,6 +560,15 @@ router.put('/:id', auth, async (req, res) => {
           booking[key] = v.charAt(0).toUpperCase() + v.slice(1);
         } else if (key === 'travelDate' || key === 'returnDate') {
           booking[key] = parseDateInput(updates[key]);
+        } else if (key === 'accountVerified') {
+          const val = !!updates[key];
+          booking.accountVerified = val;
+          booking.verifiedByAccount = val;
+          if (val) {
+            booking.verifiedByAccountDate = new Date();
+            booking.verifiedByAccountUser = req.user._id;
+          }
+          changes[key] = val ? 'Verified' : 'Not Verified';
         } else {
           booking[key] = updates[key];
         }
@@ -624,6 +633,24 @@ router.put('/:id', auth, async (req, res) => {
           } else if (key === 'from' || key === 'to') {
             booking[key] = updates[key].charAt(0).toUpperCase() + updates[key].slice(1);
             changes[key] = updates[key];
+          } else if (key === 'adminVerified') {
+            const val = !!updates[key];
+            booking.adminVerified = val;
+            booking.verifiedByAdmin = val;
+            if (val) {
+              booking.verifiedByAdminDate = new Date();
+              booking.verifiedByAdminUser = req.user._id;
+            }
+            changes[key] = val ? 'Verified' : 'Not Verified';
+          } else if (key === 'accountVerified') {
+            const val = !!updates[key];
+            booking.accountVerified = val;
+            booking.verifiedByAccount = val;
+            if (val) {
+              booking.verifiedByAccountDate = new Date();
+              booking.verifiedByAccountUser = req.user._id;
+            }
+            changes[key] = val ? 'Verified' : 'Not Verified';
           } else {
             booking[key] = updates[key];
             changes[key] = updates[key];

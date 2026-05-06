@@ -34,6 +34,8 @@ export interface Booking {
   status?: string;
   verifiedByAccount?: boolean;
   verifiedByAdmin?: boolean;
+  adminVerified?: boolean;
+  accountVerified?: boolean;
   assignedTo?: { _id: string; name: string; email?: string };
   progressHistory?: any[];
   dateChanges?: any[];

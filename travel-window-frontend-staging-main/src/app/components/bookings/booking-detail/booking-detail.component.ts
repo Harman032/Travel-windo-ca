@@ -90,6 +90,50 @@ import { ToastrService } from 'ngx-toastr';
                 </button>
               </div>
             </div>
+
+            <!-- Admin: Verification Section -->
+            <div *ngIf="isAdmin()" class="col-span-full mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-blue-700 mb-2">Admin: Change verification</label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <select [(ngModel)]="adminVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
+                      <option [ngValue]="false">Not Verified</option>
+                      <option [ngValue]="true">Admin Verified</option>
+                    </select>
+                    <button type="button" (click)="saveAdminVerification()" class="btn btn-primary" [disabled]="(booking.adminVerified || booking.verifiedByAdmin || false) === adminVerifiedStatus">
+                      Save status
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-blue-700 mb-2">Account: Change verification</label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <select [(ngModel)]="accountVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
+                      <option [ngValue]="false">Not Verified</option>
+                      <option [ngValue]="true">Account Verified</option>
+                    </select>
+                    <button type="button" (click)="saveAccountVerification()" class="btn btn-primary" [disabled]="(booking.accountVerified || booking.verifiedByAccount || false) === accountVerifiedStatus">
+                      Save status
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Account: Verification Section -->
+            <div *ngIf="isAccount() && !isAdmin()" class="col-span-full mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <label class="block text-sm font-medium text-blue-700 mb-2">Account: Change verification</label>
+              <div class="flex flex-wrap items-center gap-2">
+                <select [(ngModel)]="accountVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
+                  <option [ngValue]="false">Not Verified</option>
+                  <option [ngValue]="true">Account Verified</option>
+                </select>
+                <button type="button" (click)="saveAccountVerification()" class="btn btn-primary" [disabled]="(booking.accountVerified || booking.verifiedByAccount || false) === accountVerifiedStatus">
+                  Save status
+                </button>
+              </div>
+            </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
               <p class="text-gray-900">{{ booking.dateOfSubmission | date:'short' }}</p>
@@ -741,6 +785,8 @@ export class BookingDetailComponent implements OnInit {
   assignToUserId = '';
   assignComment = '';
   assigning = false;
+  adminVerifiedStatus = false;
+  accountVerifiedStatus = false;
 
   // Refund status form state
   refundReceivedDate = '';
@@ -910,6 +956,8 @@ export class BookingDetailComponent implements OnInit {
       next: (booking) => {
         this.booking = booking;
         this.adminStatus = this.isAdmin() ? (booking.status || this.getDisplayStatus()) : this.getDisplayStatus();
+        this.adminVerifiedStatus = booking.adminVerified || booking.verifiedByAdmin || false;
+        this.accountVerifiedStatus = booking.accountVerified || booking.verifiedByAccount || false;
         this.loading = false;
         this.initializeForms();
         if (this.canAssign()) {
@@ -1003,6 +1051,28 @@ export class BookingDetailComponent implements OnInit {
       error: (err) => {
         this.toastr.error(err.error?.message || 'Failed to update status', 'Error');
       }
+    });
+  }
+
+  saveAdminVerification() {
+    if (!this.booking) return;
+    this.bookingService.updateBooking(this.booking._id!, { adminVerified: this.adminVerifiedStatus }).subscribe({
+      next: () => {
+        this.toastr.success('Admin verification updated', 'Success');
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => this.toastr.error(err.error?.message || 'Update failed', 'Error')
+    });
+  }
+
+  saveAccountVerification() {
+    if (!this.booking) return;
+    this.bookingService.updateBooking(this.booking._id!, { accountVerified: this.accountVerifiedStatus }).subscribe({
+      next: () => {
+        this.toastr.success('Account verification updated', 'Success');
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => this.toastr.error(err.error?.message || 'Update failed', 'Error')
     });
   }
 
