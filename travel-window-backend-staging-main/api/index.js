@@ -5,28 +5,16 @@ const cors = require('cors');
 
 const app = express();
 
-// CORS middleware - Allow ALL origins by reflecting the request origin
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    // Allow non-browser requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-  
-  next();
-});
+// CORS middleware - using standard cors package for robustness
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow all origins (reflecting back) or use a specific domain
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
 
 // Basic middleware
 app.use(express.json());
