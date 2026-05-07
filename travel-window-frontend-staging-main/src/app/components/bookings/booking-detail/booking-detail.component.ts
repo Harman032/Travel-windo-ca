@@ -1006,7 +1006,7 @@ export class BookingDetailComponent implements OnInit {
     if (!(this.isAdmin() || this.isAccount())) return;
 
     const states = ['Pending Verification', 'Ticketed', 'Unticketed'];
-    const currentStatus = this.booking.status;
+    const currentStatus = this.booking.status || '';
     let currentIndex = states.indexOf(currentStatus);
     
     // If current status is not in our toggle list, start from the first one
