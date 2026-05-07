@@ -20,7 +20,7 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptors([authInterceptor])),
     provideAnimations(),
     provideServiceWorker('ngsw-worker.js', {
-      enabled: environment.production,
+      enabled: false,
       registrationStrategy: 'registerWhenStable:30000'
     }),
     provideToastr({
