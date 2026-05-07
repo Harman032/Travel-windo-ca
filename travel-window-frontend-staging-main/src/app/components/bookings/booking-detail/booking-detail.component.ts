@@ -82,6 +82,10 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
               <p class="text-gray-900 font-medium text-green-600">CAD {{ ((booking?.salePrice || 0) - (booking?.ourCost || 0)) | number:'1.2-2' }}</p>
             </div>
+            <div *ngIf="booking.status === 'Cancelled' && booking.cancellation">
+              <label class="block text-sm font-medium text-gray-500 mb-1">New Margin After Cancellation</label>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
+            </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
               <p class="text-gray-900">{{ booking.dateOfSubmission | date:'short' }}</p>
@@ -281,6 +285,19 @@ import { ToastrService } from 'ngx-toastr';
               <span class="badge" [ngClass]="booking.cancellation.refundProcessed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
                 {{ booking.cancellation.refundProcessed ? 'Yes' : 'No' }}
               </span>
+            </div>
+            <!-- Conditional Supplier Cancellation Fields -->
+            <div *ngIf="booking.cancellation.cancellationType === 'supplierCancellationCharges'">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Cancellation Charges</label>
+              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierCancellationCharges | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.cancellationType === 'supplierRefundAmount'">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Refund Amount</label>
+              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierRefundAmount | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.cancellationType === 'supplierRefundAmount'">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Deducted</label>
+              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierDeducted | number:'1.2-2' }}</p>
             </div>
             <div class="col-span-full">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
