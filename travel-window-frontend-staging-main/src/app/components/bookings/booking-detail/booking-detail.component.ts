@@ -80,7 +80,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
-              <p class="text-gray-900 font-medium text-green-600">CAD {{ (booking.salePrice - booking.ourCost) | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ ((booking?.salePrice || 0) - (booking?.ourCost || 0)) | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
