@@ -510,6 +510,11 @@ router.put('/:id', auth, async (req, res) => {
         addProgressHistory(booking, 'Payments Updated', req.user, { payments: updates.payments });
       }
       calculateTotals(booking);
+      // Reset verification when booking is edited
+      booking.adminVerified = false;
+      booking.verifiedByAdmin = false;
+      booking.accountVerified = false;
+      booking.verifiedByAccount = false;
       if (Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated', req.user, changes);
       }
@@ -581,6 +586,13 @@ router.put('/:id', auth, async (req, res) => {
         changes[key] = updates[key];
       });
       calculateTotals(booking);
+      // Reset verification when booking is edited (skip if this IS a verification action)
+      if (!updates.accountVerified && !updates.adminVerified) {
+        booking.adminVerified = false;
+        booking.verifiedByAdmin = false;
+        booking.accountVerified = false;
+        booking.verifiedByAccount = false;
+      }
       addProgressHistory(booking, 'Booking Updated by Account', req.user, changes);
       await booking.save();
       return res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
@@ -665,6 +677,14 @@ router.put('/:id', auth, async (req, res) => {
       }
       
       calculateTotals(booking);
+      
+      // Reset verification when booking is edited (skip if this IS a verification action)
+      if (!updates.adminVerified && !updates.accountVerified) {
+        booking.adminVerified = false;
+        booking.verifiedByAdmin = false;
+        booking.accountVerified = false;
+        booking.verifiedByAccount = false;
+      }
       
       if (Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated by Admin', req.user, changes);

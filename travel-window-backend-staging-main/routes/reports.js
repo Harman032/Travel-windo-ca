@@ -201,7 +201,7 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   }
 });
 
-// Report B: Unverified Payments
+// Report B: Unverified Payments (updated with supplier + card fields)
 router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
     const bookings = await Booking.find({ verifiedByAccount: false, status: { $ne: 'Cancelled' } }).sort({ dateOfSubmission: -1 });
@@ -212,10 +212,15 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
         b.payments.forEach(p => {
           unverifiedPayments.push({
             bookingId: b.pnr,
+            _id: b._id,
             passengerName: b.paxName,
             paymentAmount: p.paidAmount,
             paymentMode: p.paymentMode,
-            status: b.status
+            status: b.status,
+            supplierName: b.supplierName || 'N/A',
+            paymentFromCard: b.paymentFromCard || 0,
+            cardType: b.cardType || '',
+            cardLast4Digits: b.cardLast4Digits || ''
           });
         });
       }
@@ -257,4 +262,128 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
   }
 });
 
+// Report D: Agent Booking List (date-wise, accessible by all roles)
+router.get('/agent-booking-list', auth, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, employee } = req.query;
+    const query = { status: { $ne: 'Cancelled' } };
+
+    // Agents see only their own bookings
+    if (req.user.role === 'AGENT1' || req.user.role === 'AGENT2') {
+      query.submittedBy = req.user._id;
+    } else if (employee) {
+      query.submittedBy = employee;
+    }
+
+    if (dateFrom || dateTo) {
+      query.$or = [];
+      const dateRange = {};
+      if (dateFrom) dateRange.$gte = new Date(dateFrom);
+      if (dateTo) dateRange.$lte = new Date(dateTo);
+      query.$or.push({ travelDate: dateRange });
+      query.$or.push({ returnDate: dateRange });
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('submittedBy', 'name')
+      .sort({ travelDate: -1 });
+
+    const result = bookings.map(b => ({
+      _id: b._id,
+      pnr: b.pnr,
+      paxName: b.paxName,
+      dateOfSubmission: b.dateOfSubmission,
+      travelDate: b.travelDate,
+      returnDate: b.returnDate,
+      submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown')
+    }));
+
+    res.json({ bookings: result });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report E: Agent Margin Report (per-booking, accessible by all roles)
+router.get('/agent-margin-report', auth, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, employee } = req.query;
+    const query = { status: { $ne: 'Cancelled' } };
+
+    // Agents see only their own bookings
+    if (req.user.role === 'AGENT1' || req.user.role === 'AGENT2') {
+      query.submittedBy = req.user._id;
+    } else if (employee) {
+      query.submittedBy = employee;
+    }
+
+    if (dateFrom || dateTo) {
+      query.dateOfSubmission = {};
+      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('submittedBy', 'name')
+      .sort({ dateOfSubmission: -1 });
+
+    const result = bookings.map(b => ({
+      _id: b._id,
+      pnr: b.pnr,
+      paxName: b.paxName,
+      ourCost: b.ourCost || 0,
+      salePrice: b.salePrice || 0,
+      margin: (b.salePrice || 0) - (b.ourCost || 0),
+      submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown')
+    }));
+
+    const totalMargin = result.reduce((sum, r) => sum + r.margin, 0);
+
+    res.json({ bookings: result, totalMargin });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Report F: Date Wise Financial Summary (Admin/Account only)
+router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    if (!dateFrom || !dateTo) {
+      return res.status(400).json({ message: 'Date range is required' });
+    }
+
+    const bookings = await Booking.find({
+      dateOfSubmission: {
+        $gte: new Date(dateFrom),
+        $lte: new Date(dateTo)
+      },
+      status: { $ne: 'Cancelled' }
+    }).sort({ dateOfSubmission: -1 });
+
+    const rows = bookings.map(b => ({
+      _id: b._id,
+      pnr: b.pnr,
+      paxName: b.paxName,
+      ourCost: b.ourCost || 0,
+      salePrice: b.salePrice || 0,
+      margin: (b.salePrice || 0) - (b.ourCost || 0),
+      totalPaidAmount: b.totalPaidAmount || 0,
+      balanceAmount: b.balanceAmount || 0
+    }));
+
+    const summary = {
+      totalBookings: rows.length,
+      totalSale: rows.reduce((s, r) => s + r.salePrice, 0),
+      totalPaid: rows.reduce((s, r) => s + r.totalPaidAmount, 0),
+      totalMargin: rows.reduce((s, r) => s + r.margin, 0)
+    };
+
+    res.json({ bookings: rows, summary });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
+

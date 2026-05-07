@@ -60,4 +60,31 @@ export class ReportService {
     if (dateTo) params = params.set('dateTo', dateTo);
     return this.http.get(`${this.apiUrl}/reports/agent-margin`, { params });
   }
+
+  getAgentBookingList(dateFrom?: string, dateTo?: string, employee?: string): Observable<any> {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    if (employee) params = params.set('employee', employee);
+    return this.http.get(`${this.apiUrl}/reports/agent-booking-list`, { params });
+  }
+
+  getAgentMarginDetailReport(dateFrom?: string, dateTo?: string, employee?: string): Observable<any> {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    if (employee) params = params.set('employee', employee);
+    return this.http.get(`${this.apiUrl}/reports/agent-margin-report`, { params });
+  }
+
+  getFinancialSummary(dateFrom: string, dateTo: string): Observable<any> {
+    const params = new HttpParams()
+      .set('dateFrom', dateFrom)
+      .set('dateTo', dateTo);
+    return this.http.get(`${this.apiUrl}/reports/financial-summary`, { params });
+  }
+
+  verifyBookingFromReport(bookingId: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/bookings/${bookingId}`, { accountVerified: true });
+  }
 }

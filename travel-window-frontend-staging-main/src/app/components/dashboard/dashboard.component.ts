@@ -439,7 +439,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   canViewReports(): boolean {
-    return this.authService.hasAnyRole(['ACCOUNT', 'ADMIN']);
+    return this.authService.hasAnyRole(['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN']);
   }
 
   isAdmin(): boolean {

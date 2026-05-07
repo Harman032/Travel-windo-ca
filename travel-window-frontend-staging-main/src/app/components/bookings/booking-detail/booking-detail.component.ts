@@ -215,13 +215,32 @@ import { ToastrService } from 'ngx-toastr';
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr *ngFor="let payment of booking.payments">
-                    <td class="px-4 py-2 text-sm">{{ payment.paymentDate | date:'shortDate' }}</td>
+                    <td class="px-4 py-2 text-sm">{{ payment.paymentDate | date:'dd-MM-yyyy' }}</td>
                     <td class="px-4 py-2 text-sm">{{ payment.paidAmount | number:'1.2-2' }}</td>
                     <td class="px-4 py-2 text-sm">{{ payment.paymentMode }}</td>
                     <td class="px-4 py-2 text-sm">{{ payment.referenceNo || 'N/A' }}</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Card Payment Details -->
+            <div *ngIf="(booking.paymentFromCard && booking.paymentFromCard > 0) || booking.cardType" class="mt-4 pt-4 border-t border-gray-200">
+              <h5 class="text-md font-medium text-gray-700 mb-2">Card Payment Details</h5>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div *ngIf="booking.paymentFromCard && booking.paymentFromCard > 0">
+                  <label class="block text-sm font-medium text-gray-500 mb-1">Payment From Card</label>
+                  <p class="text-gray-900 font-medium">CAD {{ booking.paymentFromCard | number:'1.2-2' }}</p>
+                </div>
+                <div *ngIf="booking.cardType">
+                  <label class="block text-sm font-medium text-gray-500 mb-1">Card Type</label>
+                  <p class="text-gray-900 font-medium">{{ booking.cardType }}</p>
+                </div>
+                <div *ngIf="booking.cardLast4Digits">
+                  <label class="block text-sm font-medium text-gray-500 mb-1">Card Last 4 Digits</label>
+                  <p class="text-gray-900 font-medium">{{ booking.cardLast4Digits }}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

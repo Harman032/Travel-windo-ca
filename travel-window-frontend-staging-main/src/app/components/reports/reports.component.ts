@@ -21,64 +21,19 @@ import { AuthService } from '../../services/auth.service';
       <div class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Select Report Type</h3>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <button 
-            (click)="selectReportType('date-wise')" 
-            class="btn" 
-            [ngClass]="selectedReportType === 'date-wise' ? 'btn-primary' : 'btn-secondary'"
-          >
-            Date-wise
-          </button>
-          <button 
-            (click)="selectReportType('supplier-wise')" 
-            class="btn" 
-            [ngClass]="selectedReportType === 'supplier-wise' ? 'btn-primary' : 'btn-secondary'"
-          >
-            Supplier-wise
-          </button>
-          <button 
-            (click)="selectReportType('employee-wise')" 
-            class="btn" 
-            [ngClass]="selectedReportType === 'employee-wise' ? 'btn-primary' : 'btn-secondary'"
-          >
-            Employee-wise
-          </button>
-          <button 
-            (click)="selectReportType('pending-verification')" 
-            class="btn" 
-            [ngClass]="selectedReportType === 'pending-verification' ? 'btn-primary' : 'btn-secondary'"
-          >
-            Pending Verification
-          </button>
-          <button 
-            (click)="selectReportType('outstanding-balance')" 
-            class="btn" 
-            [ngClass]="selectedReportType === 'outstanding-balance' ? 'btn-primary' : 'btn-secondary'"
-          >
-            Outstanding Balance
-          </button>
           <ng-container *ngIf="isAdmin() || isAccount()">
-            <button 
-              (click)="selectReportType('payment-supplier')" 
-              class="btn" 
-              [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'"
-            >
-              Payment to Supplier
-            </button>
-            <button 
-              (click)="selectReportType('unverified-payments')" 
-              class="btn" 
-              [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'"
-            >
-              Unverified Payments
-            </button>
-            <button 
-              (click)="selectReportType('agent-margin')" 
-              class="btn" 
-              [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'"
-            >
-              Agent Margin
-            </button>
+            <button (click)="selectReportType('date-wise')" class="btn" [ngClass]="selectedReportType === 'date-wise' ? 'btn-primary' : 'btn-secondary'">Date-wise</button>
+            <button (click)="selectReportType('supplier-wise')" class="btn" [ngClass]="selectedReportType === 'supplier-wise' ? 'btn-primary' : 'btn-secondary'">Supplier-wise</button>
+            <button (click)="selectReportType('employee-wise')" class="btn" [ngClass]="selectedReportType === 'employee-wise' ? 'btn-primary' : 'btn-secondary'">Employee-wise</button>
+            <button (click)="selectReportType('pending-verification')" class="btn" [ngClass]="selectedReportType === 'pending-verification' ? 'btn-primary' : 'btn-secondary'">Pending Verification</button>
+            <button (click)="selectReportType('outstanding-balance')" class="btn" [ngClass]="selectedReportType === 'outstanding-balance' ? 'btn-primary' : 'btn-secondary'">Outstanding Balance</button>
+            <button (click)="selectReportType('payment-supplier')" class="btn" [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'">Payment to Supplier</button>
+            <button (click)="selectReportType('unverified-payments')" class="btn" [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'">Unverified Payments</button>
+            <button (click)="selectReportType('agent-margin')" class="btn" [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'">Agent Margin</button>
+            <button (click)="selectReportType('financial-summary')" class="btn" [ngClass]="selectedReportType === 'financial-summary' ? 'btn-primary' : 'btn-secondary'">Financial Summary</button>
           </ng-container>
+          <button (click)="selectReportType('agent-booking-list')" class="btn" [ngClass]="selectedReportType === 'agent-booking-list' ? 'btn-primary' : 'btn-secondary'">Date Wise Booking List</button>
+          <button (click)="selectReportType('agent-margin-report')" class="btn" [ngClass]="selectedReportType === 'agent-margin-report' ? 'btn-primary' : 'btn-secondary'">Date Wise Margin Report</button>
         </div>
       </div>
 
@@ -445,11 +400,16 @@ import { AuthService } from '../../services/auth.service';
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Booking ID (PNR)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger Name</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Amount</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -458,12 +418,22 @@ import { AuthService } from '../../services/auth.service';
                 <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
                 <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.paymentAmount | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.paymentMode }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
                 </td>
+                <td class="px-4 py-2 text-sm">
+                  <div class="flex gap-1">
+                    <button class="btn btn-primary text-xs px-2 py-1" (click)="verifyPayment(item._id)">Verify</button>
+                    <a [href]="'/dashboard/bookings/' + item._id" class="btn btn-secondary text-xs px-2 py-1">View</a>
+                  </div>
+                </td>
               </tr>
               <tr *ngIf="unverifiedPaymentsData.length === 0">
-                <td colspan="5" class="px-4 py-4 text-sm text-center text-gray-500">No unverified payments found.</td>
+                <td colspan="10" class="px-4 py-4 text-sm text-center text-gray-500">No unverified payments found.</td>
               </tr>
             </tbody>
           </table>
@@ -496,6 +466,119 @@ import { AuthService } from '../../services/auth.service';
           </table>
         </div>
       </div>
+
+      <!-- Agent Booking List Filter -->
+      <div *ngIf="selectedReportType === 'agent-booking-list'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Booking List</h3>
+        <form [formGroup]="agentBookingListForm" (ngSubmit)="loadAgentBookingList()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" /></div>
+          <div *ngIf="isAdmin() || isAccount()"><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+            <select formControlName="employee" class="input"><option value="">All</option><option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option></select>
+          </div>
+          <div class="flex items-end"><button type="submit" class="btn btn-primary w-full">Generate</button></div>
+        </form>
+      </div>
+
+      <!-- Agent Booking List Results -->
+      <div *ngIf="selectedReportType === 'agent-booking-list' && agentBookingListData && !loading" class="card">
+        <div class="overflow-x-auto -mx-3 sm:mx-0"><table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Booking Date</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Travel Date</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Return Date</th>
+          </tr></thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let b of agentBookingListData.bookings">
+              <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.travelDate | date:'dd-MM-yyyy' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.returnDate ? (b.returnDate | date:'dd-MM-yyyy') : '-' }}</td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- Agent Margin Report Filter -->
+      <div *ngIf="selectedReportType === 'agent-margin-report'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Margin Report</h3>
+        <form [formGroup]="agentMarginReportForm" (ngSubmit)="loadAgentMarginDetailReport()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" /></div>
+          <div *ngIf="isAdmin() || isAccount()"><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+            <select formControlName="employee" class="input"><option value="">All</option><option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option></select>
+          </div>
+          <div class="flex items-end"><button type="submit" class="btn btn-primary w-full">Generate</button></div>
+        </form>
+      </div>
+
+      <!-- Agent Margin Report Results -->
+      <div *ngIf="selectedReportType === 'agent-margin-report' && agentMarginReportData && !loading" class="card">
+        <div class="mb-4 bg-green-50 p-4 rounded-lg inline-block"><p class="text-sm text-gray-600">Total Margin</p><p class="text-2xl font-bold text-green-900">{{ agentMarginReportData.totalMargin | number:'1.2-2' }}</p></div>
+        <div class="overflow-x-auto -mx-3 sm:mx-0"><table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Cost</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
+          </tr></thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let b of agentMarginReportData.bookings">
+              <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.ourCost | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.salePrice | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm font-semibold" [ngClass]="{'text-green-600': b.margin > 0, 'text-red-600': b.margin < 0}">{{ b.margin | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- Financial Summary Filter -->
+      <div *ngIf="selectedReportType === 'financial-summary'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Financial Summary</h3>
+        <form [formGroup]="financialSummaryForm" (ngSubmit)="loadFinancialSummary()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" required /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" required /></div>
+          <div class="flex items-end"><button type="submit" class="btn btn-primary w-full">Generate</button></div>
+        </form>
+      </div>
+
+      <!-- Financial Summary Results -->
+      <div *ngIf="selectedReportType === 'financial-summary' && financialSummaryData && !loading" class="card">
+        <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-blue-50 p-4 rounded-lg"><p class="text-sm text-gray-600">Total Bookings</p><p class="text-2xl font-bold text-blue-900">{{ financialSummaryData.summary?.totalBookings || 0 }}</p></div>
+          <div class="bg-green-50 p-4 rounded-lg"><p class="text-sm text-gray-600">Total Sale</p><p class="text-2xl font-bold text-green-900">{{ financialSummaryData.summary?.totalSale | number:'1.2-2' }}</p></div>
+          <div class="bg-purple-50 p-4 rounded-lg"><p class="text-sm text-gray-600">Total Paid</p><p class="text-2xl font-bold text-purple-900">{{ financialSummaryData.summary?.totalPaid | number:'1.2-2' }}</p></div>
+          <div class="bg-orange-50 p-4 rounded-lg"><p class="text-sm text-gray-600">Total Margin</p><p class="text-2xl font-bold text-orange-900">{{ financialSummaryData.summary?.totalMargin | number:'1.2-2' }}</p></div>
+        </div>
+        <div class="overflow-x-auto -mx-3 sm:mx-0"><table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Cost</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+          </tr></thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let b of financialSummaryData.bookings">
+              <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.ourCost | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.salePrice | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm font-semibold" [ngClass]="{'text-green-600': b.margin > 0, 'text-red-600': b.margin < 0}">{{ b.margin | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.totalPaidAmount | number:'1.2-2' }}</td>
+              <td class="px-4 py-2 text-sm" [ngClass]="{'text-red-600 font-semibold': b.balanceAmount > 0}">{{ b.balanceAmount | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
     </div>
   `
 })
@@ -510,6 +593,9 @@ export class ReportsComponent implements OnInit {
   employeeWiseForm: FormGroup;
   paymentSupplierForm: FormGroup;
   agentMarginForm: FormGroup;
+  agentBookingListForm: FormGroup;
+  agentMarginReportForm: FormGroup;
+  financialSummaryForm: FormGroup;
 
   dateWiseData: any = null;
   supplierWiseData: any = null;
@@ -519,6 +605,9 @@ export class ReportsComponent implements OnInit {
   paymentSupplierData: any = null;
   unverifiedPaymentsData: any = null;
   agentMarginData: any = null;
+  agentBookingListData: any = null;
+  agentMarginReportData: any = null;
+  financialSummaryData: any = null;
 
   constructor(
     private reportService: ReportService,
@@ -527,32 +616,19 @@ export class ReportsComponent implements OnInit {
     private authService: AuthService,
     private fb: FormBuilder
   ) {
-    this.dateWiseForm = this.fb.group({
-      dateFrom: ['', []],
-      dateTo: ['', []]
-    });
+    this.dateWiseForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
+    this.supplierWiseForm = this.fb.group({ supplier: [''], dateFrom: [''], dateTo: [''] });
+    this.employeeWiseForm = this.fb.group({ employee: [''], dateFrom: [''], dateTo: [''] });
+    this.paymentSupplierForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
+    this.agentMarginForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
+    this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
+    this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
+    this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
+  }
 
-    this.supplierWiseForm = this.fb.group({
-      supplier: [''],
-      dateFrom: [''],
-      dateTo: ['']
-    });
-
-    this.employeeWiseForm = this.fb.group({
-      employee: [''],
-      dateFrom: [''],
-      dateTo: ['']
-    });
-
-    this.paymentSupplierForm = this.fb.group({
-      dateFrom: [''],
-      dateTo: ['']
-    });
-
-    this.agentMarginForm = this.fb.group({
-      dateFrom: [''],
-      dateTo: ['']
-    });
+  isAgent(): boolean {
+    const user = this.authService.getCurrentUserValue();
+    return user?.role === 'AGENT1' || user?.role === 'AGENT2';
   }
 
   isAdmin(): boolean {
@@ -708,6 +784,62 @@ export class ReportsComponent implements OnInit {
       },
       error: () => {
         this.loading = false;
+      }
+    });
+  }
+
+  loadAgentBookingList() {
+    const { dateFrom, dateTo, employee } = this.agentBookingListForm.value;
+    this.loading = true;
+    this.reportService.getAgentBookingList(dateFrom || undefined, dateTo || undefined, employee || undefined).subscribe({
+      next: (data) => {
+        this.agentBookingListData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  loadAgentMarginDetailReport() {
+    const { dateFrom, dateTo, employee } = this.agentMarginReportForm.value;
+    this.loading = true;
+    this.reportService.getAgentMarginDetailReport(dateFrom || undefined, dateTo || undefined, employee || undefined).subscribe({
+      next: (data) => {
+        this.agentMarginReportData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  loadFinancialSummary() {
+    if (this.financialSummaryForm.invalid) return;
+    const { dateFrom, dateTo } = this.financialSummaryForm.value;
+    this.loading = true;
+    this.reportService.getFinancialSummary(dateFrom, dateTo).subscribe({
+      next: (data) => {
+        this.financialSummaryData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  verifyPayment(bookingId: string) {
+    if (!confirm('Are you sure you want to verify this payment?')) return;
+    this.reportService.verifyBookingFromReport(bookingId).subscribe({
+      next: () => {
+        alert('Payment verified successfully!');
+        this.loadUnverifiedPaymentsReport();
+      },
+      error: () => {
+        alert('Failed to verify payment.');
       }
     });
   }
