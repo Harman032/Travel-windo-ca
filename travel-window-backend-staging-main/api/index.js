@@ -5,16 +5,35 @@ const cors = require('cors');
 
 const app = express();
 
-// CORS middleware - using standard cors package for robustness
+// CORS middleware - using standard cors package with fallback
 app.use(cors({
   origin: (origin, callback) => {
     // Allow all origins (reflecting back) or use a specific domain
+    if (!origin) return callback(null, true);
     callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Vercel-Protection-Bypass']
 }));
+
+// Manual CORS fallback for edge cases
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, X-Vercel-Protection-Bypass');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 // Basic middleware
 app.use(express.json());
