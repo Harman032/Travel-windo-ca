@@ -642,13 +642,22 @@ export class ReportsComponent implements OnInit {
   }
 
   ngOnInit() {
+    const user = this.authService.getCurrentUserValue();
+    if (this.isAgent()) {
+      this.selectedReportType = 'agent-booking-list';
+    } else {
+      this.selectedReportType = 'date-wise';
+    }
+
     this.loadSuppliers();
     this.loadUsers();
     
-    // Auto-load reports that don't need filters
-    this.loadPendingVerificationReport();
-    this.loadOutstandingBalanceReport();
-    this.loadUnverifiedPaymentsReport();
+    // Only load these if user has permissions
+    if (this.isAdmin() || this.isAccount()) {
+      this.loadPendingVerificationReport();
+      this.loadOutstandingBalanceReport();
+      this.loadUnverifiedPaymentsReport();
+    }
   }
 
   selectReportType(type: string) {
