@@ -66,7 +66,13 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Status</label>
-              <span class="badge" [ngClass]="getStatusClass(getDisplayStatus())">
+              <span 
+                class="badge" 
+                [ngClass]="getStatusClass(getDisplayStatus())"
+                [class.cursor-pointer]="isAdmin() || isAccount()"
+                (click)="toggleStatus()"
+                title="{{ (isAdmin() || isAccount()) ? 'Click to toggle status' : '' }}"
+              >
                 {{ getDisplayStatus() }}
               </span>
             </div>
@@ -993,6 +999,27 @@ export class BookingDetailComponent implements OnInit {
   canShowAdminVerified(): boolean {
     const user = this.authService.getCurrentUserValue();
     return user?.role === 'ADMIN';
+  }
+
+  toggleStatus() {
+    if (!this.booking) return;
+    if (!(this.isAdmin() || this.isAccount())) return;
+
+    const states = ['Pending Verification', 'Ticketed', 'Unticketed'];
+    const currentStatus = this.booking.status;
+    let currentIndex = states.indexOf(currentStatus);
+    
+    // If current status is not in our toggle list, start from the first one
+    let nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % states.length;
+    const nextStatus = states[nextIndex];
+
+    this.bookingService.updateBooking(this.booking._id!, { status: nextStatus }).subscribe({
+      next: () => {
+        this.toastr.success(`Status updated to ${nextStatus}`);
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => this.toastr.error(err?.error?.message || 'Update failed')
+    });
   }
 
   getDisplayStatus(): string {
