@@ -78,61 +78,9 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-500 mb-1">Admin Verified</label>
               <span [ngClass]="booking.verifiedByAdmin ? 'text-green-600 font-medium' : 'text-gray-500'">{{ booking.verifiedByAdmin ? 'Verified' : 'Not Verified' }}</span>
             </div>
-            <!-- Admin: change status (Ticketed / Unticketed / Cancelled) -->
-            <div *ngIf="isAdmin()" class="col-span-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Admin: Change status</label>
-              <div class="flex flex-wrap items-center gap-2">
-                <select [(ngModel)]="adminStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
-                  <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
-                </select>
-                <button type="button" (click)="saveAdminStatus()" class="btn btn-primary" [disabled]="(isAdmin() ? booking.status : getDisplayStatus()) === adminStatus">
-                  Save status
-                </button>
-              </div>
-            </div>
-
-            <!-- Admin: Verification Section -->
-            <div *ngIf="isAdmin()" class="col-span-full mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-blue-700 mb-2">Admin: Change verification</label>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <select [(ngModel)]="adminVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
-                      <option [ngValue]="false">Not Verified</option>
-                      <option [ngValue]="true">Admin Verified</option>
-                    </select>
-                    <button type="button" (click)="saveAdminVerification()" class="btn btn-primary" [disabled]="(booking.adminVerified || booking.verifiedByAdmin || false) === adminVerifiedStatus">
-                      Save status
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-blue-700 mb-2">Account: Change verification</label>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <select [(ngModel)]="accountVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
-                      <option [ngValue]="false">Not Verified</option>
-                      <option [ngValue]="true">Account Verified</option>
-                    </select>
-                    <button type="button" (click)="saveAccountVerification()" class="btn btn-primary" [disabled]="(booking.accountVerified || booking.verifiedByAccount || false) === accountVerifiedStatus">
-                      Save status
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Account: Verification Section -->
-            <div *ngIf="isAccount() && !isAdmin()" class="col-span-full mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <label class="block text-sm font-medium text-blue-700 mb-2">Account: Change verification</label>
-              <div class="flex flex-wrap items-center gap-2">
-                <select [(ngModel)]="accountVerifiedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs">
-                  <option [ngValue]="false">Not Verified</option>
-                  <option [ngValue]="true">Account Verified</option>
-                </select>
-                <button type="button" (click)="saveAccountVerification()" class="btn btn-primary" [disabled]="(booking.accountVerified || booking.verifiedByAccount || false) === accountVerifiedStatus">
-                  Save status
-                </button>
-              </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ (booking.salePrice - booking.ourCost) | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
@@ -351,11 +299,12 @@ import { ToastrService } from 'ngx-toastr';
           <h3 class="text-xl font-semibold mb-4 text-gray-700">Actions</h3>
           <div class="flex flex-wrap gap-2">
             <button 
-              *ngIf="canVerify()" 
+              *ngIf="isAdmin() || isAccount()" 
               (click)="verifyBooking()" 
               class="btn btn-primary"
+              [disabled]="isVerified()"
             >
-              Verify
+              {{ isVerified() ? 'Verified ✓' : 'Verify' }}
             </button>
             <button 
               *ngIf="canEdit()" 
@@ -778,15 +727,10 @@ export class BookingDetailComponent implements OnInit {
   dateChangeForm: FormGroup;
   flightChangeForm: FormGroup;
   cancelForm: FormGroup;
-  adminStatus = '';
-  /** Full status flow for Admin: Draft → … → Billed → Paid, plus Ticketed/Unticketed/Cancelled */
-  statusOptions = ['Pending Verification', 'Billed', 'Paid', 'Ticketed', 'Unticketed', 'Cancelled'];
   assignableUsers: User[] = [];
   assignToUserId = '';
   assignComment = '';
   assigning = false;
-  adminVerifiedStatus = false;
-  accountVerifiedStatus = false;
 
   // Refund status form state
   refundReceivedDate = '';
@@ -955,9 +899,6 @@ export class BookingDetailComponent implements OnInit {
     this.bookingService.getBooking(id).subscribe({
       next: (booking) => {
         this.booking = booking;
-        this.adminStatus = this.isAdmin() ? (booking.status || this.getDisplayStatus()) : this.getDisplayStatus();
-        this.adminVerifiedStatus = booking.adminVerified || booking.verifiedByAdmin || false;
-        this.accountVerifiedStatus = booking.accountVerified || booking.verifiedByAccount || false;
         this.loading = false;
         this.initializeForms();
         if (this.canAssign()) {
@@ -1018,7 +959,6 @@ export class BookingDetailComponent implements OnInit {
     return user?.role === 'ADMIN';
   }
 
-  /** Display status: only Ticketed / Unticketed / Cancelled */
   getDisplayStatus(): string {
     if (!this.booking) return 'Ticketed';
     if (this.booking.cancellation?.isCancelled) return 'Cancelled';
@@ -1029,51 +969,6 @@ export class BookingDetailComponent implements OnInit {
     // Default: show Unticketed for Agent2 supplier, Ticketed for others
     if (this.booking.supplierName === 'Agent2') return 'Unticketed';
     return 'Ticketed';
-  }
-
-  saveAdminStatus() {
-    if (!this.booking) return;
-    const current = this.isAdmin() ? this.booking.status : this.getDisplayStatus();
-    if (this.adminStatus === current) return;
-    const payload: any = { status: this.adminStatus };
-    if (this.adminStatus === 'Cancelled') {
-      payload.cancellation = { isCancelled: true };
-    } else if (this.adminStatus === 'Ticketed' || this.adminStatus === 'Unticketed') {
-      if (this.booking.cancellation?.isCancelled) {
-        payload.cancellation = { isCancelled: false };
-      }
-    }
-    this.bookingService.updateBooking(this.booking._id!, payload).subscribe({
-      next: () => {
-        this.toastr.success('Status updated', 'Success');
-        this.loadBooking(this.booking!._id!);
-      },
-      error: (err) => {
-        this.toastr.error(err.error?.message || 'Failed to update status', 'Error');
-      }
-    });
-  }
-
-  saveAdminVerification() {
-    if (!this.booking) return;
-    this.bookingService.updateBooking(this.booking._id!, { adminVerified: this.adminVerifiedStatus }).subscribe({
-      next: () => {
-        this.toastr.success('Admin verification updated', 'Success');
-        this.loadBooking(this.booking!._id!);
-      },
-      error: (err) => this.toastr.error(err.error?.message || 'Update failed', 'Error')
-    });
-  }
-
-  saveAccountVerification() {
-    if (!this.booking) return;
-    this.bookingService.updateBooking(this.booking._id!, { accountVerified: this.accountVerifiedStatus }).subscribe({
-      next: () => {
-        this.toastr.success('Account verification updated', 'Success');
-        this.loadBooking(this.booking!._id!);
-      },
-      error: (err) => this.toastr.error(err.error?.message || 'Update failed', 'Error')
-    });
   }
 
   revertCancellation() {
@@ -1130,17 +1025,12 @@ export class BookingDetailComponent implements OnInit {
     return 'Cash';
   }
 
-  canVerify(): boolean {
+  isVerified(): boolean {
     if (!this.booking) return false;
     const user = this.authService.getCurrentUserValue();
     if (!user) return false;
-
-    if (user.role === 'ACCOUNT' && !this.booking.verifiedByAccount) {
-      return this.booking.status === 'Ticketed';
-    }
-    if (user.role === 'ADMIN' && !this.booking.verifiedByAdmin) {
-      return this.booking.status !== 'Billed' && this.booking.status !== 'Paid';
-    }
+    if (user.role === 'ADMIN') return !!(this.booking.adminVerified || this.booking.verifiedByAdmin);
+    if (user.role === 'ACCOUNT') return !!(this.booking.accountVerified || this.booking.verifiedByAccount);
     return false;
   }
 
@@ -1394,19 +1284,22 @@ export class BookingDetailComponent implements OnInit {
     const user = this.authService.getCurrentUserValue();
     if (!user) return;
 
-    if (user.role === 'ACCOUNT') {
-      this.bookingService.verifyByAccount(this.booking._id!).subscribe({
-        next: () => {
-          this.loadBooking(this.booking!._id!);
-        }
-      });
-    } else if (user.role === 'ADMIN') {
-      this.bookingService.verifyByAdmin(this.booking._id!).subscribe({
-        next: () => {
-          this.loadBooking(this.booking!._id!);
-        }
-      });
+    let update: any = {};
+    if (user.role === 'ADMIN') {
+      update = { adminVerified: true };
+    } else if (user.role === 'ACCOUNT') {
+      update = { accountVerified: true };
+    } else {
+      return;
     }
+
+    this.bookingService.updateBooking(this.booking._id!, update).subscribe({
+      next: () => {
+        this.toastr.success('Booking verified successfully', 'Success');
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => this.toastr.error(err?.error?.message || 'Verification failed', 'Error')
+    });
   }
 
   onDateChange() {

@@ -90,7 +90,10 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       additionalServicePrice,
       additionalServices,
       paymentType,
-      payments
+      payments,
+      paymentFromCard,
+      cardType,
+      cardLast4Digits
     } = req.body;
     
     const parsedTravelDate = parseDateInput(travelDate);
@@ -159,6 +162,9 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       additionalService: additionalService || '',
       additionalServicePrice: additionalServicePrice ?? 0,
       additionalServices: normalizedAdditionalServices,
+      paymentFromCard: paymentFromCard || 0,
+      cardType: cardType || '',
+      cardLast4Digits: cardLast4Digits || '',
       paymentType: paymentType || 'Full',
       payments: normalizePayments(payments),
       submittedBy: req.user._id,
@@ -536,7 +542,7 @@ router.put('/:id', auth, async (req, res) => {
       }
       const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
-        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified'];
+        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified', 'paymentFromCard', 'cardType', 'cardLast4Digits'];
       allowedKeys.forEach(key => {
         if (updates[key] === undefined) return;
         if (key === 'additionalServices') {

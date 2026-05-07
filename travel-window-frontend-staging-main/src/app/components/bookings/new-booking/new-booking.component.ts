@@ -180,6 +180,11 @@ import { ToastrService } from 'ngx-toastr';
             </div>
 
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Airline</label>
+              <input type="text" formControlName="airline" class="input" placeholder="Enter airline" />
+            </div>
+
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Note</label>
               <textarea formControlName="note" class="input" rows="3" placeholder="Any date / remarks"></textarea>
             </div>
@@ -190,10 +195,6 @@ import { ToastrService } from 'ngx-toastr';
         <div class="card">
           <h3 class="text-xl font-semibold mb-4 text-gray-700">Commercial Details</h3>
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Airline</label>
-              <input type="text" formControlName="airline" class="input" placeholder="Enter airline" />
-            </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
               <select formControlName="supplier" class="input">
@@ -208,6 +209,22 @@ import { ToastrService } from 'ngx-toastr';
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price</label>
               <input type="number" formControlName="salePrice" class="input" placeholder="0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Payment From Card</label>
+              <input type="number" formControlName="paymentFromCard" class="input" placeholder="0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
+              <select formControlName="cardType" class="input">
+                <option value="">Select Card Type</option>
+                <option value="Company Card">Company Card</option>
+                <option value="Client Card">Client Card</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
+              <input type="text" formControlName="cardLast4Digits" class="input" placeholder="e.g. 1234" maxlength="4" />
             </div>
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Additional Service</label>
@@ -270,6 +287,9 @@ import { ToastrService } from 'ngx-toastr';
                         <option value="Credit Card">Credit Card</option>
                         <option value="UPI">UPI</option>
                         <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Kotak Bank">Kotak Bank</option>
+                        <option value="Kotak Bank UPI">Kotak Bank UPI</option>
+                        <option value="Travobirds">Travobirds</option>
                       </select>
                       <p *ngIf="payment.get('paymentMode')?.invalid && payment.get('paymentMode')?.touched" class="text-red-500 text-xs mt-1">Payment mode is required</p>
                     </div>
@@ -463,6 +483,9 @@ export class NewBookingComponent implements OnInit {
       supplier: [''],
       ourCost: [0],
       salePrice: [0],
+      paymentFromCard: [0],
+      cardType: [''],
+      cardLast4Digits: [''],
       additionalServices: this.fb.array([]),
       paymentType: ['Full'],
       payments: this.fb.array([])

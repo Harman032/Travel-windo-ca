@@ -7,7 +7,7 @@ const paymentSchema = new mongoose.Schema({
   },
   paymentMode: {
     type: String,
-    enum: ['Cash', 'Cheque', 'Credit Card', 'UPI', 'Bank Transfer'],
+    enum: ['Cash', 'Cheque', 'Credit Card', 'UPI', 'Bank Transfer', 'Kotak Bank', 'Kotak Bank UPI', 'Travobirds'],
     required: true
   },
   paymentDate: {
@@ -153,6 +153,9 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  paymentFromCard: { type: Number, default: 0 },
+  cardType: { type: String, enum: ['Company Card', 'Client Card', ''], default: '' },
+  cardLast4Digits: { type: String, default: '' },
   
   // Payment Details
   paymentType: {
