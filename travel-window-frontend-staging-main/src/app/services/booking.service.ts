@@ -42,6 +42,9 @@ export interface Booking {
   flightChanges?: any[];
   seatBookChanges?: any[];
   cancellation?: any;
+  paymentFromCard?: number;
+  cardType?: string;
+  cardLast4Digits?: string;
 }
 
 export interface Payment {
