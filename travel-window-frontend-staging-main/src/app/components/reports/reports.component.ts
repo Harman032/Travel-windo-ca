@@ -37,8 +37,8 @@ import { AuthService } from '../../services/auth.service';
         </div>
       </div>
 
-      <!-- Date-wise Report -->
-      <div *ngIf="selectedReportType === 'date-wise'" class="card mb-6">
+      <!-- Date-wise Report (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'date-wise'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date-wise Report</h3>
         <form [formGroup]="dateWiseForm" (ngSubmit)="loadDateWiseReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -55,8 +55,8 @@ import { AuthService } from '../../services/auth.service';
         </form>
       </div>
 
-      <!-- Supplier-wise Report -->
-      <div *ngIf="selectedReportType === 'supplier-wise'" class="card mb-6">
+      <!-- Supplier-wise Report (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'supplier-wise'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Supplier-wise Report</h3>
         <form [formGroup]="supplierWiseForm" (ngSubmit)="loadSupplierWiseReport()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -80,8 +80,8 @@ import { AuthService } from '../../services/auth.service';
         </form>
       </div>
 
-      <!-- Employee-wise Report -->
-      <div *ngIf="selectedReportType === 'employee-wise'" class="card mb-6">
+      <!-- Employee-wise Report (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'employee-wise'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Employee-wise Report</h3>
         <form [formGroup]="employeeWiseForm" (ngSubmit)="loadEmployeeWiseReport()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -105,8 +105,8 @@ import { AuthService } from '../../services/auth.service';
         </form>
       </div>
 
-      <!-- Payment to Supplier Report Filter -->
-      <div *ngIf="selectedReportType === 'payment-supplier'" class="card mb-6">
+      <!-- Payment to Supplier Report Filter (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'payment-supplier'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date-wise Payment to Supplier Report</h3>
         <form [formGroup]="paymentSupplierForm" (ngSubmit)="loadPaymentSupplierReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -123,8 +123,8 @@ import { AuthService } from '../../services/auth.service';
         </form>
       </div>
 
-      <!-- Agent Margin Report Filter -->
-      <div *ngIf="selectedReportType === 'agent-margin'" class="card mb-6">
+      <!-- Agent Margin Summary Report (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'agent-margin'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Agent Margin Report</h3>
         <form [formGroup]="agentMarginForm" (ngSubmit)="loadAgentMarginReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
