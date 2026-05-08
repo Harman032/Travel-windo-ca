@@ -413,7 +413,7 @@ import { AuthService } from '../../services/auth.service';
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Amount</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Cost</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
@@ -430,7 +430,7 @@ import { AuthService } from '../../services/auth.service';
                 <td class="px-4 py-2 text-sm">{{ item.bookingId }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.salePrice | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.paymentAmount | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.ourCost | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.paymentMode }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierCharges || 0 | number:'1.2-2' }}</td>

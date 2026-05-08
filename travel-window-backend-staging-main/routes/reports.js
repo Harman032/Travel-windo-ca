@@ -231,6 +231,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
             cardType: b.cardType || '',
             cardLast4Digits: b.cardLast4Digits || '',
             supplierCharges: b.supplierCharges || 0,
+            ourCost: b.ourCost || 0,
             totalSupplierTook: (b.status === 'Cancelled' && b.cancellation && b.cancellation.totalSupplierTook) ? b.cancellation.totalSupplierTook : null
           });
         });
@@ -344,7 +345,7 @@ router.get('/agent-margin-report', auth, async (req, res) => {
       paxName: b.paxName,
       ourCost: b.ourCost || 0,
       salePrice: b.salePrice || 0,
-      margin: (b.salePrice || 0) - (b.ourCost || 0),
+      margin: (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0),
       submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown')
     }));
 
@@ -378,7 +379,7 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       paxName: b.paxName,
       ourCost: b.ourCost || 0,
       salePrice: b.salePrice || 0,
-      margin: (b.salePrice || 0) - (b.ourCost || 0),
+      margin: (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0),
       totalPaidAmount: b.totalPaidAmount || 0,
       balanceAmount: b.balanceAmount || 0
     }));

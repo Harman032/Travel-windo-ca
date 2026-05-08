@@ -598,7 +598,7 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label class="block text-sm text-gray-600">Base Sale Price (Not Editable)</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Our Old Margin (Not Editable)</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }} <span class="text-xs text-gray-500">(on base only)</span></p></div>
+                  <div><label class="block text-sm text-gray-600">Our Old Margin (Not Editable)</label><p class="font-semibold">{{ (cancelOurMargin) | number:'1.2-2' }} <span class="text-xs text-gray-500">(on total)</span></p></div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       {{ cancelForm.get('cancellationType')?.value === 'supplierRefundAmount' ? 'Supplier Refund Amount' : 'Supplier Cancellation Charges' }}
@@ -643,8 +643,8 @@ import { ToastrService } from 'ngx-toastr';
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div><label class="block text-sm text-gray-600">Our Cost (Not Editable)</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Sale Price (Not Editable)</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Supplier Charges (Not Editable)</label><p class="font-semibold">{{ booking.supplierCharges || 0 | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Our Margin (Not Editable)</label><p class="font-semibold">{{ ((booking.salePrice || 0) - (booking.ourCost || 0) - (booking.supplierCharges || 0)) | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Supplier Charges (Not Editable)</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin (Not Editable)</label><p class="font-semibold">{{ cancelOurMargin | number:'1.2-2' }}</p></div>
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
@@ -1603,7 +1603,7 @@ export class BookingDetailComponent implements OnInit {
   }
   /** Base margin (for refund/cancel calculations – on base sale and cost only) */
   get baseMargin(): number {
-    return this.baseSalePrice - this.baseOurCost;
+    return this.baseSalePrice - this.baseOurCost - (this.booking?.supplierCharges || 0);
   }
 
   get totalSalePriceForCancel(): number {

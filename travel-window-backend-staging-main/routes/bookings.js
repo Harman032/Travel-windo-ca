@@ -159,6 +159,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       supplierName,
       ourCost: ourCost || 0,
       salePrice: salePrice || 0,
+      supplierCharges: supplierCharges || 0,
       additionalService: additionalService || '',
       additionalServicePrice: additionalServicePrice ?? 0,
       additionalServices: normalizedAdditionalServices,
@@ -476,7 +477,7 @@ router.put('/:id', auth, async (req, res) => {
       }
       const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
-        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments'];
+        'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments'];
       Object.keys(updates).forEach(key => {
         if (allowedKeys.includes(key)) {
           if (key === 'additionalServices') {
@@ -547,7 +548,7 @@ router.put('/:id', auth, async (req, res) => {
       }
       const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
-        'ourCost', 'salePrice', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified', 'paymentFromCard', 'cardType', 'cardLast4Digits'];
+        'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified', 'paymentFromCard', 'cardType', 'cardLast4Digits'];
       allowedKeys.forEach(key => {
         if (updates[key] === undefined) return;
         if (key === 'additionalServices') {
