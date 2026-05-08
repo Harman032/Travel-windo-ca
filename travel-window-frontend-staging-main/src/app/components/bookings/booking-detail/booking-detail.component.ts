@@ -838,7 +838,7 @@ import { ToastrService } from 'ngx-toastr';
                       Supplier Deducted: CAD {{ (booking.cancellation?.supplierDeducted || 0) | number:'1.2-2' }}
                     </p>
                     <p class="text-xs text-orange-700">
-                      Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || 0) | number:'1.2-2' }}
+                      Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || booking.cancellation?.refundToClient || 0) | number:'1.2-2' }}
                     </p>
                   </ng-container>
                 </div>
@@ -1851,6 +1851,13 @@ export class BookingDetailComponent implements OnInit {
   get expectedSupplierReturn(): number {
     if (!this.booking?.cancellation) return 0;
     const c = this.booking.cancellation;
+
+    if (c.cancellationType === 'partialPaidCancellationCharges' || c.cancellationType === 'partialPaidRefundAmount') {
+      const paidAmount = Number(this.booking.totalPaidAmount) || 0;
+      const supplierDeducted = Number(c.supplierDeducted) || 0;
+      return Math.round(paidAmount - supplierDeducted);
+    }
+
     if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard') {
       const baseOurCost = (Number(this.booking.ourCost) || 0) - this.dateChangeOurAddon - this.flightChangeOurAddon;
       return baseOurCost;
