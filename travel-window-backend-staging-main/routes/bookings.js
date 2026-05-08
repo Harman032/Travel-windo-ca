@@ -1092,6 +1092,54 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         refundReceivedFromSupplier: { date: null, remarks: '' },
         refundPaidToClient: { date: null, remarks: '' }
       };
+    } else if (cancellationType === 'partialPaidCancellationCharges' || cancellationType === 'partialPaidRefundAmount') {
+      if (cancellationType === 'partialPaidCancellationCharges') {
+        const ourMargin = Math.round(oldMargin);
+        const totalCharges = Math.round(ourMargin + supplierCharges + scc + occ);
+        const refundToClient = Math.round(totalAmountPaid - totalCharges);
+
+        booking.cancellation = {
+          isCancelled: true,
+          paymentModeWas,
+          totalAmountPaidByClient: totalAmountPaid,
+          refundableAmount: refundToClient,
+          oldMargin: ourMargin,
+          totalCharges,
+          refundToClient,
+          supplierCancellationCharges: scc,
+          ourCancellationCharges: occ,
+          cancellationType,
+          refundProcessed: false,
+          remarks,
+          cancelledBy: req.user._id,
+          cancelledAt: new Date(),
+          refundReceivedFromSupplier: { date: null, remarks: '' },
+          refundPaidToClient: { date: null, remarks: '' }
+        };
+      } else {
+        // partialPaidRefundAmount
+        const sra = scc; // in this mode scc is used for refund amount
+        const supplierDeductedVal = Math.round(totalAmountPaid - sra);
+        const refundToClient = Math.round(sra - occ);
+
+        booking.cancellation = {
+          isCancelled: true,
+          paymentModeWas,
+          totalAmountPaidByClient: totalAmountPaid,
+          refundableAmount: refundToClient,
+          supplierDeducted: supplierDeductedVal,
+          refundToClient,
+          supplierRefundAmount: sra,
+          ourCancellationCharges: occ,
+          cancellationType,
+          refundProcessed: false,
+          remarks,
+          cancelledBy: req.user._id,
+          cancelledAt: new Date(),
+          refundReceivedFromSupplier: { date: null, remarks: '' },
+          refundPaidToClient: { date: null, remarks: '' }
+        };
+      }
     } else {
       if (paymentModeWas === 'Credit Card') {
         refundableAmountToClient = totalSalePrice - supplierDeducted;

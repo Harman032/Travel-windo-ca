@@ -327,6 +327,7 @@ const bookingSchema = new mongoose.Schema({
     totalSupplierTook: { type: Number, default: 0 },
     totalCharges: { type: Number, default: 0 },
     clientReceives: { type: Number, default: 0 },
+    refundToClient: { type: Number, default: 0 },
     cancellationType: { type: String },
     currentMargin: { type: Number, default: 0 },
     totalCancellationCharges: { type: Number, default: 0 },
