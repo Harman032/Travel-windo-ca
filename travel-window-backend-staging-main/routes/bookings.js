@@ -1221,7 +1221,12 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
         date: refundPaidToClient.date || existing.date,
         remarks: refundPaidToClient.remarks ?? existing.remarks ?? ''
       };
+      // Automatically set refundProcessed to true when refund date is saved
+      if (refundPaidToClient.date) {
+        booking.cancellation.refundProcessed = true;
+      }
       booking.markModified('cancellation.refundPaidToClient');
+      booking.markModified('cancellation.refundProcessed');
       addProgressHistory(booking, 'Refund Paid to Client Updated', req.user, { refundPaidToClient }, '');
     }
 
