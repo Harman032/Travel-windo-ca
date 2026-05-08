@@ -93,7 +93,8 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       payments,
       paymentFromCard,
       cardType,
-      cardLast4Digits
+      cardLast4Digits,
+      supplierCharges
     } = req.body;
     
     const parsedTravelDate = parseDateInput(travelDate);
