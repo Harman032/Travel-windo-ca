@@ -394,6 +394,34 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
+
+            <!-- Partial Paid Card Cancellation Fields -->
+            <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
+                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
+                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed from Client</label>
+                <p class="text-gray-900 font-bold text-red-600">CAD {{ (booking.cancellation.upfrontNeeded || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives Full Sale Price</label>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.salePrice || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
+              </div>
+            </ng-container>
             <div class="col-span-full">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
               <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
@@ -615,7 +643,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
 
               <!-- Credit Card flow -->
-              <div *ngIf="cancelForm.get('paymentModeWas')?.value === 'Credit Card'" class="mt-4 space-y-4">
+              <div *ngIf="cancelForm.get('paymentModeWas')?.value === 'Credit Card' && !isPartialPaidCard" class="mt-4 space-y-4">
                 <p *ngIf="(dateChangeSaleAddon + flightChangeSaleAddon) > 0" class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">Refund is only on base sale ({{ refundablePortionOfSalePrice | number:'1.2-2' }}). Date Change &amp; Flight Change charges are non-refundable.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label class="block text-sm text-gray-600">Base Sale Price (Not Editable)</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
@@ -678,7 +706,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
 
               <!-- Partial Paid flow -->
-              <div *ngIf="isPartialPaid" class="mt-4 space-y-4">
+              <div *ngIf="isPartialPaid && !isPartialPaidCard" class="mt-4 space-y-4">
                 <div class="flex items-center gap-6 py-2">
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input type="radio" formControlName="cancellationType" value="partialPaidCancellationCharges" class="h-4 w-4 accent-red-600" />
@@ -749,7 +777,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </ng-container>
 
-            <ng-container *ngIf="isClientOrCompanyCard">
+            <ng-container *ngIf="isClientOrCompanyCard && !isPartialPaidCard">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   <ng-container *ngIf="booking.cardType === 'Client Card'">
@@ -791,6 +819,59 @@ import { ToastrService } from 'ngx-toastr';
                 <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
               </div>
             </ng-container>
+
+            <!-- Partial Paid Card flow -->
+            <ng-container *ngIf="isPartialPaidCard">
+              <div class="mb-4">
+                <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                  Partial Paid {{ booking.cardType }} Cancellation: Review calculated charges below.
+                </p>
+              </div>
+
+              <div class="mt-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div class="col-span-full border-t border-red-200 pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ partialPaidCardTotalSupplierTook | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ partialPaidCardNewMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidCardTotalCharges | number:'1.2-2' }}</p></div>
+                    </div>
+                    
+                    <div class="mt-4 p-3 bg-white border border-gray-200 rounded">
+                      <ng-container *ngIf="booking.cardType === 'Client Card'">
+                        <p class="text-sm font-medium text-gray-800">Upfront Needed: CAD {{ partialPaidCardUpfrontNeeded | number:'1.2-2' }}</p>
+                        <p class="text-xs text-gray-600">Client pays upfront and receives full Sale Price back (CAD {{ booking.salePrice | number:'1.2-2' }})</p>
+                      </ng-container>
+                      <ng-container *ngIf="booking.cardType === 'Company Card'">
+                        <p class="text-sm font-medium text-gray-800">No upfront needed</p>
+                        <p class="text-sm font-bold text-green-700 mt-1">Client Receives: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
+                        <p class="text-xs text-gray-600">We deduct Total Charges from card payment and return remaining to client</p>
+                      </ng-container>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 col-span-full">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
+                  <textarea formControlName="remarks" class="input" rows="3" required [class.border-red-500]="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched"></textarea>
+                  <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
+                </div>
+              </div>
+            </ng-container>
             <div class="mt-4 flex justify-end space-x-2">
               <button type="button" (click)="showCancelForm = false" class="btn btn-secondary">Cancel</button>
               <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
@@ -809,21 +890,21 @@ import { ToastrService } from 'ngx-toastr';
               <div>
                 <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
                 <div class="mt-2 space-y-2">
-                  <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard'">
+                  <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
                     <p class="text-sm font-semibold text-orange-800">
                       Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-red-800">
                       Total Charges: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
                     </p>
-                    <div *ngIf="booking.cancellation?.cancellationType === 'companyCard'">
+                    <div *ngIf="booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
                       <p class="text-sm font-bold text-green-800 mt-2">
                         Client Receives: CAD {{ (booking.cancellation?.clientReceives || 0) | number:'1.2-2' }}
                       </p>
                     </div>
-                    <div *ngIf="booking.cancellation?.cancellationType === 'clientCard'" class="mt-2 space-y-1">
+                    <div *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard'" class="mt-2 space-y-1">
                       <p class="text-sm font-bold text-red-800">
-                        Client Must Pay Upfront: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
+                        Client Must Pay Upfront: CAD {{ (booking.cancellation?.upfrontNeeded || booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
                       </p>
                       <p class="text-sm font-bold text-green-800">
                         Client Receives Full Sale Price: CAD {{ (booking.salePrice || 0) | number:'1.2-2' }}
@@ -1256,9 +1337,17 @@ export class BookingDetailComponent implements OnInit {
       });
       // Cancel form: auto-select Payment Mode Was from how customer paid; disable so it cannot be changed
       const paymentModeWas = this.getPrimaryPaymentMode();
+      
+      let cancelType = 'supplierCancellationCharges';
+      if (this.isPartialPaidCard) {
+        cancelType = this.booking.cardType === 'Client Card' ? 'partialPaidClientCard' : 'partialPaidCompanyCard';
+      } else if (this.isPartialPaid) {
+        cancelType = 'partialPaidCancellationCharges';
+      }
+
       this.cancelForm.patchValue({
         paymentModeWas: paymentModeWas || '',
-        cancellationType: this.isPartialPaid ? 'partialPaidCancellationCharges' : 'supplierCancellationCharges'
+        cancellationType: cancelType
       });
       this.cancelForm.get('paymentModeWas')?.disable();
       // Pre-fill refund status fields from existing data
@@ -1964,6 +2053,42 @@ export class BookingDetailComponent implements OnInit {
     const paidAmount = this.booking.totalPaidAmount || 0;
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
     return Math.round(paidAmount - scc);
+  }
+
+  // --- Partial Paid Card Cancellation Logic ---
+
+  get isPartialPaidCard(): boolean {
+    return this.isPartialPaid && this.isClientOrCompanyCard;
+  }
+
+  get partialPaidCardTotalSupplierTook(): number {
+    const supplierCharges = this.booking?.supplierCharges || 0;
+    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
+    return Math.round(supplierCharges + scc);
+  }
+
+  get partialPaidCardNewMargin(): number {
+    const ourMargin = this.partialPaidOurMargin;
+    const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
+    return Math.round(ourMargin + occ);
+  }
+
+  get partialPaidCardTotalCharges(): number {
+    const totalSupplierTook = this.partialPaidCardTotalSupplierTook;
+    const newMargin = this.partialPaidCardNewMargin;
+    return Math.round(totalSupplierTook + newMargin);
+  }
+
+  get partialPaidCardUpfrontNeeded(): number {
+    const totalCharges = this.partialPaidCardTotalCharges;
+    const paidAmount = this.booking?.totalPaidAmount || 0;
+    return Math.round(totalCharges - paidAmount);
+  }
+
+  get partialPaidCardClientReceives(): number {
+    const paidAmount = this.booking?.totalPaidAmount || 0;
+    const totalCharges = this.partialPaidCardTotalCharges;
+    return Math.round(paidAmount - totalCharges);
   }
 
   // -----------------------------------
