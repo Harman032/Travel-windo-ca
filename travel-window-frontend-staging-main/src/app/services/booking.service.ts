@@ -132,4 +132,8 @@ export class BookingService {
   updateRefundStatus(id: string, data: { refundReceivedFromSupplier?: { date?: string; remarks?: string }; refundPaidToClient?: { date?: string; remarks?: string } }): Observable<Booking> {
     return this.http.put<Booking>(`${this.apiUrl}/bookings/${id}/refund-status`, data);
   }
+
+  recalculateCancellation(bookingId: string): Observable<Booking> {
+    return this.http.post<Booking>(`${this.apiUrl}/bookings/${bookingId}/recalculate-cancellation`, {});
+  }
 }

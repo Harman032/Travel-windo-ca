@@ -399,44 +399,47 @@ import { ToastrService } from 'ngx-toastr';
             <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
-                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount || booking.cancellation.refundableAmountToClient || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount ?? booking.cancellation.refundableAmountToClient ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
-                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.refundCommittedToClient || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
-                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">New Margin After Cancellation</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed from Client</label>
-                <p class="text-gray-900 font-bold text-red-600">CAD {{ (booking.cancellation.upfrontNeeded || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-red-600">CAD {{ (booking.cancellation.upfrontNeeded ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
             <div class="col-span-full">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
               <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
             </div>
-            <div *ngIf="isAdmin()" class="col-span-full mt-4 pt-4 border-t border-red-200">
+            <div *ngIf="isAdmin()" class="col-span-full mt-4 pt-4 border-t border-red-200 flex space-x-2">
               <button type="button" (click)="revertCancellation()" class="btn btn-primary">
                 Revert to active (admin)
+              </button>
+              <button *ngIf="booking.status === 'Cancelled'" type="button" (click)="recalculateCancellation()" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-medium">
+                Recalculate Cancellation Values
               </button>
             </div>
           </div>
@@ -901,22 +904,22 @@ import { ToastrService } from 'ngx-toastr';
                 <div class="mt-2 space-y-2">
                   <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn || expectedSupplierReturn) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn != null ? booking.cancellation.supplierWillReturn : expectedSupplierReturn) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-red-800">
-                      Total Charges: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
+                      Total Charges: CAD {{ (booking.cancellation?.totalCharges ?? 0) | number:'1.2-2' }}
                     </p>
                     <div *ngIf="booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
                       <p class="text-sm font-bold text-green-800 mt-2">
-                        Client Receives: CAD {{ (booking.cancellation?.clientReceives || 0) | number:'1.2-2' }}
+                        Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
                     <div *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard'" class="mt-2 space-y-1">
                       <p class="text-sm font-bold text-red-800">
-                        Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded || 0) | number:'1.2-2' }}
+                        Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded ?? 0) | number:'1.2-2' }}
                       </p>
                       <p class="text-sm font-bold text-green-800">
-                        Client Receives: CAD {{ (booking.cancellation?.clientReceives || 0) | number:'1.2-2' }}
+                        Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
                   </ng-container>
@@ -1279,6 +1282,15 @@ export class BookingDetailComponent implements OnInit {
   isAdmin(): boolean {
     const user = this.authService.getCurrentUserValue();
     return user?.role === 'ADMIN';
+  }
+
+  recalculateCancellation() {
+    if (!this.booking?._id) return;
+    this.bookingService.recalculateCancellation(this.booking._id).subscribe({
+      next: () => {
+        this.loadBooking();
+      }
+    });
   }
 
   isAccount(): boolean {
