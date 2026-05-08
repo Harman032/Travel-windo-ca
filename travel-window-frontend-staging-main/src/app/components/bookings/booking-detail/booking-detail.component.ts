@@ -707,6 +707,7 @@ import { ToastrService } from 'ngx-toastr';
                   </div>
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
                     </div>
@@ -1852,10 +1853,14 @@ export class BookingDetailComponent implements OnInit {
     if (!this.booking?.cancellation) return 0;
     const c = this.booking.cancellation;
 
-    if (c.cancellationType === 'partialPaidCancellationCharges' || c.cancellationType === 'partialPaidRefundAmount') {
+    if (c.cancellationType === 'partialPaidCancellationCharges') {
       const paidAmount = Number(this.booking.totalPaidAmount) || 0;
-      const supplierDeducted = Number(c.supplierDeducted) || 0;
-      return Math.round(paidAmount - supplierDeducted);
+      const scc = Number(c.supplierCancellationCharges) || 0;
+      return Math.round(paidAmount - scc);
+    }
+    
+    if (c.cancellationType === 'partialPaidRefundAmount') {
+      return Math.round(c.supplierRefundAmount || 0);
     }
 
     if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard') {
@@ -1952,6 +1957,13 @@ export class BookingDetailComponent implements OnInit {
     const sra = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
     const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
     return Math.round(sra - occ);
+  }
+
+  get partialPaidSupplierWillReturn(): number {
+    if (!this.booking) return 0;
+    const paidAmount = this.booking.totalPaidAmount || 0;
+    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
+    return Math.round(paidAmount - scc);
   }
 
   // -----------------------------------
