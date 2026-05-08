@@ -204,23 +204,34 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // Report B: Unverified Payments (updated with supplier + card fields)
 router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const bookings = await Booking.find({ verifiedByAccount: false, status: { $ne: 'Cancelled' } }).sort({ dateOfSubmission: -1 });
+    const { paymentType } = req.query;
+    
+    const bookings = await Booking.find({ verifiedByAccount: false }).sort({ dateOfSubmission: -1 });
     const unverifiedPayments = [];
     
     bookings.forEach(b => {
+      if (paymentType === 'card') {
+        if (!b.cardType || b.cardType.trim() === '') return;
+      } else if (paymentType === 'other') {
+        if (b.cardType && b.cardType.trim() !== '') return;
+      }
+
       if (b.payments && b.payments.length > 0) {
         b.payments.forEach(p => {
           unverifiedPayments.push({
             bookingId: b.pnr,
             _id: b._id,
             passengerName: b.paxName,
+            salePrice: b.salePrice || 0,
             paymentAmount: p.paidAmount,
             paymentMode: p.paymentMode,
             status: b.status,
             supplierName: b.supplierName || 'N/A',
             paymentFromCard: b.paymentFromCard || 0,
             cardType: b.cardType || '',
-            cardLast4Digits: b.cardLast4Digits || ''
+            cardLast4Digits: b.cardLast4Digits || '',
+            supplierCharges: b.supplierCharges || 0,
+            totalSupplierTook: (b.status === 'Cancelled' && b.cancellation && b.cancellation.totalSupplierTook) ? b.cancellation.totalSupplierTook : null
           });
         });
       }
@@ -253,7 +264,7 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
       }
       agentMap[agentName].totalBookings += 1;
       agentMap[agentName].totalSalePrice += (b.totalSalePrice || 0);
-      agentMap[agentName].totalMargin += ((b.salePrice || 0) - (b.ourCost || 0));
+      agentMap[agentName].totalMargin += ((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0));
     });
     
     res.json(Object.values(agentMap));

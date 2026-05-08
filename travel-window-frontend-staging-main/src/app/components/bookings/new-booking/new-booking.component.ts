@@ -211,6 +211,10 @@ import { ToastrService } from 'ngx-toastr';
               <input type="number" formControlName="salePrice" class="input" placeholder="0" />
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges</label>
+              <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Payment From Card</label>
               <input type="number" formControlName="paymentFromCard" class="input" placeholder="0" />
             </div>
@@ -243,9 +247,15 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
               </div>
             </div>
-            <div class="col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Total Sale Price</label>
-              <input type="text" [value]="totalSalePrice | number:'1.2-2'" class="input bg-gray-100" readonly />
+            <div class="col-span-2 grid grid-cols-2 gap-4 mt-2">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Our Margin</label>
+                <input type="text" [value]="ourMarginPreview | number:'1.2-2'" class="input bg-green-50 text-green-700 font-medium" readonly />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total Sale Price</label>
+                <input type="text" [value]="totalSalePrice | number:'1.2-2'" class="input bg-gray-100 font-medium" readonly />
+              </div>
             </div>
           </div>
         </div>
@@ -483,6 +493,7 @@ export class NewBookingComponent implements OnInit {
       supplier: [''],
       ourCost: [0],
       salePrice: [0],
+      supplierCharges: [0],
       paymentFromCard: [0],
       cardType: [''],
       cardLast4Digits: [''],
@@ -626,6 +637,13 @@ export class NewBookingComponent implements OnInit {
     const arr = this.additionalServicesArray?.controls || [];
     const additionalTotal = arr.reduce((sum, c) => sum + (c.get('serviceCost')?.value || 0), 0);
     return salePrice + additionalTotal;
+  }
+
+  get ourMarginPreview(): number {
+    const salePrice = this.bookingForm.get('salePrice')?.value || 0;
+    const ourCost = this.bookingForm.get('ourCost')?.value || 0;
+    const supplierCharges = this.bookingForm.get('supplierCharges')?.value || 0;
+    return salePrice - ourCost - supplierCharges;
   }
 
   get totalPaidAmount(): number {

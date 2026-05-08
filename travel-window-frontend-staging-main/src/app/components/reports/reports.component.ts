@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { ReportService } from '../../services/report.service';
 import { SupplierService, Supplier } from '../../services/supplier.service';
 import { UserService, User } from '../../services/user.service';
@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-title-card">
@@ -395,19 +395,32 @@ import { AuthService } from '../../services/auth.service';
 
       <!-- Unverified Payments Results -->
       <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Unverified Payments</h3>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold text-gray-700">Unverified Payments</h3>
+          <div class="flex items-center space-x-2">
+            <label class="text-sm font-medium text-gray-600">Payment Type:</label>
+            <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
+              <option value="all">All Payments</option>
+              <option value="card">Card Payments</option>
+              <option value="other">Other Payments</option>
+            </select>
+          </div>
+        </div>
         <div class="overflow-x-auto -mx-3 sm:mx-0">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Amount</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Supplier Took (Cancelled)</th>
+                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
+                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
+                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
@@ -416,12 +429,18 @@ import { AuthService } from '../../services/auth.service';
               <tr *ngFor="let item of unverifiedPaymentsData">
                 <td class="px-4 py-2 text-sm">{{ item.bookingId }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.salePrice | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.paymentAmount | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.paymentMode }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.supplierCharges || 0 | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">
+                  <span *ngIf="item.status === 'Cancelled'">{{ item.totalSupplierTook !== null ? (item.totalSupplierTook | number:'1.2-2') : '0.00' }}</span>
+                  <span *ngIf="item.status !== 'Cancelled'">-</span>
+                </td>
+                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
+                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
+                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
                 </td>
@@ -587,6 +606,7 @@ export class ReportsComponent implements OnInit {
   loading = false;
   suppliers: Supplier[] = [];
   users: User[] = [];
+  unverifiedPaymentType: string = 'all';
 
   dateWiseForm: FormGroup;
   supplierWiseForm: FormGroup;
@@ -772,7 +792,7 @@ export class ReportsComponent implements OnInit {
 
   loadUnverifiedPaymentsReport() {
     this.loading = true;
-    this.reportService.getUnverifiedPaymentsReport().subscribe({
+    this.reportService.getUnverifiedPaymentsReport(this.unverifiedPaymentType).subscribe({
       next: (data) => {
         this.unverifiedPaymentsData = data;
         this.loading = false;

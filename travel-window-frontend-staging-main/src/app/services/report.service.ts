@@ -50,8 +50,12 @@ export class ReportService {
     return this.http.get(`${this.apiUrl}/reports/payment-to-supplier`, { params });
   }
 
-  getUnverifiedPaymentsReport(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/reports/unverified-payments`);
+  getUnverifiedPaymentsReport(paymentType: string = 'all'): Observable<any> {
+    let params = new HttpParams();
+    if (paymentType !== 'all') {
+      params = params.set('paymentType', paymentType);
+    }
+    return this.http.get(`${this.apiUrl}/reports/unverified-payments`, { params });
   }
 
   getAgentMarginReport(dateFrom?: string, dateTo?: string): Observable<any> {

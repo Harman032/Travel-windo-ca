@@ -23,6 +23,7 @@ export interface Booking {
   supplierName?: string;
   ourCost?: number;
   salePrice?: number;
+  supplierCharges?: number;
   additionalService?: string;
   additionalServicePrice?: number;
   totalSalePrice?: number;
