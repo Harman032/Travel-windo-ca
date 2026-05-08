@@ -1285,10 +1285,11 @@ export class BookingDetailComponent implements OnInit {
   }
 
   recalculateCancellation() {
-    if (!this.booking?._id) return;
-    this.bookingService.recalculateCancellation(this.booking._id).subscribe({
+    if (!this.booking || !this.booking._id) return;
+    const bookingId = this.booking._id;
+    this.bookingService.recalculateCancellation(bookingId).subscribe({
       next: () => {
-        this.loadBooking(this.booking._id!);
+        this.loadBooking(bookingId);
       }
     });
   }
