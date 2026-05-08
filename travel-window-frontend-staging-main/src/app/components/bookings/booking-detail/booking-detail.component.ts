@@ -398,11 +398,19 @@ import { ToastrService } from 'ngx-toastr';
             <!-- Partial Paid Card Cancellation Fields -->
             <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
               <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
+                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
+                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.committedToClient || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
                 <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin After Cancellation</label>
                 <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
@@ -904,7 +912,7 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                     <div *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard'" class="mt-2 space-y-1">
                       <p class="text-sm font-bold text-red-800">
-                        Client Must Pay Upfront: CAD {{ (booking.cancellation?.upfrontNeeded || booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
+                        Client Must Pay Upfront: CAD {{ (booking.cancellation?.upfrontNeeded || 0) | number:'1.2-2' }}
                       </p>
                       <p class="text-sm font-bold text-green-800">
                         Client Receives Full Sale Price: CAD {{ (booking.salePrice || 0) | number:'1.2-2' }}
