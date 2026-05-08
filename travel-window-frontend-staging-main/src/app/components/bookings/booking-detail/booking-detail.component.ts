@@ -1757,8 +1757,7 @@ export class BookingDetailComponent implements OnInit {
     const c = this.booking.cancellation;
     if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard') {
       const baseOurCost = (Number(this.booking.ourCost) || 0) - this.dateChangeOurAddon - this.flightChangeOurAddon;
-      const scc = c.supplierCancellationCharges || 0;
-      return baseOurCost - scc;
+      return baseOurCost;
     }
     if (c.cancellationType === 'supplierRefundAmount') {
       return c.supplierRefundAmount || 0;
