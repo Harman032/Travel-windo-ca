@@ -1038,9 +1038,10 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
     const baseSalePrice = Math.max(0, (Number(booking.salePrice) || 0) - dateChangeSaleAddon - flightChangeSaleAddon);
     const baseOurCost = Math.max(0, (Number(booking.ourCost) || 0) - dateChangeOurAddon - flightChangeOurAddon);
+    const supplierCharges = Number(booking.supplierCharges) || 0;
     const totalSalePrice = baseSalePrice;
     const totalAmountPaid = booking.totalPaidAmount || 0;
-    const oldMargin = baseSalePrice - baseOurCost;
+    const oldMargin = baseSalePrice - baseOurCost - supplierCharges;
     const scc = parseFloat(supplierCancellationCharges) || 0;
     const occ = parseFloat(ourCancellationCharges) || 0;
     const chargeFromClientVal = chargeFromClient != null ? parseFloat(chargeFromClient) : 0;
@@ -1064,53 +1065,82 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       finalCommittedToClient = totalSalePrice - (oldMargin + supplierDeducted + occ);
     }
 
-    if (paymentModeWas === 'Credit Card') {
-      refundableAmountToClient = totalSalePrice - supplierDeducted;
-      const base = oldMargin;
-      currentMargin = chargeFromClientVal > 0 ? (chargeFromClientVal < base ? base - chargeFromClientVal : base) : 0;
-      newMargin = chargeFromClientVal > base ? chargeFromClientVal - base : 0;
-      refundCommittedToClient = totalSalePrice - supplierDeducted - chargeFromClientVal;
-      finalCommittedToClient = refundCommittedToClient;
-      if (chargeFromClient === undefined || chargeFromClient === null) {
-        return res.status(400).json({ message: 'Charge from client is required for credit card payments' });
-      }
+    if (cancellationType === 'clientCard' || cancellationType === 'companyCard') {
+      const ourMargin = oldMargin;
+      const newMarginVal = ourMargin + occ;
+      const totalSupplierTook = supplierCharges + scc;
+      const totalCharges = supplierCharges + scc + newMarginVal;
+      const clientReceives = totalSalePrice - totalCharges;
+
+      booking.cancellation = {
+        isCancelled: true,
+        paymentModeWas,
+        totalAmountPaidByClient: totalAmountPaid,
+        refundableAmount: clientReceives, // for card, we use clientReceives as refundable amount logic
+        oldMargin: ourMargin,
+        newMargin: newMarginVal,
+        totalSupplierTook,
+        totalCharges,
+        clientReceives,
+        supplierCancellationCharges: scc,
+        ourCancellationCharges: occ,
+        cancellationType,
+        refundProcessed: false,
+        remarks,
+        cancelledBy: req.user._id,
+        cancelledAt: new Date(),
+        refundReceivedFromSupplier: { date: null, remarks: '' },
+        refundPaidToClient: { date: null, remarks: '' }
+      };
     } else {
-      totalCancellationCharges = oldMargin + supplierDeducted + occ;
-      refundableAmountCommittedToClient = finalCommittedToClient;
-      // New Margin = Total Inflow - Total Outflow
-      // Total Inflow = Sale Price - Committed to Client
-      // Total Outflow = Our Cost - Supplier Refund
-      // Supplier Refund = Our Cost - Supplier Deducted
-      // Total Outflow = Our Cost - (Our Cost - Supplier Deducted) = Supplier Deducted
-      newMargin = (totalSalePrice - finalCommittedToClient) - supplierDeducted;
+      if (paymentModeWas === 'Credit Card') {
+        refundableAmountToClient = totalSalePrice - supplierDeducted;
+        const base = oldMargin;
+        currentMargin = chargeFromClientVal > 0 ? (chargeFromClientVal < base ? base - chargeFromClientVal : base) : 0;
+        newMargin = chargeFromClientVal > base ? chargeFromClientVal - base : 0;
+        refundCommittedToClient = totalSalePrice - supplierDeducted - chargeFromClientVal;
+        finalCommittedToClient = refundCommittedToClient;
+        if (chargeFromClient === undefined || chargeFromClient === null) {
+          return res.status(400).json({ message: 'Charge from client is required for credit card payments' });
+        }
+      } else {
+        totalCancellationCharges = oldMargin + supplierDeducted + occ;
+        refundableAmountCommittedToClient = finalCommittedToClient;
+        // New Margin = Total Inflow - Total Outflow
+        // Total Inflow = Sale Price - Committed to Client
+        // Total Outflow = Our Cost - Supplier Refund
+        // Supplier Refund = Our Cost - Supplier Deducted
+        // Total Outflow = Our Cost - (Our Cost - Supplier Deducted) = Supplier Deducted
+        newMargin = (totalSalePrice - finalCommittedToClient) - supplierDeducted;
+      }
+      
+      booking.cancellation = {
+        isCancelled: true,
+        paymentModeWas,
+        totalAmountPaidByClient: totalAmountPaid,
+        refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),
+        oldMargin,
+        committedToClient: finalCommittedToClient,
+        chargeFromClient: chargeFromClientVal,
+        newMargin,
+        supplierCancellationCharges: (cancellationType === 'supplierRefundAmount' ? 0 : scc),
+        supplierRefundAmount: (cancellationType === 'supplierRefundAmount' ? scc : 0),
+        supplierDeducted,
+        ourCancellationCharges: occ,
+        cancellationType,
+        currentMargin,
+        totalCancellationCharges,
+        refundableAmountToClient,
+        refundableAmountCommittedToClient,
+        refundCommittedToClient,
+        refundProcessed: false,
+        remarks,
+        cancelledBy: req.user._id,
+        cancelledAt: new Date(),
+        refundReceivedFromSupplier: { date: null, remarks: '' },
+        refundPaidToClient: { date: null, remarks: '' }
+      };
     }
-    
-    booking.cancellation = {
-      isCancelled: true,
-      paymentModeWas,
-      totalAmountPaidByClient: totalAmountPaid,
-      refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),
-      oldMargin,
-      committedToClient: finalCommittedToClient,
-      chargeFromClient: chargeFromClientVal,
-      newMargin,
-      supplierCancellationCharges: (cancellationType === 'supplierRefundAmount' ? 0 : scc),
-      supplierRefundAmount: (cancellationType === 'supplierRefundAmount' ? scc : 0),
-      supplierDeducted,
-      ourCancellationCharges: occ,
-      cancellationType,
-      currentMargin,
-      totalCancellationCharges,
-      refundableAmountToClient,
-      refundableAmountCommittedToClient,
-      refundCommittedToClient,
-      refundProcessed: false,
-      remarks,
-      cancelledBy: req.user._id,
-      cancelledAt: new Date(),
-      refundReceivedFromSupplier: { date: null, remarks: '' },
-      refundPaidToClient: { date: null, remarks: '' }
-    };
     
     booking.status = 'Cancelled';
     

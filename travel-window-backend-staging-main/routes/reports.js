@@ -232,7 +232,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
             cardLast4Digits: b.cardLast4Digits || '',
             supplierCharges: b.supplierCharges || 0,
             ourCost: b.ourCost || 0,
-            totalSupplierTook: (b.status === 'Cancelled' && b.cancellation && b.cancellation.totalSupplierTook) ? b.cancellation.totalSupplierTook : null
+            totalSupplierTook: b.cancellation?.totalSupplierTook || 0
           });
         });
       }

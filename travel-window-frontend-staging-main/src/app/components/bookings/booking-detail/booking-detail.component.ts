@@ -336,8 +336,33 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div *ngIf="booking.cancellation.cancellationType === 'supplierRefundAmount'">
               <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Deducted</label>
-              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierDeducted | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium">CAD {{ (booking.cancellation.supplierDeducted || 0) | number:'1.2-2' }}</p>
             </div>
+            
+            <!-- Card Cancellation Fields -->
+            <ng-container *ngIf="booking.cancellation.cancellationType === 'clientCard' || booking.cancellation.cancellationType === 'companyCard'">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
+                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Our Cancellation Charges</label>
+                <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.ourCancellationCharges || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
+                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div class="col-span-full" *ngIf="booking.cancellation.cancellationType === 'clientCard'">
+                <p class="text-sm text-blue-700 bg-blue-50 p-2 border border-blue-200 rounded mt-2">
+                  <strong>Note:</strong> Client must pay <strong>CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</strong> upfront to receive full <strong>Sale Price</strong> back.
+                </p>
+              </div>
+            </ng-container>
             <div class="col-span-full">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
               <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
@@ -687,16 +712,40 @@ import { ToastrService } from 'ngx-toastr';
               <span class="mt-0.5 h-4 w-4 rounded-full bg-orange-400 flex-shrink-0"></span>
               <div>
                 <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
-                <div class="mt-2 space-y-1">
-                  <p class="text-sm font-semibold text-orange-800">
-                    Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
-                  </p>
-                  <p *ngIf="booking.cancellation?.cancellationType === 'supplierRefundAmount'" class="text-xs text-orange-700">
-                    Supplier Deducted: CAD {{ (booking.cancellation?.supplierDeducted || 0) | number:'1.2-2' }}
-                  </p>
-                  <p class="text-xs text-orange-700">
-                    Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || 0) | number:'1.2-2' }}
-                  </p>
+                <div class="mt-2 space-y-2">
+                  <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard'">
+                    <p class="text-sm font-semibold text-orange-800">
+                      Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
+                    </p>
+                    <p class="text-sm font-semibold text-red-800">
+                      Total Charges: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
+                    </p>
+                    <div *ngIf="booking.cancellation?.cancellationType === 'companyCard'">
+                      <p class="text-sm font-bold text-green-800 mt-2">
+                        Client Receives: CAD {{ (booking.cancellation?.clientReceives || 0) | number:'1.2-2' }}
+                      </p>
+                    </div>
+                    <div *ngIf="booking.cancellation?.cancellationType === 'clientCard'" class="mt-2 space-y-1">
+                      <p class="text-sm font-bold text-red-800">
+                        Client Must Pay Upfront: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
+                      </p>
+                      <p class="text-sm font-bold text-green-800">
+                        Client Receives Full Sale Price: CAD {{ (booking.salePrice || 0) | number:'1.2-2' }}
+                      </p>
+                    </div>
+                  </ng-container>
+                  
+                  <ng-container *ngIf="booking.cancellation?.cancellationType !== 'clientCard' && booking.cancellation?.cancellationType !== 'companyCard'">
+                    <p class="text-sm font-semibold text-orange-800">
+                      Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
+                    </p>
+                    <p *ngIf="booking.cancellation?.cancellationType === 'supplierRefundAmount'" class="text-xs text-orange-700">
+                      Supplier Deducted: CAD {{ (booking.cancellation?.supplierDeducted || 0) | number:'1.2-2' }}
+                    </p>
+                    <p class="text-xs text-orange-700">
+                      Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || 0) | number:'1.2-2' }}
+                    </p>
+                  </ng-container>
                 </div>
                 <p class="text-xs text-gray-500 mt-2 italic">Automatically set when cancellation is confirmed</p>
               </div>
@@ -1706,10 +1755,14 @@ export class BookingDetailComponent implements OnInit {
   get expectedSupplierReturn(): number {
     if (!this.booking?.cancellation) return 0;
     const c = this.booking.cancellation;
+    if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard') {
+      const baseOurCost = (Number(this.booking.ourCost) || 0) - this.dateChangeOurAddon - this.flightChangeOurAddon;
+      const scc = c.supplierCancellationCharges || 0;
+      return baseOurCost - scc;
+    }
     if (c.cancellationType === 'supplierRefundAmount') {
       return c.supplierRefundAmount || 0;
     } else {
-      // Amount Supplier Will Return = Base Sale Price - Supplier Cancellation Charges - Our Old Margin
       const baseSale = this.totalSalePriceForCancel;
       const scc = c.supplierCancellationCharges || 0;
       const oldMargin = c.oldMargin || 0;
