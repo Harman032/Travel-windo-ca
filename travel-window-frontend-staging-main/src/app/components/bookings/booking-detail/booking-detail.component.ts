@@ -399,7 +399,7 @@ import { ToastrService } from 'ngx-toastr';
             <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
-                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmountToClient || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount || booking.cancellation.refundableAmountToClient || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
@@ -901,7 +901,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div class="mt-2 space-y-2">
                   <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn || expectedSupplierReturn) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-red-800">
                       Total Charges: CAD {{ (booking.cancellation?.totalCharges || 0) | number:'1.2-2' }}
