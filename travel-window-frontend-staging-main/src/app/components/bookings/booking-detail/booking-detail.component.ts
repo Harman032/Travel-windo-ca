@@ -399,11 +399,11 @@ import { ToastrService } from 'ngx-toastr';
             <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
-                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmountToClient || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
-                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.committedToClient || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.refundCommittedToClient || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
@@ -1964,7 +1964,7 @@ export class BookingDetailComponent implements OnInit {
       return Math.round(c.supplierRefundAmount || 0);
     }
 
-    if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard') {
+    if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard' || c.cancellationType === 'partialPaidClientCard' || c.cancellationType === 'partialPaidCompanyCard') {
       const baseOurCost = (Number(this.booking.ourCost) || 0) - this.dateChangeOurAddon - this.flightChangeOurAddon;
       return baseOurCost;
     }
