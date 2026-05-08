@@ -389,6 +389,10 @@ import { ToastrService } from 'ngx-toastr';
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundToClient || 0) | number:'1.2-2' }}</p>
               </div>
+              <div *ngIf="booking.cancellation.newMargin">
+                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin After Cancellation</label>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
+              </div>
             </ng-container>
             <div class="col-span-full">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
@@ -1252,7 +1256,8 @@ export class BookingDetailComponent implements OnInit {
       // Cancel form: auto-select Payment Mode Was from how customer paid; disable so it cannot be changed
       const paymentModeWas = this.getPrimaryPaymentMode();
       this.cancelForm.patchValue({
-        paymentModeWas: paymentModeWas || ''
+        paymentModeWas: paymentModeWas || '',
+        cancellationType: this.isPartialPaid ? 'partialPaidCancellationCharges' : 'supplierCancellationCharges'
       });
       this.cancelForm.get('paymentModeWas')?.disable();
       // Pre-fill refund status fields from existing data

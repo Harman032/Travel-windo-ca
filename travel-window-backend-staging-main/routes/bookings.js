@@ -1093,8 +1093,10 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         refundPaidToClient: { date: null, remarks: '' }
       };
     } else if (cancellationType === 'partialPaidCancellationCharges' || cancellationType === 'partialPaidRefundAmount') {
+      const ourMargin = Math.round(oldMargin);
+      const newMarginVal = Math.round(ourMargin + occ);
+
       if (cancellationType === 'partialPaidCancellationCharges') {
-        const ourMargin = Math.round(oldMargin);
         const totalCharges = Math.round(ourMargin + supplierCharges + scc + occ);
         const refundToClient = Math.round(totalAmountPaid - totalCharges);
 
@@ -1104,6 +1106,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
           totalAmountPaidByClient: totalAmountPaid,
           refundableAmount: refundToClient,
           oldMargin: ourMargin,
+          newMargin: newMarginVal,
           totalCharges,
           refundToClient,
           supplierCancellationCharges: scc,
@@ -1127,6 +1130,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
           paymentModeWas,
           totalAmountPaidByClient: totalAmountPaid,
           refundableAmount: refundToClient,
+          oldMargin: ourMargin,
+          newMargin: newMarginVal,
           supplierDeducted: supplierDeductedVal,
           refundToClient,
           supplierRefundAmount: sra,
