@@ -838,10 +838,6 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
-                        <p class="text-xs text-gray-600">We deduct Total Charges from card payment and return remaining to client</p>
-                      </ng-container>
-                    </div>
-                  </div>
                 </div>
 
                 <div class="mt-4 col-span-full">
@@ -851,14 +847,13 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
               </div>
             </ng-container>
+
             <div class="mt-4 flex justify-end space-x-2">
               <button type="button" (click)="showCancelForm = false" class="btn btn-secondary">Cancel</button>
               <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
             </div>
           </form>
         </div>
-
-        <!-- Refund Status Section (only shown when booking is cancelled) -->
         <div *ngIf="booking.cancellation?.isCancelled" class="card bg-orange-50 border border-orange-200">
           <h3 class="text-xl font-semibold mb-4 text-orange-700">Refund Status</h3>
           <div class="space-y-6">
