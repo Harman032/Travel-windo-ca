@@ -840,17 +840,20 @@ import { ToastrService } from 'ngx-toastr';
                   </div>
                 </div>
 
-                <div class="mt-4 col-span-full">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
-                  <textarea formControlName="remarks" class="input" rows="3" required [class.border-red-500]="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched"></textarea>
-                  <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
-                </div>
-              </div>
             </ng-container>
 
-            <div class="mt-4 flex justify-end space-x-2">
-              <button type="button" (click)="showCancelForm = false" class="btn btn-secondary">Cancel</button>
-              <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+            <!-- Common Fields (Remarks and Action Buttons) -->
+            <div class="mt-4 border-t border-red-200 pt-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
+                <textarea formControlName="remarks" class="input" rows="3" required [class.border-red-500]="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" placeholder="Enter reason for cancellation..."></textarea>
+                <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
+              </div>
+
+              <div class="flex justify-end space-x-2">
+                <button type="button" (click)="showCancelForm = false" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+              </div>
             </div>
           </form>
         </div>
@@ -1707,15 +1710,23 @@ export class BookingDetailComponent implements OnInit {
   }
 
   onCancel() {
+    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
+    if (isCardFlow) {
+      this.cancelForm.patchValue({ paymentModeWas: 'Credit Card' });
+    }
+
     if (this.cancelForm.invalid) {
       this.cancelForm.markAllAsTouched();
       return;
     }
     const formValue = this.cancelForm.getRawValue();
-    if (this.booking && formValue.paymentModeWas) {
-      const isCC = formValue.paymentModeWas === 'Credit Card';
+    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
+    const paymentModeWas = isCardFlow ? 'Credit Card' : formValue.paymentModeWas;
+    
+    if (this.booking && paymentModeWas) {
+      const isCC = paymentModeWas === 'Credit Card';
       this.bookingService.cancelBooking(this.booking._id!, {
-        paymentModeWas: formValue.paymentModeWas,
+        paymentModeWas: paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
         committedToClient: isCC ? formValue.committedToClient : this.refundCommittedToClientNonCC,
         chargeFromClient: formValue.chargeFromClient,
