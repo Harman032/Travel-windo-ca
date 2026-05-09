@@ -1067,21 +1067,20 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
     if (cancellationType === 'clientCard' || cancellationType === 'companyCard') {
       const ourMargin = oldMargin;
-      const newMarginVal = ourMargin + occ;
-      const totalSupplierTook = supplierCharges + scc;
-      const totalCharges = supplierCharges + scc + newMarginVal;
-      const clientReceives = totalSalePrice - totalCharges;
+      const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
+      const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+      const totalCharges = Math.round((supplierCharges + scc + newMarginVal) * 100) / 100;
+      const supplierWillReturn = baseOurCost;
 
       booking.cancellation = {
         isCancelled: true,
-        paymentModeWas,
+        paymentModeWas: 'Credit Card',
         totalAmountPaidByClient: totalAmountPaid,
-        refundableAmount: clientReceives, // for card, we use clientReceives as refundable amount logic
         oldMargin: ourMargin,
         newMargin: newMarginVal,
         totalSupplierTook,
         totalCharges,
-        clientReceives,
+        supplierWillReturn,
         supplierCancellationCharges: scc,
         ourCancellationCharges: occ,
         cancellationType,
@@ -1092,6 +1091,19 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         refundReceivedFromSupplier: { date: null, remarks: '' },
         refundPaidToClient: { date: null, remarks: '' }
       };
+
+      if (cancellationType === 'clientCard') {
+        booking.cancellation.upfrontNeeded = totalCharges;
+        booking.cancellation.clientReceives = totalSalePrice;
+        booking.cancellation.refundableAmount = totalSalePrice;
+        booking.cancellation.refundCommittedToClient = totalSalePrice;
+      } else {
+        // companyCard
+        const clientReceivesCC = Math.round((totalSalePrice - totalCharges) * 100) / 100;
+        booking.cancellation.clientReceives = clientReceivesCC;
+        booking.cancellation.refundableAmount = clientReceivesCC;
+        booking.cancellation.refundCommittedToClient = clientReceivesCC;
+      }
     } else if (cancellationType === 'partialPaidClientCard' || cancellationType === 'partialPaidCompanyCard') {
       const ourMargin = Math.round(oldMargin * 100) / 100;
       const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
@@ -1426,11 +1438,10 @@ function recalculateCancellationValues(booking) {
     const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
     const newMargin = Math.round((ourMargin + occ) * 100) / 100;
     const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
-    const upfrontNeeded = totalCharges;
-    const clientReceives = salePrice;
 
-    c.upfrontNeeded = upfrontNeeded;
-    c.clientReceives = clientReceives;
+    c.supplierWillReturn = ourCost;
+    c.upfrontNeeded = totalCharges;
+    c.clientReceives = salePrice;
     c.refundableAmount = salePrice;
     c.refundCommittedToClient = salePrice;
   } else if (type === 'companyCard') {
@@ -1439,6 +1450,7 @@ function recalculateCancellationValues(booking) {
     const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
     const clientReceives = Math.round((salePrice - totalCharges) * 100) / 100;
 
+    c.supplierWillReturn = ourCost;
     c.clientReceives = clientReceives;
     c.refundableAmount = clientReceives;
     c.refundCommittedToClient = clientReceives;
