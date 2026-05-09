@@ -324,7 +324,7 @@ import { AuthService } from '../../services/auth.service';
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(booking.status)">{{ booking.status }}</span>
                 </td>
-                <td class="px-4 py-2 text-sm">{{ booking.dateOfSubmission | date:'shortDate' }}</td>
+                <td class="px-4 py-2 text-sm">{{ booking.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
               </tr>
             </tbody>
           </table>
@@ -383,7 +383,7 @@ import { AuthService } from '../../services/auth.service';
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let item of paymentSupplierData">
-                <td class="px-4 py-2 text-sm">{{ item.date | date:'shortDate' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.date | date:'dd-MM-yyyy' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
                 <td class="px-4 py-2 text-sm text-blue-600">{{ item.paymentPaid | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.totalBookingCost | number:'1.2-2' }}</td>

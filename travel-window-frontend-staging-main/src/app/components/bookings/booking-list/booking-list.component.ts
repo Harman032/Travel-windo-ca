@@ -122,7 +122,7 @@ import { AuthService } from '../../../services/auth.service';
           <tbody class="bg-white divide-y divide-gray-200">
             <tr *ngFor="let booking of bookings" class="hover:bg-gray-50">
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">{{ booking.pnr }}</td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ booking.dateOfSubmission | date:'shortDate' }}</td>
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ booking.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ booking.paxName }}</td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 hidden sm:table-cell">{{ booking.contactNumber }}</td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">

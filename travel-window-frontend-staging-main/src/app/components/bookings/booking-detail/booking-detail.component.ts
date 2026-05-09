@@ -92,7 +92,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
-              <p class="text-gray-900">{{ booking.dateOfSubmission | date:'short' }}</p>
+              <p class="text-gray-900">{{ booking.dateOfSubmission | date:'dd-MM-yyyy HH:mm' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Submitted By</label>
@@ -112,11 +112,11 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Travel Date</label>
-              <p class="text-gray-900">{{ booking.travelDate | date:'shortDate' }}</p>
+              <p class="text-gray-900">{{ booking.travelDate | date:'dd-MM-yyyy' }}</p>
             </div>
             <div *ngIf="booking.returnDate">
               <label class="block text-sm font-medium text-gray-500 mb-1">Return Date</label>
-              <p class="text-gray-900">{{ booking.returnDate | date:'shortDate' }}</p>
+              <p class="text-gray-900">{{ booking.returnDate | date:'dd-MM-yyyy' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Route</label>
@@ -211,7 +211,7 @@ import { ToastrService } from 'ngx-toastr';
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr *ngFor="let sector of booking.multipleSectors">
-                    <td class="px-4 py-2 text-sm">{{ sector.travelDate | date:'shortDate' }}</td>
+                    <td class="px-4 py-2 text-sm">{{ sector.travelDate | date:'dd-MM-yyyy' }}</td>
                     <td class="px-4 py-2 text-sm">{{ sector.from }}</td>
                     <td class="px-4 py-2 text-sm">{{ sector.to }}</td>
                   </tr>
@@ -508,9 +508,9 @@ import { ToastrService } from 'ngx-toastr';
           <div class="mb-4 p-3 bg-gray-100 rounded border border-gray-200">
             <p class="text-sm font-medium text-gray-600 mb-1">Old Travel Date &amp; Old Return Date (not editable)</p>
             <p class="text-gray-900">
-              <span class="font-semibold">Travel:</span> {{ booking.travelDate | date:'shortDate' }}
+              <span class="font-semibold">Travel:</span> {{ booking.travelDate | date:'dd-MM-yyyy' }}
               <span class="mx-2">|</span>
-              <span class="font-semibold">Return:</span> {{ booking.returnDate ? (booking.returnDate | date:'shortDate') : 'N/A' }}
+              <span class="font-semibold">Return:</span> {{ booking.returnDate ? (booking.returnDate | date:'dd-MM-yyyy') : 'N/A' }}
             </p>
           </div>
           <!-- Original (read-only) -->
@@ -968,7 +968,7 @@ import { ToastrService } from 'ngx-toastr';
               <div class="flex-1">
                 <p class="font-medium text-gray-800 mb-2">Refund Received from Supplier</p>
                 <div *ngIf="booking.cancellation?.refundReceivedFromSupplier?.date" class="text-sm text-gray-600 mb-2">
-                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundReceivedFromSupplier.date | date:'shortDate' }}
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundReceivedFromSupplier.date | date:'dd-MM-yyyy' }}
                   <span *ngIf="booking.cancellation.refundReceivedFromSupplier.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundReceivedFromSupplier.remarks }}</span>
                 </div>
                 <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -995,7 +995,7 @@ import { ToastrService } from 'ngx-toastr';
               <div class="flex-1">
                 <p class="font-medium text-gray-800 mb-2">Refund Paid to Client</p>
                 <div *ngIf="booking.cancellation?.refundPaidToClient?.date" class="text-sm text-gray-600 mb-2">
-                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundPaidToClient.date | date:'shortDate' }}
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundPaidToClient.date | date:'dd-MM-yyyy' }}
                   <span *ngIf="booking.cancellation.refundPaidToClient.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundPaidToClient.remarks }}</span>
                 </div>
                 <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1041,7 +1041,7 @@ import { ToastrService } from 'ngx-toastr';
                     <span class="font-semibold text-gray-900">{{ history.action }}</span>
                     <span class="text-xs text-gray-400">·</span>
                     <span class="text-sm text-gray-600">{{ history.performedByName }}</span>
-                    <span class="text-xs text-gray-400">{{ history.timestamp | date:'medium' }}</span>
+                    <span class="text-xs text-gray-400">{{ history.timestamp | date:'dd-MM-yyyy HH:mm' }}</span>
                   </div>
                   <p *ngIf="history.remarks" class="text-sm text-gray-600 mt-2 pl-1 border-l-2 border-gray-200">{{ history.remarks }}</p>
                   <!-- Old → New -->
@@ -1612,7 +1612,11 @@ export class BookingDetailComponent implements OnInit {
   private formatDate(v: any): string {
     if (!v) return '–';
     const d = typeof v === 'string' ? new Date(v) : v;
-    return d instanceof Date && !isNaN(d.getTime()) ? d.toLocaleDateString() : String(v);
+    if (!(d instanceof Date) || isNaN(d.getTime())) return String(v);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
   }
 
   /** Badge color for progress history action type */

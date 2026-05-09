@@ -133,7 +133,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
               >
                 <p class="text-sm font-medium text-gray-900">{{ n.title }}</p>
                 <p class="text-xs text-gray-600 mt-0.5">{{ n.message }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ n.timestamp | date:'short' }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ n.timestamp | date:'dd-MM-yyyy HH:mm' }}</p>
               </a>
             </ng-container>
             <ng-template #noNotifications>
@@ -179,7 +179,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
                     <span *ngIf="a.pnr"> · PNR {{ a.pnr }}</span>
                     <span *ngIf="a.remarks"> · {{ a.remarks }}</span>
                   </p>
-                  <p class="text-xs text-gray-400 mt-0.5">{{ a.timestamp | date:'short' }}</p>
+                  <p class="text-xs text-gray-400 mt-0.5">{{ a.timestamp | date:'dd-MM-yyyy HH:mm' }}</p>
                   <a [routerLink]="['/dashboard/bookings', a.bookingId]" class="text-xs text-[#0096D2] hover:underline">View booking</a>
                 </div>
               </div>

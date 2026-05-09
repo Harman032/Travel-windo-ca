@@ -24,7 +24,7 @@ import { ToastrService } from 'ngx-toastr';
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Date of Submission</label>
-              <input type="text" [value]="bookingForm.get('dateOfSubmission')?.value | date" class="input bg-gray-100" readonly />
+              <input type="text" [value]="bookingForm.get('dateOfSubmission')?.value | date:'dd-MM-yyyy'" class="input bg-gray-100" readonly />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Submitted By</label>
