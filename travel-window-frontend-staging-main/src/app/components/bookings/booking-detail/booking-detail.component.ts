@@ -839,7 +839,7 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                 </div>
-
+              </div>
             </ng-container>
 
             <!-- Common Fields (Remarks and Action Buttons) -->
