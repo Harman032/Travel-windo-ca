@@ -1093,7 +1093,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         refundPaidToClient: { date: null, remarks: '' }
       };
     } else if (cancellationType === 'partialPaidClientCard' || cancellationType === 'partialPaidCompanyCard') {
-      const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+      const ourMargin = Math.round(oldMargin * 100) / 100;
       const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
       const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
       const totalChargesVal = Math.round((supplierCharges + scc + newMarginVal) * 100) / 100;
