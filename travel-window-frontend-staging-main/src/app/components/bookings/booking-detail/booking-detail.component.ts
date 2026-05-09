@@ -680,8 +680,8 @@ import { ToastrService } from 'ngx-toastr';
                       </div>
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-                      <p *ngIf="partialPaidCardUpfrontNeeded > 0">Client Must Pay Upfront: CAD {{ partialPaidCardUpfrontNeeded | number:'1.2-2' }}</p>
-                      <p *ngIf="partialPaidCardUpfrontNeeded <= 0">No upfront needed — paid amount covers all charges</p>
+                      <p>Client Must Pay Upfront: CAD {{ partialPaidCardUpfrontNeeded | number:'1.2-2' }}</p>
+                      <p>Client Receives: CAD {{ booking.totalPaidAmount | number:'1.2-2' }}</p>
                     </div>
                   </div>
                 </div>
@@ -1091,7 +1091,8 @@ export class BookingDetailComponent implements OnInit {
 
     // Watch payment mode changes to update validators
     this.cancelForm.get('paymentModeWas')?.valueChanges.subscribe(mode => {
-      if (mode === 'Credit Card') {
+      const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
+      if (mode === 'Credit Card' && !isCardFlow) {
         this.cancelForm.get('chargeFromClient')?.setValidators([Validators.required]);
         this.cancelForm.get('committedToClient')?.clearValidators();
       } else {
@@ -2076,9 +2077,7 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get partialPaidCardUpfrontNeeded(): number {
-    const totalCharges = this.partialPaidCardTotalCharges;
-    const paidAmount = this.booking?.totalPaidAmount || 0;
-    return Math.round(paidAmount - totalCharges);
+    return this.partialPaidCardTotalCharges;
   }
 
   get partialPaidCardClientReceives(): number {
