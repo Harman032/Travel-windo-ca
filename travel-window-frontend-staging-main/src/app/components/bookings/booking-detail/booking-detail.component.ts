@@ -889,7 +889,7 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                   </ng-container>
                   
-                  <ng-container *ngIf="booking.cancellation?.cancellationType !== 'clientCard' && booking.cancellation?.cancellationType !== 'companyCard'">
+                  <ng-container *ngIf="booking.cancellation?.cancellationType !== 'clientCard' && booking.cancellation?.cancellationType !== 'companyCard' && booking.cancellation?.cancellationType !== 'partialPaidClientCard' && booking.cancellation?.cancellationType !== 'partialPaidCompanyCard'">
                     <p class="text-sm font-semibold text-orange-800">
                       Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
                     </p>

@@ -1130,6 +1130,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         booking.cancellation.refundableAmountToClient = clientReceives;
       } else {
         const clientReceivesVal = Math.round((totalAmountPaid - totalChargesVal) * 100) / 100;
+        const supplierWillReturn = Math.round((totalAmountPaid - scc) * 100) / 100;
+        booking.cancellation.supplierWillReturn = supplierWillReturn;
         booking.cancellation.clientReceives = clientReceivesVal;
         booking.cancellation.refundableAmount = clientReceivesVal;
         booking.cancellation.refundCommittedToClient = clientReceivesVal;
@@ -1411,11 +1413,13 @@ function recalculateCancellationValues(booking) {
     const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
     const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
     const clientReceives = Math.round((paidAmount - totalCharges) * 100) / 100;
+    const supplierWillReturn = Math.round((paidAmount - scc) * 100) / 100;
 
     c.newMargin = newMargin;
     c.totalSupplierTook = totalSupplierTook;
     c.totalCharges = totalCharges;
     c.clientReceives = clientReceives;
+    c.supplierWillReturn = supplierWillReturn;
     c.refundableAmount = clientReceives;
     c.refundCommittedToClient = clientReceives;
   } else if (type === 'clientCard') {
