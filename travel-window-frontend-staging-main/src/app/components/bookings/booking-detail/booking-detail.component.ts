@@ -825,18 +825,59 @@ import { ToastrService } from 'ngx-toastr';
                     <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
                   </label>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Supplier Cancellation Charges Block -->
+                <div *ngIf="cancelForm.get('cancellationType')?.value === 'supplierCancellationCharges'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Row 1 -->
                   <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Our Old Margin</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }}</p></div>
+
+                  <!-- Row 2 -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      {{ cancelForm.get('cancellationType')?.value === 'supplierRefundAmount' ? 'Supplier Refund Amount' : 'Supplier Cancellation Charges' }}
-                      <span class="text-red-500">*</span>
-                    </label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+
+                  <!-- Row 3 -->
+                  <div>
+                    <label class="block text-sm text-gray-600">Total Cancellation Charges</label>
+                    <p class="font-semibold">{{ cancelTotalCancellationCharges | number:'1.2-2' }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600">Refund Committed To Client</label>
+                    <p class="font-semibold text-green-700">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Base Sale Price &minus; Total Cancellation Charges</p>
+                  </div>
+                </div>
+
+                <!-- Supplier Refund Amount Block -->
+                <div *ngIf="cancelForm.get('cancellationType')?.value === 'supplierRefundAmount'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Row 1 -->
+                  <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Our Old Margin</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }}</p></div>
+
+                  <!-- Row 2 -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Refund Amount <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+
+                  <!-- Row 3 -->
+                  <div>
+                    <label class="block text-sm text-gray-600">Supplier Deducted</label>
+                    <p class="font-semibold text-red-700">{{ supplierDeductedRefundMode | number:'1.2-2' }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600">Refund Committed To Client</label>
+                    <p class="font-semibold text-green-700">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Supplier Refund Amount &minus; Our Cancellation Charges</p>
                   </div>
                 </div>
               </div>
@@ -1903,7 +1944,7 @@ export class BookingDetailComponent implements OnInit {
   /** Supplier Refund Amount mode: Supplier Deducted = Our Cost − Supplier Refund Amount */
   get supplierDeductedRefundMode(): number {
     const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const ourCost = Number(this.booking?.ourCost) || 0;
+    const ourCost = this.baseOurCost;
     return ourCost - Number(sra);
   }
 
