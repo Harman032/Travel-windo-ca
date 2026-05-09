@@ -867,19 +867,23 @@ import { ToastrService } from 'ngx-toastr';
               <div>
                 <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
                 <div class="mt-2 space-y-2">
-                  <ng-container *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
+                  <ng-container *ngIf="isCardCancellation">
                     <p class="text-sm font-semibold text-orange-800">
                       Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn != null ? booking.cancellation.supplierWillReturn : expectedSupplierReturn) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-red-800">
                       Total Charges: CAD {{ (booking.cancellation?.totalCharges ?? 0) | number:'1.2-2' }}
                     </p>
-                    <div *ngIf="booking.cancellation?.cancellationType === 'companyCard' || booking.cancellation?.cancellationType === 'partialPaidCompanyCard'">
+                    
+                    <!-- Company card only -->
+                    <div *ngIf="isCompanyCardCancellation">
                       <p class="text-sm font-bold text-green-800 mt-2">
                         Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
-                    <div *ngIf="booking.cancellation?.cancellationType === 'clientCard' || booking.cancellation?.cancellationType === 'partialPaidClientCard'" class="mt-2 space-y-1">
+
+                    <!-- Client card only -->
+                    <div *ngIf="isClientCardCancellation" class="mt-2 space-y-1">
                       <p class="text-sm font-bold text-red-800">
                         Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded ?? 0) | number:'1.2-2' }}
                       </p>
@@ -889,7 +893,7 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                   </ng-container>
                   
-                  <ng-container *ngIf="booking.cancellation?.cancellationType !== 'clientCard' && booking.cancellation?.cancellationType !== 'companyCard' && booking.cancellation?.cancellationType !== 'partialPaidClientCard' && booking.cancellation?.cancellationType !== 'partialPaidCompanyCard'">
+                  <ng-container *ngIf="!isCardCancellation">
                     <p class="text-sm font-semibold text-orange-800">
                       Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
                     </p>
@@ -2087,6 +2091,22 @@ export class BookingDetailComponent implements OnInit {
     }
     const totalCharges = this.partialPaidCardTotalCharges;
     return Math.round(paidAmount - totalCharges);
+  }
+
+  get isCardCancellation(): boolean {
+    const type = this.booking?.cancellation?.cancellationType;
+    return type === 'clientCard' || type === 'companyCard' || 
+           type === 'partialPaidClientCard' || type === 'partialPaidCompanyCard';
+  }
+
+  get isClientCardCancellation(): boolean {
+    const type = this.booking?.cancellation?.cancellationType;
+    return type === 'clientCard' || type === 'partialPaidClientCard';
+  }
+
+  get isCompanyCardCancellation(): boolean {
+    const type = this.booking?.cancellation?.cancellationType;
+    return type === 'companyCard' || type === 'partialPaidCompanyCard';
   }
 
   // -----------------------------------
