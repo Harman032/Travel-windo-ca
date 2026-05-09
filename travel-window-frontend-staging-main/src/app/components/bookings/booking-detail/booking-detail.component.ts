@@ -757,29 +757,44 @@ import { ToastrService } from 'ngx-toastr';
                 </p>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancelOurMargin | number:'1.2-2' }}</p></div>
+              <div class="mt-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancelOurMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ (booking.totalPaidAmount || booking.salePrice) | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
 
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                  <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  <div class="col-span-full border-t border-red-200 pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
+                      <div>
+                        <label class="block text-sm text-gray-600">
+                          {{ booking.cardType === 'Client Card' ? 'Client Receives (Full Sale Price)' : 'Client Receives' }}
+                        </label>
+                        <p class="text-lg font-bold text-blue-700">
+                          {{ (booking.cardType === 'Client Card' ? booking.salePrice : cancelCompanyCardClientReceives) | number:'1.2-2' }}
+                        </p>
+                      </div>
+                    </div>
+                    <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
+                      <p>Client Must Pay Upfront: CAD {{ cancelTotalCharges | number:'1.2-2' }}</p>
+                      <p>Client Receives: CAD {{ booking.salePrice | number:'1.2-2' }}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
-                  <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
-                </div>
-
-                <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="font-semibold">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Total Charges</label><p class="font-semibold">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">New Margin</label><p class="font-semibold">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
-                <div *ngIf="booking.cardType === 'Company Card'"><label class="block text-sm text-gray-600">Client Receives</label><p class="font-semibold">{{ cancelCompanyCardClientReceives | number:'1.2-2' }}</p></div>
-              </div>
-
-              <div *ngIf="booking.cardType === 'Client Card'" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                <p class="text-sm text-blue-800"><strong>Note:</strong> Client pays <strong>Total Charges ({{ cancelTotalCharges | number:'1.2-2' }})</strong> upfront and receives full <strong>Sale Price ({{ booking.salePrice | number:'1.2-2' }})</strong> back.</p>
               </div>
             </ng-container>
 
