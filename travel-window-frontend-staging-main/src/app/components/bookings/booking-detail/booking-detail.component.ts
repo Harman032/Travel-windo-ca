@@ -1720,7 +1720,6 @@ export class BookingDetailComponent implements OnInit {
       return;
     }
     const formValue = this.cancelForm.getRawValue();
-    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
     const paymentModeWas = isCardFlow ? 'Credit Card' : formValue.paymentModeWas;
     
     if (this.booking && paymentModeWas) {
