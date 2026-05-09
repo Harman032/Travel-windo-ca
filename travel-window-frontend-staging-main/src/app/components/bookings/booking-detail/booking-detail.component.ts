@@ -851,6 +851,12 @@ import { ToastrService } from 'ngx-toastr';
                     <p class="font-semibold text-green-700">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p>
                     <p class="text-xs text-gray-400 mt-1">Base Sale Price &minus; Total Cancellation Charges</p>
                   </div>
+
+                  <!-- Row 4 -->
+                  <div>
+                    <label class="block text-sm text-gray-600">New Margin</label>
+                    <p class="font-semibold text-blue-700">{{ cancelNewMarginSCC | number:'1.2-2' }}</p>
+                  </div>
                 </div>
 
                 <!-- Supplier Refund Amount Block -->
@@ -878,6 +884,12 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm text-gray-600">Refund Committed To Client</label>
                     <p class="font-semibold text-green-700">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p>
                     <p class="text-xs text-gray-400 mt-1">Supplier Refund Amount &minus; Our Cancellation Charges</p>
+                  </div>
+                  
+                  <!-- Row 4 -->
+                  <div>
+                    <label class="block text-sm text-gray-600">New Margin</label>
+                    <p class="font-semibold text-blue-700">{{ cancelNewMarginSRA | number:'1.2-2' }}</p>
                   </div>
                 </div>
               </div>
@@ -1953,6 +1965,17 @@ export class BookingDetailComponent implements OnInit {
     const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
     return Math.max(0, Number(sra) - Number(occ));
+  }
+
+  /** SCC mode: New Margin = (Sale Price − Committed To Client) − Supplier Deducted */
+  get cancelNewMarginSCC(): number {
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value) || 0;
+    return Math.round((this.totalSalePriceForCancel - this.refundCommittedToClientNonCC - scc) * 100) / 100;
+  }
+
+  /** SRA mode: New Margin = (Sale Price − Committed To Client) − Supplier Deducted */
+  get cancelNewMarginSRA(): number {
+    return Math.round((this.totalSalePriceForCancel - this.refundCommittedToClientRefundMode - this.supplierDeductedRefundMode) * 100) / 100;
   }
 
   get newMargin(): number {
