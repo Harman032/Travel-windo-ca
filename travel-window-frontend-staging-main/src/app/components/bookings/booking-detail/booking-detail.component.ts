@@ -1760,11 +1760,13 @@ export class BookingDetailComponent implements OnInit {
         supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
         ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
         remarks: formValue.remarks,
-        cancellationType: this.isClientOrCompanyCard ? 
-                          (this.booking.cardType === 'Client Card' ? 'clientCard' : 'companyCard') : 
+        cancellationType: this.isPartialPaidCard ?
+                          (this.booking.cardType === 'Client Card' ? 'partialPaidClientCard' : 'partialPaidCompanyCard') :
+                          this.isClientOrCompanyCard ?
+                          (this.booking.cardType === 'Client Card' ? 'clientCard' : 'companyCard') :
                           formValue.cancellationType,
-        totalSupplierTook: this.isClientOrCompanyCard ? this.cancelTotalSupplierTook : 0,
-        totalCharges: this.isClientOrCompanyCard ? this.cancelTotalCharges : 0,
+        totalSupplierTook: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelTotalSupplierTook : 0,
+        totalCharges: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelTotalCharges : 0,
         clientReceives: this.isClientOrCompanyCard && this.booking.cardType === 'Company Card' ? this.cancelCompanyCardClientReceives : 0,
         newMargin: this.isClientOrCompanyCard ? this.cancelClientCardNewMargin : 0
       }).subscribe({
@@ -1997,7 +1999,9 @@ export class BookingDetailComponent implements OnInit {
   // --- New Card Cancellation Logic ---
 
   get isClientOrCompanyCard(): boolean {
-    return !!this.booking && (this.booking.cardType === 'Client Card' || this.booking.cardType === 'Company Card');
+    return !!this.booking && 
+           !this.isPartialPaid &&
+           (this.booking.cardType === 'Client Card' || this.booking.cardType === 'Company Card');
   }
 
   get cancelOurMargin(): number {
