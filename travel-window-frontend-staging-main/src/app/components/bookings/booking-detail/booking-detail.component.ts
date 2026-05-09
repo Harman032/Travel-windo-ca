@@ -641,197 +641,7 @@ import { ToastrService } from 'ngx-toastr';
         <div *ngIf="showCancelForm" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancel Booking</h3>
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
-            <ng-container *ngIf="!isClientOrCompanyCard">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
-                <select formControlName="paymentModeWas" class="input bg-gray-100 cursor-not-allowed" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
-                  <option value="">Select payment mode</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Cheque">Cheque</option>
-                  <option value="Credit Card">Credit Card</option>
-                </select>
-                <p *ngIf="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched" class="text-red-500 text-xs mt-1">Payment mode is required</p>
-              </div>
-
-              <!-- Credit Card flow -->
-              <div *ngIf="cancelForm.get('paymentModeWas')?.value === 'Credit Card' && !isPartialPaidCard" class="mt-4 space-y-4">
-                <p *ngIf="(dateChangeSaleAddon + flightChangeSaleAddon) > 0" class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">Refund is only on base sale ({{ refundablePortionOfSalePrice | number:'1.2-2' }}). Date Change &amp; Flight Change charges are non-refundable.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label class="block text-sm text-gray-600">Base Sale Price (Not Editable)</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Old Margin (Not Editable)</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }} <span class="text-xs text-gray-500">(on base only)</span></p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div><label class="block text-sm text-gray-600">Refundable Amount To Client (Not Editable)</label><p class="font-semibold">{{ cancelRefundableToClient | number:'1.2-2' }}</p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" placeholder="e.g. 220" [class.border-red-500]="cancelForm.get('chargeFromClient')?.invalid && cancelForm.get('chargeFromClient')?.touched" />
-                    <p *ngIf="cancelForm.get('chargeFromClient')?.invalid && cancelForm.get('chargeFromClient')?.touched" class="text-red-500 text-xs mt-1">Charges from client is required</p>
-                  </div>
-                  <div>
-                    <label class="block text-sm text-gray-600">Old Margin (Not Editable)</label>
-                    <p class="font-semibold">{{ cancelOldMarginCC | number:'1.2-2' }}</p>
-                  </div>
-                  <div><label class="block text-sm text-gray-600">New Margin (Not Editable)</label><p class="font-semibold">{{ newMargin | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ cancelRefundCommittedToClient | number:'1.2-2' }}</p></div>
-                </div>
-              </div>
-
-              <!-- Non–Credit Card flow -->
-              <div *ngIf="cancelForm.get('paymentModeWas')?.value && cancelForm.get('paymentModeWas')?.value !== 'Credit Card' && !isPartialPaid" class="mt-4 space-y-4">
-                <!-- Radio: Cancellation Type -->
-                <div class="flex items-center gap-6 py-2">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" formControlName="cancellationType" value="supplierCancellationCharges" class="h-4 w-4 accent-red-600" />
-                    <span class="text-sm font-medium text-gray-700">Supplier Cancellation Charges</span>
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" formControlName="cancellationType" value="supplierRefundAmount" class="h-4 w-4 accent-red-600" />
-                    <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
-                  </label>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label class="block text-sm text-gray-600">Base Sale Price (Not Editable)</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Our Old Margin (Not Editable)</label><p class="font-semibold">{{ (cancelOurMargin) | number:'1.2-2' }} <span class="text-xs text-gray-500">(on total)</span></p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      {{ cancelForm.get('cancellationType')?.value === 'supplierRefundAmount' ? 'Supplier Refund Amount' : 'Supplier Cancellation Charges' }}
-                      <span class="text-red-500">*</span>
-                    </label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <ng-container *ngIf="cancelForm.get('cancellationType')?.value !== 'supplierRefundAmount'">
-                    <div><label class="block text-sm text-gray-600">Total Cancellation Charges (Not Editable)</label><p class="font-semibold">{{ cancelTotalCancellationCharges | number:'1.2-2' }}</p></div>
-                    <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Base Sale Price − Total Cancellation Charges</p></div>
-                  </ng-container>
-                  <ng-container *ngIf="cancelForm.get('cancellationType')?.value === 'supplierRefundAmount'">
-                    <div><label class="block text-sm text-gray-600">Supplier Deducted (Not Editable)</label><p class="font-semibold">{{ supplierDeductedRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Our Cost − Supplier Refund Amount</p></div>
-                    <div><label class="block text-sm text-gray-600">Refund Committed To Client (Not Editable)</label><p class="font-semibold">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p><p class="text-xs text-gray-500 mt-0.5">Supplier Refund Amount – Our Cancellation Charges</p></div>
-                  </ng-container>
-                </div>
-              </div>
-
-              <!-- Partial Paid flow -->
-              <div *ngIf="isPartialPaid && !isPartialPaidCard" class="mt-4 space-y-4">
-                <div class="flex items-center gap-6 py-2">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" formControlName="cancellationType" value="partialPaidCancellationCharges" class="h-4 w-4 accent-red-600" />
-                    <span class="text-sm font-medium text-gray-700">Supplier Cancellation Charges</span>
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" formControlName="cancellationType" value="partialPaidRefundAmount" class="h-4 w-4 accent-red-600" />
-                    <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
-                  </label>
-                </div>
-
-                <div *ngIf="cancelForm.get('cancellationType')?.value === 'partialPaidCancellationCharges'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div class="col-span-full border-t border-red-200 pt-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Total Charges = Margin + Supplier Charges + Supplier Cancellation + Our Cancellation</p>
-                    <p class="text-xs text-gray-500">Refund to Client = Paid Amount - Total Charges</p>
-                  </div>
-                </div>
-
-                <div *ngIf="cancelForm.get('cancellationType')?.value === 'partialPaidRefundAmount'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Refund Amount <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
-                  </div>
-                  <div class="col-span-full border-t border-red-200 pt-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Supplier Deducted</label><p class="text-lg font-bold text-red-700">{{ partialPaidSupplierDeducted | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClientSRA | number:'1.2-2' }}</p></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Supplier Deducted = Paid Amount - Supplier Refund Amount</p>
-                    <p class="text-xs text-gray-500">Refund to Client = Supplier Refund Amount - Our Cancellation Charges</p>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-4 col-span-full">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
-                <textarea formControlName="remarks" class="input" rows="3" required [class.border-red-500]="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched"></textarea>
-                <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
-              </div>
-            </ng-container>
-
-            <ng-container *ngIf="isClientOrCompanyCard && !isPartialPaidCard">
-              <div class="mb-4">
-                <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
-                  <ng-container *ngIf="booking.cardType === 'Client Card'">
-                    Client Card Cancellation: Please review the calculated margin and charges below.
-                  </ng-container>
-                  <ng-container *ngIf="booking.cardType === 'Company Card'">
-                    Company Card Cancellation: Please review the calculated margin and charges below.
-                  </ng-container>
-                </p>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div><label class="block text-sm text-gray-600">Our Cost (Not Editable)</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Sale Price (Not Editable)</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Supplier Charges (Not Editable)</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Our Margin (Not Editable)</label><p class="font-semibold">{{ cancelOurMargin | number:'1.2-2' }}</p></div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                  <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
-                  <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
-                </div>
-
-                <div><label class="block text-sm text-gray-600">Total Supplier Took (Not Editable)</label><p class="font-semibold">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p><p class="text-xs text-gray-500">Supplier Charges + Supplier Cancellation Charges</p></div>
-                <div><label class="block text-sm text-gray-600">Total Charges (Not Editable)</label><p class="font-semibold">{{ cancelTotalCharges | number:'1.2-2' }}</p><p class="text-xs text-gray-500">Supplier Charges + Supplier Cancellation Charges + New Margin</p></div>
-                <div><label class="block text-sm text-gray-600">New Margin (Not Editable)</label><p class="font-semibold">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p><p class="text-xs text-gray-500">Our Margin + Our Cancellation Charges</p></div>
-                <div *ngIf="booking.cardType === 'Company Card'"><label class="block text-sm text-gray-600">Client Receives (Not Editable)</label><p class="font-semibold">{{ cancelCompanyCardClientReceives | number:'1.2-2' }}</p><p class="text-xs text-gray-500">Sale Price - Total Charges</p></div>
-              </div>
-
-              <div *ngIf="booking.cardType === 'Client Card'" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                <p class="text-sm text-blue-800"><strong>Note:</strong> Client pays <strong>Total Charges ({{ cancelTotalCharges | number:'1.2-2' }})</strong> upfront and receives full <strong>Sale Price ({{ booking.salePrice | number:'1.2-2' }})</strong> back.</p>
-              </div>
-              <div class="mt-4 col-span-full">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
-                <textarea formControlName="remarks" class="input" rows="3" required [class.border-red-500]="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched"></textarea>
-                <p *ngIf="cancelForm.get('remarks')?.invalid && cancelForm.get('remarks')?.touched" class="text-red-500 text-xs mt-1">Remarks is required</p>
-              </div>
-            </ng-container>
-
-            <!-- Partial Paid Card flow -->
+            <!-- 1. Partial Paid Card flow (MUST COME FIRST) -->
             <ng-container *ngIf="isPartialPaidCard">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
@@ -856,21 +666,178 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div class="col-span-full border-t border-red-200 pt-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ partialPaidCardTotalSupplierTook | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ partialPaidCardNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidCardTotalCharges | number:'1.2-2' }}</p></div>
+                      <div>
+                        <label class="block text-sm text-gray-600">
+                          {{ booking.cardType === 'Client Card' ? 'Client Receives (Full Sale Price)' : 'Client Receives' }}
+                        </label>
+                        <p class="text-lg font-bold text-blue-700">
+                          {{ (booking.cardType === 'Client Card' ? booking.totalPaidAmount : partialPaidCardClientReceives) | number:'1.2-2' }}
+                        </p>
+                      </div>
                     </div>
-                    
-                    <div class="mt-4 p-3 bg-white border border-gray-200 rounded">
-                      <ng-container *ngIf="booking.cardType === 'Client Card'">
-                        <p class="text-sm font-medium text-red-700">Upfront Needed: CAD {{ partialPaidCardUpfrontNeeded | number:'1.2-2' }}</p>
-                        <p class="text-sm font-bold text-green-700 mt-1">Client Receives: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
-                        <p class="text-xs text-gray-600 mt-1">Client gets back what they paid (CAD {{ booking.totalPaidAmount | number:'1.2-2' }}) after paying upfront</p>
-                      </ng-container>
-                      <ng-container *ngIf="booking.cardType === 'Company Card'">
-                        <p class="text-sm font-medium text-gray-800">No upfront needed</p>
-                        <p class="text-sm font-bold text-green-700 mt-1">Client Receives: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
+                    <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
+                      <p *ngIf="partialPaidCardUpfrontNeeded > 0">Client Must Pay Upfront: CAD {{ partialPaidCardUpfrontNeeded | number:'1.2-2' }}</p>
+                      <p *ngIf="partialPaidCardUpfrontNeeded <= 0">No upfront needed — paid amount covers all charges</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 2. Regular Partial Paid flow (Non-Card) -->
+            <ng-container *ngIf="isPartialPaid && !isPartialPaidCard">
+              <div class="flex items-center gap-6 py-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" formControlName="cancellationType" value="partialPaidCancellationCharges" class="h-4 w-4 accent-red-600" />
+                  <span class="text-sm font-medium text-gray-700">Supplier Cancellation Charges</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" formControlName="cancellationType" value="partialPaidRefundAmount" class="h-4 w-4 accent-red-600" />
+                  <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
+                </label>
+              </div>
+
+              <div *ngIf="cancelForm.get('cancellationType')?.value === 'partialPaidCancellationCharges'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+                <div class="col-span-full border-t border-red-200 pt-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="cancelForm.get('cancellationType')?.value === 'partialPaidRefundAmount'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Refund Amount <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+                <div class="col-span-full border-t border-red-200 pt-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-gray-600">Supplier Deducted</label><p class="text-lg font-bold text-red-700">{{ partialPaidSupplierDeducted | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClientSRA | number:'1.2-2' }}</p></div>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 3. Fully Paid Card flow -->
+            <ng-container *ngIf="isClientOrCompanyCard">
+              <div class="mb-4">
+                <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                  {{ booking.cardType }} Cancellation: Review calculated margin and charges below.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancelOurMargin | number:'1.2-2' }}</p></div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                  <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                </div>
+
+                <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="font-semibold">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Total Charges</label><p class="font-semibold">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">New Margin</label><p class="font-semibold">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
+                <div *ngIf="booking.cardType === 'Company Card'"><label class="block text-sm text-gray-600">Client Receives</label><p class="font-semibold">{{ cancelCompanyCardClientReceives | number:'1.2-2' }}</p></div>
+              </div>
+
+              <div *ngIf="booking.cardType === 'Client Card'" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                <p class="text-sm text-blue-800"><strong>Note:</strong> Client pays <strong>Total Charges ({{ cancelTotalCharges | number:'1.2-2' }})</strong> upfront and receives full <strong>Sale Price ({{ booking.salePrice | number:'1.2-2' }})</strong> back.</p>
+              </div>
+            </ng-container>
+
+            <!-- 4. Regular Fully Paid flow (Non-Card) -->
+            <ng-container *ngIf="!isPartialPaid && !isClientOrCompanyCard">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
+                <select formControlName="paymentModeWas" class="input" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
+                  <option value="">Select payment mode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Credit Card">Credit Card</option>
+                </select>
+              </div>
+
+              <!-- Credit Card flow -->
+              <div *ngIf="cancelForm.get('paymentModeWas')?.value === 'Credit Card'" class="mt-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Old Margin</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }}</p></div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
+                  </div>
+                  <div><label class="block text-sm text-gray-600">New Margin</label><p class="font-semibold">{{ newMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client</label><p class="font-semibold">{{ cancelRefundCommittedToClient | number:'1.2-2' }}</p></div>
+                </div>
+              </div>
+
+              <!-- Non-Credit Card flow -->
+              <div *ngIf="cancelForm.get('paymentModeWas')?.value && cancelForm.get('paymentModeWas')?.value !== 'Credit Card'" class="mt-4 space-y-4">
+                <div class="flex items-center gap-6 py-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" formControlName="cancellationType" value="supplierCancellationCharges" class="h-4 w-4 accent-red-600" />
+                    <span class="text-sm font-medium text-gray-700">Supplier Cancellation Charges</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" formControlName="cancellationType" value="supplierRefundAmount" class="h-4 w-4 accent-red-600" />
+                    <span class="text-sm font-medium text-gray-700">Supplier Refund Amount</span>
+                  </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ totalSalePriceForCancel | number:'1.2-2' }}</p></div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      {{ cancelForm.get('cancellationType')?.value === 'supplierRefundAmount' ? 'Supplier Refund Amount' : 'Supplier Cancellation Charges' }}
+                      <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
                         <p class="text-xs text-gray-600">We deduct Total Charges from card payment and return remaining to client</p>
                       </ng-container>
                     </div>
