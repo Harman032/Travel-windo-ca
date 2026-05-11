@@ -210,6 +210,7 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price</label>
               <input type="number" formControlName="salePrice" class="input" placeholder="0" />
             </div>
+            <div class="col-span-full border-t border-gray-200 my-4"></div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges</label>
               <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
@@ -230,6 +231,7 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
               <input type="text" formControlName="cardLast4Digits" class="input" placeholder="e.g. 1234" maxlength="4" />
             </div>
+            <div class="col-span-full border-t border-gray-200 my-4"></div>
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Additional Service</label>
               <button type="button" (click)="addAdditionalService()" class="btn btn-secondary mb-3">Add Additional Service</button>
