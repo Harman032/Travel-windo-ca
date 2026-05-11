@@ -439,6 +439,14 @@ import { ToastrService } from 'ngx-toastr';
             <!-- Client Card Partial Payment Cancellation Fields -->
             <ng-container *ngIf="booking.cancellation.cancellationType === 'clientCardPartialPayment'">
               <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">
+                  Supplier Cancellation Charges
+                </label>
+                <p class="text-gray-900 font-medium text-red-600">
+                  CAD {{ (booking.cancellation.supplierCancellationCharges ?? 0) | number:'1.2-2' }}
+                </p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
                 <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook ?? 0) | number:'1.2-2' }}</p>
               </div>
@@ -451,7 +459,7 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Remaining Amount</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Non-Card Payment</label>
                 <p class="text-gray-900 font-medium text-gray-700">CAD {{ (booking.cancellation.remainingAmount ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="(booking.cancellation.upfrontNeeded || 0) > 0">
