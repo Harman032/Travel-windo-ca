@@ -300,6 +300,7 @@ import { ToastrService } from 'ngx-toastr';
                         <option value="Kotak Bank">Kotak Bank</option>
                         <option value="Kotak Bank UPI">Kotak Bank UPI</option>
                         <option value="Travobirds">Travobirds</option>
+                        <option value="Direct Paid to Supplier">Direct Paid to Supplier</option>
                       </select>
                       <p *ngIf="payment.get('paymentMode')?.invalid && payment.get('paymentMode')?.touched" class="text-red-500 text-xs mt-1">Payment mode is required</p>
                     </div>

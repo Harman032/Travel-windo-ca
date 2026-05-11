@@ -10,6 +10,7 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
   'Cheque',
   'Cash',
   'UPI',
+  'Direct Paid to Supplier',
 ];
 
 @Component({

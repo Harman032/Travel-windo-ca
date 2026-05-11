@@ -50,7 +50,7 @@ export interface Booking {
 
 export interface Payment {
   paidAmount: number;
-  paymentMode: 'Cash' | 'Cheque' | 'Credit Card' | 'UPI' | 'Bank Transfer';
+  paymentMode: 'Cash' | 'Cheque' | 'Credit Card' | 'UPI' | 'Bank Transfer' | 'Kotak Bank' | 'Kotak Bank UPI' | 'Travobirds' | 'Direct Paid to Supplier' | string;
   paymentDate: Date;
   referenceNo?: string;
 }

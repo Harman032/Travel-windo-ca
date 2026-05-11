@@ -237,7 +237,13 @@ import { ToastrService } from 'ngx-toastr';
                   <tr *ngFor="let payment of booking.payments">
                     <td class="px-4 py-2 text-sm">{{ payment.paymentDate | date:'dd-MM-yyyy' }}</td>
                     <td class="px-4 py-2 text-sm">{{ payment.paidAmount | number:'1.2-2' }}</td>
-                    <td class="px-4 py-2 text-sm">{{ payment.paymentMode }}</td>
+                    <td class="px-4 py-2 text-sm">
+                      {{ payment.paymentMode }}
+                      <span *ngIf="payment.paymentMode === 'Direct Paid to Supplier'" 
+                            class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-1 font-medium">
+                        Direct to Supplier
+                      </span>
+                    </td>
                     <td class="px-4 py-2 text-sm">{{ payment.referenceNo || 'N/A' }}</td>
                   </tr>
                 </tbody>
@@ -586,7 +592,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div formArrayName="payments" class="space-y-3">
                   <div *ngFor="let p of dateChangePaymentsArray.controls; let i = index" [formGroupName]="i" class="flex flex-wrap items-end gap-3 p-3 bg-white rounded border">
                     <div><label class="block text-xs text-gray-600 mb-1">Paid Amount</label><input type="number" formControlName="paidAmount" class="input" step="0.01" /></div>
-                    <div><label class="block text-xs text-gray-600 mb-1">Payment Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option></select></div>
+                    <div><label class="block text-xs text-gray-600 mb-1">Payment Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option><option value="Direct Paid to Supplier">Direct Paid to Supplier</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Payment Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No (Optional)</label><input type="text" formControlName="referenceNo" class="input" /></div>
                     <button type="button" (click)="removeDateChangePayment(i)" class="btn btn-danger">Remove</button>
@@ -645,7 +651,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div formArrayName="payments" class="space-y-3">
                   <div *ngFor="let p of flightChangePaymentsArray.controls; let i = index" [formGroupName]="i" class="flex flex-wrap items-end gap-3 p-3 bg-white rounded border">
                     <div><label class="block text-xs text-gray-600 mb-1">Paid Amount</label><input type="number" formControlName="paidAmount" class="input" step="0.01" /></div>
-                    <div><label class="block text-xs text-gray-600 mb-1">Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option></select></div>
+                    <div><label class="block text-xs text-gray-600 mb-1">Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option><option value="Direct Paid to Supplier">Direct Paid to Supplier</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No</label><input type="text" formControlName="referenceNo" class="input" /></div>
                     <button type="button" (click)="removeFlightChangePayment(i)" class="btn btn-danger">Remove</button>
@@ -889,6 +895,7 @@ import { ToastrService } from 'ngx-toastr';
                   <option value="Cash">Cash</option>
                   <option value="Cheque">Cheque</option>
                   <option value="Credit Card">Credit Card</option>
+                  <option value="Direct Paid to Supplier">Direct Paid to Supplier</option>
                 </select>
               </div>
 

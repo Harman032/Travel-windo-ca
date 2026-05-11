@@ -431,7 +431,13 @@ import { AuthService } from '../../services/auth.service';
                 <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.salePrice | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.ourCost | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.paymentMode }}</td>
+                <td class="px-4 py-2 text-sm">
+                  {{ item.paymentMode }}
+                  <span *ngIf="item.paymentMode === 'Direct Paid to Supplier'" 
+                        class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-1 font-medium">
+                    Direct to Supplier
+                  </span>
+                </td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierCharges || 0 | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">
