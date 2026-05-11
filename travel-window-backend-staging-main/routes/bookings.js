@@ -1072,7 +1072,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
       const totalCharges = Math.round((totalSupplierTook + newMarginVal) * 100) / 100;
       const remainingAmount = Math.round((totalSalePrice - paymentFromCard) * 100) / 100;
-      const supplierWillReturn = baseOurCost;
+      const supplierWillReturn = Math.round((baseOurCost - scc) * 100) / 100;
 
       let upfrontNeeded = 0;
       let clientReceives = 0;
@@ -1485,7 +1485,7 @@ function recalculateCancellationValues(booking) {
     const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
     const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
     const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
-    const supplierWillReturn = ourCost;
+    const supplierWillReturn = Math.round((ourCost - scc) * 100) / 100;
 
     let upfrontNeeded = 0;
     let clientReceives = 0;
