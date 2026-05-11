@@ -1065,7 +1065,51 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       finalCommittedToClient = totalSalePrice - (oldMargin + supplierDeducted + occ);
     }
 
-    if (cancellationType === 'clientCard' || cancellationType === 'companyCard') {
+    if (cancellationType === 'clientCardPartialPayment') {
+      const paymentFromCard = Number(booking.paymentFromCard) || 0;
+      const ourMargin = Math.round((oldMargin) * 100) / 100;
+      const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
+      const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+      const totalCharges = Math.round((supplierCharges + scc + newMarginVal) * 100) / 100;
+      const remainingAmount = Math.round((totalSalePrice - paymentFromCard) * 100) / 100;
+      const supplierWillReturn = baseOurCost;
+
+      let upfrontNeeded = 0;
+      let clientReceives = 0;
+
+      if (remainingAmount < totalCharges) {
+        upfrontNeeded = Math.round((totalCharges - remainingAmount) * 100) / 100;
+        clientReceives = paymentFromCard;
+      } else {
+        upfrontNeeded = 0;
+        clientReceives = Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
+      }
+
+      booking.cancellation = {
+        isCancelled: true,
+        paymentModeWas: 'Credit Card',
+        totalAmountPaidByClient: totalAmountPaid,
+        oldMargin: ourMargin,
+        newMargin: newMarginVal,
+        totalSupplierTook: totalSupplierTook,
+        totalCharges: totalCharges,
+        remainingAmount: remainingAmount,
+        supplierWillReturn: supplierWillReturn,
+        upfrontNeeded: upfrontNeeded,
+        clientReceives: clientReceives,
+        refundableAmount: clientReceives,
+        refundCommittedToClient: clientReceives,
+        supplierCancellationCharges: scc,
+        ourCancellationCharges: occ,
+        cancellationType: 'clientCardPartialPayment',
+        refundProcessed: false,
+        remarks,
+        cancelledBy: req.user._id,
+        cancelledAt: new Date(),
+        refundReceivedFromSupplier: { date: null, remarks: '' },
+        refundPaidToClient: { date: null, remarks: '' }
+      };
+    } else if (cancellationType === 'clientCard' || cancellationType === 'companyCard') {
       const ourMargin = oldMargin;
       const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
       const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
@@ -1432,6 +1476,35 @@ function recalculateCancellationValues(booking) {
     c.totalCharges = totalCharges;
     c.clientReceives = clientReceives;
     c.supplierWillReturn = supplierWillReturn;
+    c.refundableAmount = clientReceives;
+    c.refundCommittedToClient = clientReceives;
+  } else if (type === 'clientCardPartialPayment') {
+    const paymentFromCard = Number(booking.paymentFromCard) || 0;
+    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
+    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
+    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
+    const supplierWillReturn = ourCost;
+
+    let upfrontNeeded = 0;
+    let clientReceives = 0;
+
+    if (remainingAmount < totalCharges) {
+      upfrontNeeded = Math.round((totalCharges - remainingAmount) * 100) / 100;
+      clientReceives = paymentFromCard;
+    } else {
+      upfrontNeeded = 0;
+      clientReceives = Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
+    }
+
+    c.newMargin = newMargin;
+    c.totalSupplierTook = totalSupplierTook;
+    c.totalCharges = totalCharges;
+    c.remainingAmount = remainingAmount;
+    c.supplierWillReturn = supplierWillReturn;
+    c.upfrontNeeded = upfrontNeeded;
+    c.clientReceives = clientReceives;
     c.refundableAmount = clientReceives;
     c.refundCommittedToClient = clientReceives;
   } else if (type === 'clientCard') {
