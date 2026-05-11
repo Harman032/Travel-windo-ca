@@ -812,18 +812,18 @@ import { ToastrService } from 'ngx-toastr';
                           {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Client Receives Full Card Payment' : 'Client Receives' }}
                         </label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ (clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? booking.paymentFromCard : (booking.paymentFromCard + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges))) | number:'1.2-2' }}
+                          {{ (clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? (booking?.paymentFromCard || 0) : ((booking?.paymentFromCard || 0) + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges))) | number:'1.2-2' }}
                         </p>
                       </div>
                     </div>
                     <div class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
                       <ng-container *ngIf="clientCardPartialRemainingAmount < clientCardPartialTotalCharges">
                         <p>Upfront Needed: CAD {{ (clientCardPartialTotalCharges - clientCardPartialRemainingAmount) | number:'1.2-2' }}</p>
-                        <p>Client Receives Full Card Payment: CAD {{ booking.paymentFromCard | number:'1.2-2' }}</p>
+                        <p>Client Receives Full Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}</p>
                       </ng-container>
                       <ng-container *ngIf="clientCardPartialRemainingAmount >= clientCardPartialTotalCharges">
                         <p>No upfront needed</p>
-                        <p>Client Receives: CAD {{ (booking.paymentFromCard + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges)) | number:'1.2-2' }}</p>
+                        <p>Client Receives: CAD {{ ((booking?.paymentFromCard || 0) + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges)) | number:'1.2-2' }}</p>
                       </ng-container>
                     </div>
                   </div>
@@ -1049,7 +1049,7 @@ import { ToastrService } from 'ngx-toastr';
                           Upfront Needed: CAD {{ booking.cancellation?.upfrontNeeded | number:'1.2-2' }}
                         </p>
                         <p class="text-sm font-bold text-green-800">
-                          Client Receives Card Payment: CAD {{ booking.paymentFromCard | number:'1.2-2' }}
+                          Client Receives Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}
                         </p>
                       </ng-container>
                       <ng-container *ngIf="(booking.cancellation?.upfrontNeeded || 0) <= 0">
