@@ -1067,10 +1067,10 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
     if (cancellationType === 'clientCardPartialPayment') {
       const paymentFromCard = Number(booking.paymentFromCard) || 0;
-      const ourMargin = Math.round((oldMargin) * 100) / 100;
+      const ourMargin = Math.round((totalSalePrice - baseOurCost - supplierCharges) * 100) / 100;
       const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
       const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-      const totalCharges = Math.round((supplierCharges + scc + newMarginVal) * 100) / 100;
+      const totalCharges = Math.round((totalSupplierTook + newMarginVal) * 100) / 100;
       const remainingAmount = Math.round((totalSalePrice - paymentFromCard) * 100) / 100;
       const supplierWillReturn = baseOurCost;
 
@@ -1483,7 +1483,7 @@ function recalculateCancellationValues(booking) {
     const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
     const newMargin = Math.round((ourMargin + occ) * 100) / 100;
     const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
+    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
     const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
     const supplierWillReturn = ourCost;
 
