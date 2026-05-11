@@ -812,18 +812,18 @@ import { ToastrService } from 'ngx-toastr';
                           {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Client Receives Full Card Payment' : 'Client Receives' }}
                         </label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ (clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? (booking?.paymentFromCard || 0) : ((booking?.paymentFromCard || 0) + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges))) | number:'1.2-2' }}
+                          {{ clientCardPartialClientReceives | number:'1.2-2' }}
                         </p>
                       </div>
                     </div>
                     <div class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
                       <ng-container *ngIf="clientCardPartialRemainingAmount < clientCardPartialTotalCharges">
-                        <p>Upfront Needed: CAD {{ (clientCardPartialTotalCharges - clientCardPartialRemainingAmount) | number:'1.2-2' }}</p>
-                        <p>Client Receives Full Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}</p>
+                        <p>Upfront Needed: CAD {{ clientCardPartialUpfrontNeeded | number:'1.2-2' }}</p>
+                        <p>Client Receives Full Card Payment: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
                       </ng-container>
                       <ng-container *ngIf="clientCardPartialRemainingAmount >= clientCardPartialTotalCharges">
                         <p>No upfront needed</p>
-                        <p>Client Receives: CAD {{ ((booking?.paymentFromCard || 0) + (clientCardPartialRemainingAmount - clientCardPartialTotalCharges)) | number:'1.2-2' }}</p>
+                        <p>Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
                       </ng-container>
                     </div>
                   </div>
@@ -881,7 +881,7 @@ import { ToastrService } from 'ngx-toastr';
             </ng-container>
 
             <!-- 4. Regular Fully Paid flow (Non-Card) -->
-            <ng-container *ngIf="!isPartialPaid && !isClientOrCompanyCard">
+            <ng-container *ngIf="!isPartialPaid && !isClientOrCompanyCard && !isClientCardPartialPayment">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
                 <select formControlName="paymentModeWas" class="input" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
@@ -2174,9 +2174,9 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialTotalSupplierTook(): number {
-    const supplierCharges = this.booking?.supplierCharges || 0;
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    return Math.round(supplierCharges + scc);
+    const supplierCharges = this.booking?.supplierCharges ?? 0;
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((supplierCharges + scc) * 100) / 100;
   }
 
   get clientCardPartialNewMargin(): number {
@@ -2186,10 +2186,7 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialTotalCharges(): number {
-    const supplierCharges = this.booking?.supplierCharges || 0;
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    const newMargin = this.clientCardPartialNewMargin;
-    return Math.round(supplierCharges + scc + newMargin);
+    return Math.round((this.clientCardPartialTotalSupplierTook + this.clientCardPartialNewMargin) * 100) / 100;
   }
 
   get clientCardPartialRemainingAmount(): number {
@@ -2197,6 +2194,25 @@ export class BookingDetailComponent implements OnInit {
     const salePrice = this.booking.salePrice || 0;
     const paymentFromCard = this.booking.paymentFromCard || 0;
     return Math.round(salePrice - paymentFromCard);
+  }
+
+  get clientCardPartialUpfrontNeeded(): number {
+    const remainingAmount = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.paymentFromCard ?? 0)) * 100) / 100;
+    const totalCharges = this.clientCardPartialTotalCharges;
+    if (remainingAmount < totalCharges) {
+      return Math.round((totalCharges - remainingAmount) * 100) / 100;
+    }
+    return 0;
+  }
+
+  get clientCardPartialClientReceives(): number {
+    const remainingAmount = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.paymentFromCard ?? 0)) * 100) / 100;
+    const totalCharges = this.clientCardPartialTotalCharges;
+    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
+    if (remainingAmount < totalCharges) {
+      return paymentFromCard;
+    }
+    return Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
   }
 
   get isClientOrCompanyCard(): boolean {
