@@ -2,7 +2,7 @@
 
 **Analysis Date:** 2026-05-12
 
-This document provides an **exhaustive** field-by-field map of the MongoDB schemas used in the Travel Window CRM.
+This document provides a **100% complete** field-by-field map of all MongoDB schemas used in the Travel Window CRM.
 
 ---
 
@@ -46,8 +46,10 @@ This document provides an **exhaustive** field-by-field map of the MongoDB schem
 | `verifiedByAdmin` | Boolean | Admin team verification status |
 | `verifiedByAdminDate` | Date | Timestamp of admin verification |
 | `verifiedByAdminUser` | ObjectId | Ref: `User` |
-| `accountVerified` | Boolean | Legacy/UI helper flag |
-| `adminVerified` | Boolean | Legacy/UI helper flag |
+| `accountVerified` | Boolean | UI helper flag |
+| `adminVerified` | Boolean | UI helper flag |
+| `createdAt` | Date | Auto-timestamp |
+| `updatedAt` | Date | Auto-timestamp |
 
 ### B. Passenger & Travel Details
 | Field | Type | Description |
@@ -122,7 +124,7 @@ This document provides an **exhaustive** field-by-field map of the MongoDB schem
 | `supplierDeducted` | Number | Amount supplier kept |
 | `ourCancellationCharges`| Number | Agency cancellation fee |
 | `totalSupplierTook` | Number | Actual supplier cost |
-| `totalCharges` | Number | Combined penalties |
+| `totalCharges` | Number | Total charges (Supplier + Our) |
 | `totalCancellationCharges`| Number | Total agency + supplier fees |
 | `supplierWillReturn` | Number | Expected return from supplier |
 | `clientReceives` | Number | Total payout to client |
