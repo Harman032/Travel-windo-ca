@@ -210,10 +210,10 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price</label>
               <input type="number" formControlName="salePrice" class="input" placeholder="0" />
             </div>
-            <div class="col-span-full py-2">
-              <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" formControlName="isCardPayment" class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                <span class="text-sm font-semibold text-gray-700">Payment Through Cards</span>
+            <div class="col-span-full py-2 mb-2">
+              <label class="flex items-center space-x-3 cursor-pointer">
+                <input type="checkbox" formControlName="isCardPayment" class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                <span class="text-xl font-semibold text-gray-700">Payment Through Cards</span>
               </label>
             </div>
 
