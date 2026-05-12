@@ -381,5 +381,10 @@ bookingSchema.index({ status: 1 });
 bookingSchema.index({ supplier: 1 });
 bookingSchema.index({ submittedBy: 1 });
 bookingSchema.index({ dateOfSubmission: 1 });
+bookingSchema.index({ supplier: 1, dateOfSubmission: -1 });
+bookingSchema.index({ submittedBy: 1, dateOfSubmission: -1 });
+bookingSchema.index({ status: 1, dateOfSubmission: -1 });
+bookingSchema.index({ balanceAmount: 1, status: 1 });
+bookingSchema.index({ dateOfSubmission: 1, status: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

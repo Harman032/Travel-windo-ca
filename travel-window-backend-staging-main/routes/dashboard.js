@@ -26,15 +26,7 @@ router.get('/stats', auth, async (req, res) => {
     const unticketedQuery = { ...baseQuery, supplierName: 'Agent2', status: { $ne: 'Cancelled' } };
     const assignedToMeQuery = { assignedTo: req.user._id };
     const showAssignedCount = ['AGENT1', 'AGENT2', 'ACCOUNT'].includes(req.user.role);
-    const [
-      totalBookings,
-      draftCount,
-      pendingVerificationCount,
-      unticketedCount,
-      cancelledCount,
-      totalUsers,
-      assignedTicketsCount
-    ] = await Promise.all([
+    const results = await Promise.allSettled([
       Booking.countDocuments(baseQuery),
       Booking.countDocuments({ ...baseQuery, status: 'Draft' }),
       Booking.countDocuments({ ...baseQuery, status: 'Pending Verification' }),
@@ -43,6 +35,16 @@ router.get('/stats', auth, async (req, res) => {
       req.user.role === 'ADMIN' ? User.countDocuments({ isActive: true }) : Promise.resolve(null),
       showAssignedCount ? Booking.countDocuments(assignedToMeQuery) : Promise.resolve(null)
     ]);
+
+    const [
+      totalBookings,
+      draftCount,
+      pendingVerificationCount,
+      unticketedCount,
+      cancelledCount,
+      totalUsers,
+      assignedTicketsCount
+    ] = results.map(r => r.status === 'fulfilled' ? r.value : 0);
 
     const stats = {
       totalBookings,

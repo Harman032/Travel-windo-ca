@@ -1,23 +1,10 @@
 // Vercel serverless function - Express is first-class on Vercel
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 
 const app = express();
 
-// CORS middleware - using standard cors package with fallback
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow all origins (reflecting back) or use a specific domain
-    if (!origin) return callback(null, true);
-    callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Vercel-Protection-Bypass']
-}));
-
-// Manual CORS fallback for edge cases
+// Consolidated CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -30,7 +17,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, X-Vercel-Protection-Bypass');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(204).end();
   }
   next();
 });
@@ -63,9 +50,14 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
-      heartbeatFrequencyMS: 1000,
+      maxPoolSize: 50,
+      minPoolSize: 10,
+      serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000,
+      retryWrites: true,
+      retryReads: true
     };
 
     console.log('=> Starting new MongoDB connection...');

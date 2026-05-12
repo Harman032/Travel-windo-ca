@@ -2,6 +2,13 @@ const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 
+function getPaginationParams(req) {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 50), 500);
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+}
+
 const router = express.Router();
 
 // Date-wise report
@@ -13,6 +20,7 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
       return res.status(400).json({ message: 'Date range is required' });
     }
     
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find({
       dateOfSubmission: {
         $gte: new Date(dateFrom),
@@ -21,7 +29,9 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
     })
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 });
+      .sort({ dateOfSubmission: -1 })
+      .skip(skip)
+      .limit(limit);
     
     const summary = {
       totalBookings: bookings.length,
@@ -51,10 +61,13 @@ router.get('/supplier-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
       if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
     }
     
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 });
+      .sort({ dateOfSubmission: -1 })
+      .skip(skip)
+      .limit(limit);
     
     // Group by supplier
     const supplierGroups = {};
@@ -96,10 +109,13 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
       if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
     }
     
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 });
+      .sort({ dateOfSubmission: -1 })
+      .skip(skip)
+      .limit(limit);
     
     // Group by employee
     const employeeGroups = {};
@@ -129,12 +145,15 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
 // Pending Verification report
 router.get('/pending-verification', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find({
       status: { $in: ['Pending Verification', 'Unticketed'] }
     })
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 });
+      .sort({ dateOfSubmission: -1 })
+      .skip(skip)
+      .limit(limit);
     
     res.json({ bookings, count: bookings.length });
   } catch (error) {
@@ -145,13 +164,16 @@ router.get('/pending-verification', auth, authorize('ACCOUNT', 'ADMIN'), async (
 // Outstanding Balance report
 router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find({
       balanceAmount: { $gt: 0 },
       status: { $ne: 'Cancelled' }
     })
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
-      .sort({ balanceAmount: -1 });
+      .sort({ balanceAmount: -1 })
+      .skip(skip)
+      .limit(limit);
     
     const totalOutstanding = bookings.reduce((sum, b) => sum + b.balanceAmount, 0);
     
@@ -176,7 +198,8 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
     }
     
-    const bookings = await Booking.find(query).populate('supplier', 'name').sort({ dateOfSubmission: -1 });
+    const { skip, limit } = getPaginationParams(req);
+    const bookings = await Booking.find(query).populate('supplier', 'name').sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
     
     const reportData = [];
     bookings.forEach(b => {
@@ -206,7 +229,8 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   try {
     const { paymentType } = req.query;
     
-    const bookings = await Booking.find({ verifiedByAccount: false }).sort({ dateOfSubmission: -1 });
+    const { skip, limit } = getPaginationParams(req);
+    const bookings = await Booking.find({ verifiedByAccount: false }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
     const unverifiedPayments = [];
     
     bookings.forEach(b => {
@@ -255,7 +279,8 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
       if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
     }
     
-    const bookings = await Booking.find(query).populate('submittedBy', 'name');
+    const { skip, limit } = getPaginationParams(req);
+    const bookings = await Booking.find(query).populate('submittedBy', 'name').skip(skip).limit(limit);
     
     const agentMap = {};
     bookings.forEach(b => {
@@ -296,9 +321,12 @@ router.get('/agent-booking-list', auth, async (req, res) => {
       query.$or.push({ returnDate: dateRange });
     }
 
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name')
-      .sort({ travelDate: -1 });
+      .sort({ travelDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const result = bookings.map(b => ({
       _id: b._id,
@@ -335,9 +363,12 @@ router.get('/agent-margin-report', auth, async (req, res) => {
       if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
     }
 
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name')
-      .sort({ dateOfSubmission: -1 });
+      .sort({ dateOfSubmission: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const result = bookings.map(b => ({
       _id: b._id,
@@ -365,13 +396,14 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       return res.status(400).json({ message: 'Date range is required' });
     }
 
+    const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find({
       dateOfSubmission: {
         $gte: new Date(dateFrom),
         $lte: new Date(dateTo)
       },
       status: { $ne: 'Cancelled' }
-    }).sort({ dateOfSubmission: -1 });
+    }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
 
     const rows = bookings.map(b => ({
       _id: b._id,
