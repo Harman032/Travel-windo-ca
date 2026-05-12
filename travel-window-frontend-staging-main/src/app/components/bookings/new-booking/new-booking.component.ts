@@ -210,27 +210,35 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price</label>
               <input type="number" formControlName="salePrice" class="input" placeholder="0" />
             </div>
-            <div class="col-span-full border-t border-gray-200 my-4"></div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges</label>
-              <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
+            <div class="col-span-full py-2">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" formControlName="isCardPayment" class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                <span class="text-sm font-semibold text-gray-700">Payment Through Cards</span>
+              </label>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Payment From Card</label>
-              <input type="number" formControlName="paymentFromCard" class="input" placeholder="0" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
-              <select formControlName="cardType" class="input">
-                <option value="">Select Card Type</option>
-                <option value="Company Card">Company Card</option>
-                <option value="Client Card">Client Card</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
-              <input type="text" formControlName="cardLast4Digits" class="input" placeholder="e.g. 1234" maxlength="4" />
-            </div>
+
+            <ng-container *ngIf="bookingForm.get('isCardPayment')?.value">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges</label>
+                <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment From Card</label>
+                <input type="number" formControlName="paymentFromCard" class="input" placeholder="0" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
+                <select formControlName="cardType" class="input">
+                  <option value="">Select Card Type</option>
+                  <option value="Company Card">Company Card</option>
+                  <option value="Client Card">Client Card</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
+                <input type="text" formControlName="cardLast4Digits" class="input" placeholder="e.g. 1234" maxlength="4" />
+              </div>
+            </ng-container>
             <div class="col-span-full border-t border-gray-200 my-4"></div>
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Additional Service</label>
@@ -468,6 +476,17 @@ export class NewBookingComponent implements OnInit {
     this.bookingForm.valueChanges.subscribe(() => {
       this.calculateTotals();
     });
+
+    this.bookingForm.get('isCardPayment')?.valueChanges.subscribe(checked => {
+      if (!checked) {
+        this.bookingForm.patchValue({
+          supplierCharges: 0,
+          paymentFromCard: 0,
+          cardType: '',
+          cardLast4Digits: ''
+        }, { emitEvent: false });
+      }
+    });
   }
 
   /** When Full payment is selected, ensure at least one payment row exists */
@@ -500,6 +519,7 @@ export class NewBookingComponent implements OnInit {
       paymentFromCard: [0],
       cardType: [''],
       cardLast4Digits: [''],
+      isCardPayment: [false],
       additionalServices: this.fb.array([]),
       paymentType: ['Full'],
       payments: this.fb.array([])
@@ -576,7 +596,8 @@ export class NewBookingComponent implements OnInit {
           contactNumber: (localNumber || '').replace(/\D/g, ''),
           travelDate: this.toDateInputValue(booking.travelDate),
           returnDate: this.toDateInputValue(booking.returnDate),
-          supplier: booking.supplier?._id || booking.supplier || ''
+          supplier: booking.supplier?._id || booking.supplier || '',
+          isCardPayment: !!(booking.cardType || (booking.paymentFromCard && booking.paymentFromCard > 0))
         });
 
         // Clear and repopulate multipleSectors so we don't get duplicate/wrong rows
