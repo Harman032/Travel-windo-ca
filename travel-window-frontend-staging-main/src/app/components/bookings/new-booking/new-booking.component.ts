@@ -219,7 +219,7 @@ import { ToastrService } from 'ngx-toastr';
 
             <ng-container *ngIf="bookingForm.get('isCardPayment')?.value">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges/Service charges</label>
                 <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
               </div>
               <div>
@@ -723,58 +723,58 @@ export class NewBookingComponent implements OnInit {
     }
     const formValue = this.bookingForm.value;
     const fullContactNumber = (formValue.countryCode || '').replace(/\s/g, '') + ' ' + (formValue.contactNumber || '').trim();
-      
-      // Transform form data (exclude countryCode from payload; use combined contactNumber)
-      const { countryCode, ...rest } = formValue;
-      const paymentsPayload = (formValue.payments || []).map((p: any) => {
-        const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
-        const rawDate = p.paymentDate;
-        const paymentDate = rawDate ? new Date(rawDate) : new Date();
-        const validDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime()) ? paymentDate : new Date();
-        return {
-          paidAmount,
-          paymentMode: p.paymentMode || 'Cash',
-          paymentDate: validDate,
-          referenceNo: p.referenceNo || ''
-        };
-      });
 
-      const bookingData: any = {
-        ...rest,
-        contactNumber: fullContactNumber.trim(),
-        travelDate: formValue.travelDate || null,
-        returnDate: formValue.returnDate || null,
-        multipleSectors: (formValue.multipleSectors || []).map((s: any) => ({
-          ...s,
-          travelDate: s.travelDate || null
-        })),
-        payments: paymentsPayload
+    // Transform form data (exclude countryCode from payload; use combined contactNumber)
+    const { countryCode, ...rest } = formValue;
+    const paymentsPayload = (formValue.payments || []).map((p: any) => {
+      const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
+      const rawDate = p.paymentDate;
+      const paymentDate = rawDate ? new Date(rawDate) : new Date();
+      const validDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime()) ? paymentDate : new Date();
+      return {
+        paidAmount,
+        paymentMode: p.paymentMode || 'Cash',
+        paymentDate: validDate,
+        referenceNo: p.referenceNo || ''
       };
+    });
 
-      if (this.isEditMode && this.bookingId) {
-        delete bookingData.dateOfSubmission;
-        delete bookingData.submittedBy;
-        delete bookingData.submittedByName;
-        this.bookingService.updateBooking(this.bookingId, bookingData).subscribe({
-          next: () => {
-            this.toastr.success('Booking updated successfully', 'Success');
-            this.router.navigate(['/dashboard/bookings']);
-          },
-          error: (err) => {
-            this.toastr.error(err.error?.message || 'Failed to update booking', 'Error');
-          }
-        });
-      } else {
-        this.bookingService.createBooking(bookingData).subscribe({
-          next: () => {
-            this.toastr.success('Booking created successfully', 'Success');
-            this.router.navigate(['/dashboard/bookings']);
-          },
-          error: (err) => {
-            this.toastr.error(err.error?.message || 'Failed to create booking', 'Error');
-          }
-        });
-      }
+    const bookingData: any = {
+      ...rest,
+      contactNumber: fullContactNumber.trim(),
+      travelDate: formValue.travelDate || null,
+      returnDate: formValue.returnDate || null,
+      multipleSectors: (formValue.multipleSectors || []).map((s: any) => ({
+        ...s,
+        travelDate: s.travelDate || null
+      })),
+      payments: paymentsPayload
+    };
+
+    if (this.isEditMode && this.bookingId) {
+      delete bookingData.dateOfSubmission;
+      delete bookingData.submittedBy;
+      delete bookingData.submittedByName;
+      this.bookingService.updateBooking(this.bookingId, bookingData).subscribe({
+        next: () => {
+          this.toastr.success('Booking updated successfully', 'Success');
+          this.router.navigate(['/dashboard/bookings']);
+        },
+        error: (err) => {
+          this.toastr.error(err.error?.message || 'Failed to update booking', 'Error');
+        }
+      });
+    } else {
+      this.bookingService.createBooking(bookingData).subscribe({
+        next: () => {
+          this.toastr.success('Booking created successfully', 'Success');
+          this.router.navigate(['/dashboard/bookings']);
+        },
+        error: (err) => {
+          this.toastr.error(err.error?.message || 'Failed to create booking', 'Error');
+        }
+      });
+    }
   }
 
   cancel() {
