@@ -86,18 +86,40 @@ The core model of the application, containing complex nesting for payments, hist
 - `remarks`: String
 
 #### Cancellation Schema (`cancellation`)
-- `isCancelled`: Boolean
-- `totalAmountPaidByClient`: Number
-- `refundableAmount`: Number
-- `committedToClient`: Number
-- `chargeFromClient`: Number
-- `newMargin`: Number
-- `totalSupplierTook`: Number
-- `totalCharges`: Number
-- `supplierWillReturn`: Number
-- `refundCommittedToClient`: Number
-- `refundAwaitedFromSupplier`: Boolean (Default: true)
-- `refundReceivedFromSupplier`: `{ date: Date, remarks: String }`
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `isCancelled` | Boolean | True if booking was cancelled |
+| `cancellationType` | String | Type of cancellation logic applied |
+| `paymentModeWas` | String | Original payment mode |
+| `totalAmountPaidByClient`| Number | Amount collected before cancellation |
+| `refundableAmount` | Number | Calculated amount to be returned |
+| `oldMargin` | Number | Margin before cancellation |
+| `currentMargin` | Number | Live margin during calculation |
+| `newMargin` | Number | Final margin after cancellation |
+| `committedToClient` | Number | Amount promised to client |
+| `chargeFromClient` | Number | Penalty charged to client |
+| `supplierCancellationCharges` | Number | Penalty from supplier |
+| `supplierRefundAmount` | Number | Amount supplier agreed to return |
+| `supplierDeducted` | Number | Amount supplier actually deducted |
+| `ourCancellationCharges`| Number | Our agency's cancellation fee |
+| `totalSupplierTook` | Number | Total cost kept by supplier |
+| `totalCharges` | Number | Total charges (Supplier + Our) |
+| `totalCancellationCharges` | Number | Combined cancellation penalties |
+| `supplierWillReturn` | Number | Expected return from supplier |
+| `clientReceives` | Number | Total client will receive (calculated) |
+| `upfrontNeeded` | Number | Amount needed if card refund is complex |
+| `refundToClient` | Number | Actual amount refunded |
+| `refundCommittedToClient`| Number | Final confirmed refund amount |
+| `refundableAmountToClient`| Number | Theoretical refund amount |
+| `refundProcessed` | Boolean | Status of the refund payout |
+| `refundProcessedBy` | ObjectId | Ref: User |
+| `refundProcessedDate` | Date | When refund was marked as processed |
+| `cancelledBy` | ObjectId | Ref: User |
+| `cancelledAt` | Date | Timestamp of cancellation |
+| `remarks` | String | Cancellation notes |
+| `refundAwaitedFromSupplier` | Boolean | Waiting for supplier payment |
+| `refundReceivedFromSupplier`| Object | `{ date: Date, remarks: String }` |
+| `refundPaidToClient` | Object | `{ date: Date, remarks: String }` |
 
 ---
 
