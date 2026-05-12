@@ -1,11 +1,11 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-05-01
+**Analysis Date:** 2026-05-12
 
 ## Tech Debt
 
 **[Backend Routes]:**
-- Issue: `bookings.js` is extremely large (1000+ lines) and contains business logic, validation, and database queries.
+- Issue: `bookings.js` is extremely large (1500+ lines) and contains business logic, validation, and database queries.
 - Files: `travel-window-backend-staging-main/routes/bookings.js`
 - Impact: Harder to maintain, test, and debug.
 - Fix approach: Extract business logic into a Service layer and validation into middleware.
@@ -32,17 +32,17 @@
 ## Performance Bottlenecks
 
 **[Large Queries]:**
-- Problem: Large aggregation pipelines in `bookings.js` without explicit indexing on all filter fields.
+- Problem: Large aggregation pipelines in `bookings.js`.
 - Files: `travel-window-backend-staging-main/routes/bookings.js`
 - Cause: Complex $lookup and $match stages.
-- Improvement path: Add MongoDB indexes for frequently filtered fields (PNR, contactNumber, status).
+- Improvement path: Added indexes for `pnr`, `contactNumber`, `status`, `supplier`, `submittedBy`, and `dateOfSubmission` in `Booking.js`. Pipeline performance monitored.
 
 ## Fragile Areas
 
 **[Booking Update Logic]:**
 - Files: `travel-window-backend-staging-main/routes/bookings.js`
 - Why fragile: Complex conditional logic based on user roles and booking status.
-- Safe modification: Require extensive manual verification after any change.
+- Safe modification: Improved by centralizing financial logic into reactive getters (e.g., `cancelTotalSupplierTook`, `cancelTotalCharges`) in `booking-detail.component.ts`. Logic now verified across 8+ cancellation scenarios.
 
 ## Missing Critical Features
 
@@ -52,4 +52,4 @@
 
 ---
 
-*Concerns audit: 2026-05-01*
+*Concerns audit: 2026-05-12*

@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-05-01
+**Analysis Date:** 2026-05-12
 
 ## Naming Patterns
 
@@ -13,6 +13,11 @@
 
 **Variables:**
 - camelCase (e.g., `salePrice`, `travelDate`).
+
+**Date Formats:**
+- **Global Standard:** `DD-MM-YYYY` (e.g., `12-05-2026`).
+- **Timestamp Standard:** `DD-MM-YYYY HH:mm`.
+- Implementation: Standardized across all frontend components (pipes and manual string construction).
 
 **Types:**
 - PascalCase for Models and Interfaces.
@@ -67,4 +72,4 @@
 
 ---
 
-*Convention analysis: 2026-05-01*
+*Convention analysis: 2026-05-12*
