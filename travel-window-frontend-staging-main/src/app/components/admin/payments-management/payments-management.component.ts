@@ -204,7 +204,9 @@ export class PaymentsManagementComponent implements OnInit {
       endDate: f.endDate || undefined,
     }).subscribe({
       next: (res: PaymentsResponse) => {
-        this.payments = res.payments;
+        this.payments = res.payments.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
         this.summary = res.summary;
         this.loading = false;
       },
