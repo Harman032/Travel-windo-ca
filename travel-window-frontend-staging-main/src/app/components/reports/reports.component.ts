@@ -6,6 +6,7 @@ import { SupplierService, Supplier } from '../../services/supplier.service';
 import { UserService, User } from '../../services/user.service';
 import { Booking } from '../../services/booking.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-reports',
@@ -43,11 +44,11 @@ import { AuthService } from '../../services/auth.service';
         <form [formGroup]="dateWiseForm" (ngSubmit)="loadDateWiseReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" required />
+            <input type="date" formControlName="dateFrom" class="input" required [max]="today" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" required />
+            <input type="date" formControlName="dateTo" class="input" required [max]="today" />
           </div>
           <div class="flex items-end">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
@@ -68,11 +69,11 @@ import { AuthService } from '../../services/auth.service';
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" />
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" />
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
           </div>
           <div class="flex items-end">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
@@ -93,11 +94,11 @@ import { AuthService } from '../../services/auth.service';
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" />
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" />
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
           </div>
           <div class="flex items-end">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
@@ -111,11 +112,11 @@ import { AuthService } from '../../services/auth.service';
         <form [formGroup]="paymentSupplierForm" (ngSubmit)="loadPaymentSupplierReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" />
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" />
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
           </div>
           <div class="flex items-end">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
@@ -129,11 +130,11 @@ import { AuthService } from '../../services/auth.service';
         <form [formGroup]="agentMarginForm" (ngSubmit)="loadAgentMarginReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" />
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" />
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
           </div>
           <div class="flex items-end">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
@@ -197,7 +198,14 @@ import { AuthService } from '../../services/auth.service';
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let booking of dateWiseData.bookings">
-                <td class="px-4 py-2 text-sm">{{ booking.pnr }}</td>
+                <td class="px-4 py-2 text-sm">
+                  <div class="flex items-center gap-1">
+                    {{ booking.pnr }}
+                    <button (click)="copyToClipboard(booking.pnr)" class="text-gray-400 hover:text-blue-600" title="Copy PNR">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    </button>
+                  </div>
+                </td>
                 <td class="px-4 py-2 text-sm">{{ booking.paxName }}</td>
                 <td class="px-4 py-2 text-sm">{{ booking.totalSalePrice | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ booking.totalPaidAmount | number:'1.2-2' }}</td>
@@ -427,15 +435,22 @@ import { AuthService } from '../../services/auth.service';
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let item of unverifiedPaymentsData">
-                <td class="px-4 py-2 text-sm">{{ item.bookingId }}</td>
+                <td class="px-4 py-2 text-sm">
+                  <div class="flex items-center gap-1">
+                    {{ item.bookingId }}
+                    <button (click)="copyToClipboard(item.bookingId)" class="text-gray-400 hover:text-blue-600" title="Copy Reference">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    </button>
+                  </div>
+                </td>
                 <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.salePrice | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.ourCost | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">
                   {{ item.paymentMode }}
-                  <span *ngIf="item.paymentMode === 'Direct Paid to Supplier'" 
+                  <span *ngIf="item.paymentMode === 'Machine Charge'" 
                         class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-1 font-medium">
-                    Direct to Supplier
+                    Machine Charge
                   </span>
                 </td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
@@ -496,8 +511,8 @@ import { AuthService } from '../../services/auth.service';
       <div *ngIf="selectedReportType === 'agent-booking-list'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Booking List</h3>
         <form [formGroup]="agentBookingListForm" (ngSubmit)="loadAgentBookingList()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" /></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" [max]="today" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" [max]="today" /></div>
           <div *ngIf="isAdmin() || isAccount()"><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
             <select formControlName="employee" class="input"><option value="">All</option><option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option></select>
           </div>
@@ -531,8 +546,8 @@ import { AuthService } from '../../services/auth.service';
       <div *ngIf="selectedReportType === 'agent-margin-report'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Margin Report</h3>
         <form [formGroup]="agentMarginReportForm" (ngSubmit)="loadAgentMarginDetailReport()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" /></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" [max]="today" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" [max]="today" /></div>
           <div *ngIf="isAdmin() || isAccount()"><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
             <select formControlName="employee" class="input"><option value="">All</option><option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option></select>
           </div>
@@ -567,8 +582,8 @@ import { AuthService } from '../../services/auth.service';
       <div *ngIf="selectedReportType === 'financial-summary'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Financial Summary</h3>
         <form [formGroup]="financialSummaryForm" (ngSubmit)="loadFinancialSummary()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" required /></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" required /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" required [max]="today" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" required [max]="today" /></div>
           <div class="flex items-end"><button type="submit" class="btn btn-primary w-full">Generate</button></div>
         </form>
       </div>
@@ -613,6 +628,7 @@ export class ReportsComponent implements OnInit {
   suppliers: Supplier[] = [];
   users: User[] = [];
   unverifiedPaymentType: string = 'all';
+  today = new Date().toISOString().split('T')[0];
 
   dateWiseForm: FormGroup;
   supplierWiseForm: FormGroup;
@@ -640,6 +656,7 @@ export class ReportsComponent implements OnInit {
     private supplierService: SupplierService,
     private userService: UserService,
     private authService: AuthService,
+    private toastr: ToastrService,
     private fb: FormBuilder
   ) {
     this.dateWiseForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
@@ -876,6 +893,14 @@ export class ReportsComponent implements OnInit {
       error: () => {
         alert('Failed to verify payment.');
       }
+    });
+  }
+
+  copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.toastr.success('Copied to clipboard', 'Success');
+    }).catch(err => {
+      console.error('Could not copy text: ', err);
     });
   }
 

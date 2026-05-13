@@ -24,7 +24,7 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
     const bookings = await Booking.find({
       dateOfSubmission: {
         $gte: new Date(dateFrom),
-        $lte: new Date(dateTo)
+        $lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999))
       }
     })
       .populate('submittedBy', 'name email')
@@ -58,7 +58,7 @@ router.get('/supplier-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
     if (dateFrom || dateTo) {
       query.dateOfSubmission = {};
       if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
     
     const { skip, limit } = getPaginationParams(req);
@@ -106,7 +106,7 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
     if (dateFrom || dateTo) {
       query.dateOfSubmission = {};
       if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
     
     const { skip, limit } = getPaginationParams(req);
@@ -195,7 +195,7 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
     if (dateFrom || dateTo) {
       query.dateOfSubmission = {};
       if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
     
     const { skip, limit } = getPaginationParams(req);
@@ -276,7 +276,7 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
     if (dateFrom || dateTo) {
       query.dateOfSubmission = {};
       if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
     
     const { skip, limit } = getPaginationParams(req);
@@ -316,7 +316,7 @@ router.get('/agent-booking-list', auth, async (req, res) => {
       query.$or = [];
       const dateRange = {};
       if (dateFrom) dateRange.$gte = new Date(dateFrom);
-      if (dateTo) dateRange.$lte = new Date(dateTo);
+      if (dateTo) dateRange.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
       query.$or.push({ travelDate: dateRange });
       query.$or.push({ returnDate: dateRange });
     }
@@ -360,7 +360,7 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     if (dateFrom || dateTo) {
       query.dateOfSubmission = {};
       if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
+      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
 
     const { skip, limit } = getPaginationParams(req);
@@ -400,7 +400,7 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     const bookings = await Booking.find({
       dateOfSubmission: {
         $gte: new Date(dateFrom),
-        $lte: new Date(dateTo)
+        $lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999))
       },
       status: { $ne: 'Cancelled' }
     }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);

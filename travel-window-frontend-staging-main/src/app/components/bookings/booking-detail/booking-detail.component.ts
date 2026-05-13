@@ -600,7 +600,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div formArrayName="payments" class="space-y-3">
                   <div *ngFor="let p of dateChangePaymentsArray.controls; let i = index" [formGroupName]="i" class="flex flex-wrap items-end gap-3 p-3 bg-white rounded border">
                     <div><label class="block text-xs text-gray-600 mb-1">Paid Amount</label><input type="number" formControlName="paidAmount" class="input" step="0.01" /></div>
-                    <div><label class="block text-xs text-gray-600 mb-1">Payment Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option><option value="Direct Paid to Supplier">Direct Paid to Supplier</option></select></div>
+                    <div><label class="block text-xs text-gray-600 mb-1">Payment Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="E-Transfer">E-Transfer</option><option value="Machine Charge">Machine Charge</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Payment Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No (Optional)</label><input type="text" formControlName="referenceNo" class="input" /></div>
                     <button type="button" (click)="removeDateChangePayment(i)" class="btn btn-danger">Remove</button>
@@ -659,7 +659,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div formArrayName="payments" class="space-y-3">
                   <div *ngFor="let p of flightChangePaymentsArray.controls; let i = index" [formGroupName]="i" class="flex flex-wrap items-end gap-3 p-3 bg-white rounded border">
                     <div><label class="block text-xs text-gray-600 mb-1">Paid Amount</label><input type="number" formControlName="paidAmount" class="input" step="0.01" /></div>
-                    <div><label class="block text-xs text-gray-600 mb-1">Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Cheque">Cheque</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="Bank Transfer">Bank Transfer</option><option value="Direct Paid to Supplier">Direct Paid to Supplier</option></select></div>
+                    <div><label class="block text-xs text-gray-600 mb-1">Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="E-Transfer">E-Transfer</option><option value="Machine Charge">Machine Charge</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No</label><input type="text" formControlName="referenceNo" class="input" /></div>
                     <button type="button" (click)="removeFlightChangePayment(i)" class="btn btn-danger">Remove</button>
@@ -812,14 +812,14 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
 
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ clientCardPartialTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ clientCardPartialNewMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ clientCardPartialNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ clientCardPartialTotalCharges | number:'1.2-2' }}</p></div>
                       <div>
                         <label class="block text-sm text-gray-600">
@@ -867,14 +867,14 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
 
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
                       <div>
                         <label class="block text-sm text-gray-600">
@@ -901,9 +901,9 @@ import { ToastrService } from 'ngx-toastr';
                 <select formControlName="paymentModeWas" class="input" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
                   <option value="">Select payment mode</option>
                   <option value="Cash">Cash</option>
-                  <option value="Cheque">Cheque</option>
                   <option value="Credit Card">Credit Card</option>
-                  <option value="Direct Paid to Supplier">Direct Paid to Supplier</option>
+                  <option value="Machine Charge">Machine Charge</option>
+                  <option value="E-Transfer">E-Transfer</option>
                 </select>
               </div>
 
@@ -920,7 +920,7 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
                   </div>
-                  <div><label class="block text-sm text-gray-600">New Margin</label><p class="font-semibold">{{ newMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Current Margin</label><p class="font-semibold">{{ newMargin | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Refund Committed To Client</label><p class="font-semibold">{{ cancelRefundCommittedToClient | number:'1.2-2' }}</p></div>
                 </div>
               </div>
@@ -949,7 +949,7 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
 
@@ -966,7 +966,7 @@ import { ToastrService } from 'ngx-toastr';
 
                   <!-- Row 4 -->
                   <div>
-                    <label class="block text-sm text-gray-600">New Margin</label>
+                    <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSCC | number:'1.2-2' }}</p>
                   </div>
                 </div>
@@ -983,7 +983,7 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
 
@@ -1000,7 +1000,7 @@ import { ToastrService } from 'ngx-toastr';
                   
                   <!-- Row 4 -->
                   <div>
-                    <label class="block text-sm text-gray-600">New Margin</label>
+                    <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSRA | number:'1.2-2' }}</p>
                   </div>
                 </div>

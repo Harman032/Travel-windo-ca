@@ -520,6 +520,12 @@ router.put('/:id', auth, async (req, res) => {
       if (Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated', req.user, changes);
       }
+      
+      if (booking.status === 'Cancelled') {
+        recalculateCancellationValues(booking);
+        booking.markModified('cancellation');
+      }
+
       await booking.save();
       return res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
     }
@@ -596,6 +602,12 @@ router.put('/:id', auth, async (req, res) => {
         booking.verifiedByAccount = false;
       }
       addProgressHistory(booking, 'Booking Updated by Account', req.user, changes);
+      
+      if (booking.status === 'Cancelled') {
+        recalculateCancellationValues(booking);
+        booking.markModified('cancellation');
+      }
+
       await booking.save();
       return res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
     }
@@ -692,6 +704,11 @@ router.put('/:id', auth, async (req, res) => {
         addProgressHistory(booking, 'Booking Updated by Admin', req.user, changes);
       }
       
+      if (booking.status === 'Cancelled') {
+        recalculateCancellationValues(booking);
+        booking.markModified('cancellation');
+      }
+
       await booking.save();
       return res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
     }
@@ -1529,5 +1546,30 @@ function recalculateCancellationValues(booking) {
     c.refundCommittedToClient = clientReceives;
   }
 }
+
+// Migration endpoint: Run once to migrate existing cheque payments
+router.post('/migrate-cheque-to-etransfer', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    const result1 = await Booking.updateMany(
+      { 'payments.paymentMode': 'Cheque' },
+      { $set: { 'payments.$[elem].paymentMode': 'E-Transfer' } },
+      { arrayFilters: [{ 'elem.paymentMode': 'Cheque' }] }
+    );
+
+    const result2 = await Booking.updateMany(
+      { 'cancellation.paymentModeWas': 'Cheque' },
+      { $set: { 'cancellation.paymentModeWas': 'E-Transfer' } }
+    );
+
+    res.json({ 
+      message: 'Migration completed successfully', 
+      paymentsUpdated: result1.modifiedCount,
+      cancellationsUpdated: result2.modifiedCount
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 
 module.exports = router;

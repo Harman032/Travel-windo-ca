@@ -23,7 +23,7 @@ export interface PaymentsResponse {
   };
 }
 
-export type PaymentModeFilter = 'All Modes' | 'Cash' | 'Cheque' | 'Credit Card' | 'UPI' | 'Bank Transfer' | 'Direct Paid to Supplier';
+export type PaymentModeFilter = 'All Modes' | 'Cash' | 'Credit Card' | 'UPI' | 'E-Transfer' | 'Machine Charge';
 
 @Injectable({
   providedIn: 'root'
