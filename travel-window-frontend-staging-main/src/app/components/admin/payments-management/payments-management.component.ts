@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { PaymentService, PaymentRow, PaymentsResponse, PaymentModeFilter } from '../../../services/payment.service';
+import { ToastrService } from 'ngx-toastr';
 const PAYMENT_MODES: PaymentModeFilter[] = [
   'All Modes',
   'E-Transfer',
@@ -144,12 +145,25 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
               <tr *ngFor="let p of payments" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.date | date:'dd-MM-yyyy' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">
-                  <a [routerLink]="['/dashboard/bookings', p.bookingId]" class="hover:underline">{{ p.bookingPnr }}</a>
+                  <div class="flex items-center gap-1">
+                    <a [routerLink]="['/dashboard/bookings', p.bookingId]" class="hover:underline">{{ p.bookingPnr }}</a>
+                    <button (click)="copyToClipboard(p.bookingPnr)" class="text-gray-400 hover:text-blue-600" title="Copy PNR">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    </button>
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.passenger }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{{ p.amount | number:'1.0-0' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.mode }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">{{ p.reference }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">
+                  <div class="flex items-center gap-1" *ngIf="p.reference">
+                    {{ p.reference }}
+                    <button (click)="copyToClipboard(p.reference)" class="text-gray-400 hover:text-blue-600" title="Copy Reference">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    </button>
+                  </div>
+                  <span *ngIf="!p.reference">-</span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ p.addedBy }}</td>
               </tr>
             </tbody>
@@ -171,7 +185,10 @@ export class PaymentsManagementComponent implements OnInit {
     endDate: '' as string,
   };
 
-  constructor(private paymentService: PaymentService) {}
+  constructor(
+    private paymentService: PaymentService,
+    private toastr: ToastrService
+  ) {}
 
   ngOnInit() {
     this.loadPayments();
@@ -196,6 +213,15 @@ export class PaymentsManagementComponent implements OnInit {
         this.summary = { totalPayments: 0, totalAmount: 0, averagePayment: 0 };
         this.loading = false;
       },
+    });
+  }
+
+  copyToClipboard(text: string) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      this.toastr.success('Copied to clipboard', 'Success');
+    }).catch(err => {
+      console.error('Could not copy text: ', err);
     });
   }
 }
