@@ -1455,96 +1455,63 @@ router.post('/:id/recalculate-cancellation', auth, authorize('ADMIN'), async (re
 /** Helper to recalculate cancellation values based on type */
 function recalculateCancellationValues(booking) {
   const c = booking.cancellation;
+  if (!c) return;
+
   const type = c.cancellationType;
   const salePrice = Number(booking.salePrice) || 0;
   const ourCost = Number(booking.ourCost) || 0;
   const supplierCharges = Number(booking.supplierCharges) || 0;
   const paidAmount = Number(booking.totalPaidAmount) || 0;
+  const paymentFromCard = Number(booking.paymentFromCard) || 0;
+  
   const scc = Number(c.supplierCancellationCharges) || 0;
   const occ = Number(c.ourCancellationCharges) || 0;
 
-  if (type === 'partialPaidClientCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
-    const supplierWillReturn = Math.round((paidAmount - scc) * 100) / 100;
-    const upfrontNeeded = totalCharges;
-    const clientReceives = paidAmount;
+  // Base values
+  const margin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+  const newMargin = Math.round((margin + occ) * 100) / 100;
+  const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+  const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
 
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.supplierWillReturn = supplierWillReturn;
-    c.upfrontNeeded = upfrontNeeded;
-    c.clientReceives = clientReceives;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = clientReceives;
-  } else if (type === 'partialPaidCompanyCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
+  c.newMargin = newMargin;
+  c.totalSupplierTook = totalSupplierTook;
+  c.totalCharges = totalCharges;
+
+  if (type === 'companyCard' || type === 'partialPaidCompanyCard') {
+    // Scenario A & B — Company Card
+    c.supplierWillReturn = Math.round((paymentFromCard - totalSupplierTook) * 100) / 100;
     const clientReceives = Math.round((paidAmount - totalCharges) * 100) / 100;
-    const supplierWillReturn = Math.round((paidAmount - scc) * 100) / 100;
-
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.clientReceives = clientReceives;
-    c.supplierWillReturn = supplierWillReturn;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = clientReceives;
-  } else if (type === 'clientCardPartialPayment') {
-    const paymentFromCard = Number(booking.paymentFromCard) || 0;
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
-    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
-    const supplierWillReturn = Math.round((ourCost - scc) * 100) / 100;
-
-    let upfrontNeeded = 0;
-    let clientReceives = 0;
-
-    if (remainingAmount < totalCharges) {
-      upfrontNeeded = Math.round((totalCharges - remainingAmount) * 100) / 100;
-      clientReceives = paymentFromCard;
+    
+    if (clientReceives < 0) {
+      c.upfrontNeeded = Math.abs(clientReceives);
+      c.clientReceives = 0;
     } else {
-      upfrontNeeded = 0;
-      clientReceives = Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
+      c.upfrontNeeded = 0;
+      c.clientReceives = clientReceives;
     }
-
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
+  } else if (type === 'clientCard' || type === 'partialPaidClientCard') {
+    // Scenario C — Client Card
+    c.supplierWillReturn = Math.round((ourCost - totalSupplierTook) * 100) / 100;
+    c.upfrontNeeded = occ;
+    c.clientReceives = c.supplierWillReturn;
+  } else if (type === 'clientCardPartialPayment') {
+    // Special case for partial card payment
+    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
     c.remainingAmount = remainingAmount;
-    c.supplierWillReturn = supplierWillReturn;
-    c.upfrontNeeded = upfrontNeeded;
-    c.clientReceives = clientReceives;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = clientReceives;
-  } else if (type === 'clientCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
-
-    c.supplierWillReturn = ourCost;
-    c.upfrontNeeded = totalCharges;
-    c.clientReceives = salePrice;
-    c.refundableAmount = salePrice;
-    c.refundCommittedToClient = salePrice;
-  } else if (type === 'companyCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
-    const clientReceives = Math.round((salePrice - totalCharges) * 100) / 100;
-
-    c.supplierWillReturn = ourCost;
-    c.clientReceives = clientReceives;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = clientReceives;
+    c.supplierWillReturn = Math.round((ourCost - scc) * 100) / 100;
+    
+    if (remainingAmount < totalCharges) {
+      c.upfrontNeeded = Math.round((totalCharges - remainingAmount) * 100) / 100;
+      c.clientReceives = paymentFromCard; 
+    } else {
+      c.upfrontNeeded = 0;
+      c.clientReceives = Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
+    }
   }
+
+  // Common assignments
+  c.refundableAmount = c.clientReceives;
+  c.refundCommittedToClient = c.clientReceives;
 }
 
 // Migration endpoint: Run once to migrate existing cheque payments

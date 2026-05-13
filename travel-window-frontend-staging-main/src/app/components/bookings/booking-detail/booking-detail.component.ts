@@ -1041,8 +1041,11 @@ import { ToastrService } from 'ngx-toastr';
                     </p>
                     
                     <!-- Company card only -->
-                    <div *ngIf="isCompanyCardCancellation">
-                      <p class="text-sm font-bold text-green-800 mt-2">
+                    <div *ngIf="isCompanyCardCancellation" class="mt-2 space-y-1">
+                      <p *ngIf="(booking.cancellation?.upfrontNeeded ?? 0) > 0" class="text-sm font-bold text-red-800">
+                        Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded ?? 0) | number:'1.2-2' }}
+                      </p>
+                      <p class="text-sm font-bold text-green-800">
                         Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
@@ -2154,9 +2157,17 @@ export class BookingDetailComponent implements OnInit {
       return Math.round(c.supplierRefundAmount || 0);
     }
 
-    if (c.cancellationType === 'clientCard' || c.cancellationType === 'companyCard' || c.cancellationType === 'partialPaidClientCard' || c.cancellationType === 'partialPaidCompanyCard') {
+    if (c.cancellationType === 'clientCard' || c.cancellationType === 'partialPaidClientCard') {
       const baseOurCost = (Number(this.booking.ourCost) || 0) - this.dateChangeOurAddon - this.flightChangeOurAddon;
-      return baseOurCost;
+      const supplierCharges = Number(this.booking.supplierCharges) || 0;
+      const scc = Number(c.supplierCancellationCharges) || 0;
+      return Math.round((baseOurCost - supplierCharges - scc) * 100) / 100;
+    }
+    if (c.cancellationType === 'companyCard' || c.cancellationType === 'partialPaidCompanyCard') {
+      const paymentFromCard = Number(this.booking.paymentFromCard) || 0;
+      const supplierCharges = Number(this.booking.supplierCharges) || 0;
+      const scc = Number(c.supplierCancellationCharges) || 0;
+      return Math.round((paymentFromCard - supplierCharges - scc) * 100) / 100;
     }
     if (c.cancellationType === 'supplierRefundAmount') {
       return c.supplierRefundAmount || 0;
