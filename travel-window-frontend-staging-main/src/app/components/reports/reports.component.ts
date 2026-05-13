@@ -919,8 +919,8 @@ export class ReportsComponent implements OnInit {
     const paymentFromCard = item.paymentFromCard || 0;
     const cardType = item.cardType;
 
-    // Logic for Client Card partial payment (Paid < Sale Price)
-    if (cardType === 'Client Card' && paymentFromCard < salePrice) {
+    // Logic for Client Card partial payment (Paid < Our Cost)
+    if (cardType === 'Client Card' && paymentFromCard < ourCost) {
       return { 
         type: 'DR', 
         value: Math.round((ourCost - paymentFromCard + supplierCharges) * 100) / 100 
