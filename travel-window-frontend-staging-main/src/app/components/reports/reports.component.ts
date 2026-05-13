@@ -702,7 +702,7 @@ export class ReportsComponent implements OnInit {
 
     this.loadSuppliers();
     this.loadUsers();
-    
+
     // Only load these if user has permissions
     if (this.isAdmin() || this.isAccount()) {
       this.loadPendingVerificationReport();
@@ -736,10 +736,10 @@ export class ReportsComponent implements OnInit {
 
   loadDateWiseReport() {
     if (this.dateWiseForm.invalid) return;
-    
+
     const { dateFrom, dateTo } = this.dateWiseForm.value;
     this.loading = true;
-    
+
     this.reportService.getDateWiseReport(dateFrom, dateTo).subscribe({
       next: (data) => {
         this.dateWiseData = data;
@@ -754,7 +754,7 @@ export class ReportsComponent implements OnInit {
   loadSupplierWiseReport() {
     const { supplier, dateFrom, dateTo } = this.supplierWiseForm.value;
     this.loading = true;
-    
+
     this.reportService.getSupplierWiseReport(supplier || undefined, dateFrom || undefined, dateTo || undefined).subscribe({
       next: (data) => {
         this.supplierWiseData = data;
@@ -769,7 +769,7 @@ export class ReportsComponent implements OnInit {
   loadEmployeeWiseReport() {
     const { employee, dateFrom, dateTo } = this.employeeWiseForm.value;
     this.loading = true;
-    
+
     this.reportService.getEmployeeWiseReport(employee || undefined, dateFrom || undefined, dateTo || undefined).subscribe({
       next: (data) => {
         this.employeeWiseData = data;
@@ -921,27 +921,27 @@ export class ReportsComponent implements OnInit {
 
     // Special Condition: Client Card Overpayment (Paid > Sale Price)
     // Formula: paymentFromCard - ourCost (Credit from supplier)
-    if (cardType === 'Client Card' && paymentFromCard > salePrice) {
-      return { 
-        type: 'CR', 
-        value: Math.round((paymentFromCard - ourCost) * 100) / 100 
+    if (cardType === 'Client Card' && paymentFromCard < salePrice) {
+      return {
+        type: 'DR',
+        value: Math.round((ourCost - paymentFromCard) * 100) / 100
       };
     }
 
     // CR Logic: (Client Card OR Company Card)
     // For card payments, the user wants to see the margin (Sale Price - Cost - Charges) as Credit.
     if (cardType === 'Client Card' || cardType === 'Company Card') {
-      return { 
-        type: 'CR', 
-        value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100 
+      return {
+        type: 'CR',
+        value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100
       };
     }
 
     // DR Logic: (Cash, Transfer, etc. where no card type is assigned)
     // We owe the supplier the cost + any charges.
-    return { 
-      type: 'DR', 
-      value: Math.round((ourCost + supplierCharges) * 100) / 100 
+    return {
+      type: 'DR',
+      value: Math.round((ourCost + supplierCharges) * 100) / 100
     };
   }
 
@@ -952,12 +952,3 @@ export class ReportsComponent implements OnInit {
       'Pending Verification': 'bg-yellow-100 text-yellow-800',
       'Account Verified': 'bg-green-100 text-green-800',
       'Admin Verified': 'bg-green-200 text-green-900',
-      'Billed': 'bg-purple-100 text-purple-800',
-      'Paid': 'bg-green-200 text-green-900',
-      'Cancelled': 'bg-red-100 text-red-800',
-      'Ticketed': 'bg-green-100 text-green-800',
-      'Unticketed': 'bg-orange-100 text-orange-800'
-    };
-    return statusMap[status] || 'bg-gray-100 text-gray-800';
-  }
-}
