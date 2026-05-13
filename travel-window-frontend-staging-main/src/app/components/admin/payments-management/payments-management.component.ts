@@ -5,12 +5,11 @@ import { RouterModule } from '@angular/router';
 import { PaymentService, PaymentRow, PaymentsResponse, PaymentModeFilter } from '../../../services/payment.service';
 const PAYMENT_MODES: PaymentModeFilter[] = [
   'All Modes',
-  'Bank Transfer',
+  'E-Transfer',
   'Credit Card',
-  'Cheque',
   'Cash',
   'UPI',
-  'Direct Paid to Supplier',
+  'Machine Charge',
 ];
 
 @Component({
