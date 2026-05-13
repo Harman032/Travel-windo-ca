@@ -58,8 +58,12 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
       }
     }
 
-    // Sort by date descending
-    rows.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Sort by date descending (Newest First)
+    rows.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA;
+    });
 
     const totalPayments = rows.length;
     const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
