@@ -919,26 +919,21 @@ export class ReportsComponent implements OnInit {
     const paymentFromCard = item.paymentFromCard || 0;
     const cardType = item.cardType;
 
-    // CR Logic: (Client Card OR Company Card) + paymentFromCard > 0
-    // If a card was charged by the supplier, the supplier has the money.
-    // We expect the supplier to credit us the difference (Paid - Cost - Charges).
-    if ((cardType === 'Client Card' || cardType === 'Company Card') && paymentFromCard > 0) {
+    // CR Logic: (Client Card OR Company Card)
+    // For card payments, the user wants to see the margin (Sale Price - Cost - Charges) as Credit.
+    if (cardType === 'Client Card' || cardType === 'Company Card') {
       return { 
         type: 'CR', 
-        value: Math.round((paymentFromCard - ourCost - supplierCharges) * 100) / 100 
+        value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100 
       };
     }
 
-    // DR Logic: paymentFromCard == 0 OR null (indicates we have the money from Cash/Transfer/Own Machine)
+    // DR Logic: (Cash, Transfer, etc. where no card type is assigned)
     // We owe the supplier the cost + any charges.
-    if (!paymentFromCard || paymentFromCard === 0) {
-      return { 
-        type: 'DR', 
-        value: Math.round((ourCost + supplierCharges) * 100) / 100 
-      };
-    }
-
-    return { type: null, value: 0 };
+    return { 
+      type: 'DR', 
+      value: Math.round((ourCost + supplierCharges) * 100) / 100 
+    };
   }
 
   getStatusClass(status: string): string {
