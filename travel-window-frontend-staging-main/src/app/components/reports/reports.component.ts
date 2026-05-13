@@ -919,6 +919,15 @@ export class ReportsComponent implements OnInit {
     const paymentFromCard = item.paymentFromCard || 0;
     const cardType = item.cardType;
 
+    // Special Condition: Client Card Overpayment (Paid > Sale Price)
+    // Formula: paymentFromCard - ourCost (Credit from supplier)
+    if (cardType === 'Client Card' && paymentFromCard > salePrice) {
+      return { 
+        type: 'CR', 
+        value: Math.round((paymentFromCard - ourCost) * 100) / 100 
+      };
+    }
+
     // CR Logic: (Client Card OR Company Card)
     // For card payments, the user wants to see the margin (Sale Price - Cost - Charges) as Credit.
     if (cardType === 'Client Card' || cardType === 'Company Card') {
