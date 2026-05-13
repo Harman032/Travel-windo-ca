@@ -429,6 +429,7 @@ import { ToastrService } from 'ngx-toastr';
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR / DR</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
@@ -462,6 +463,13 @@ import { ToastrService } from 'ngx-toastr';
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
+                <td class="px-4 py-2 text-sm font-bold">
+                  <ng-container *ngIf="getCRDRValue(item) as res">
+                    <span *ngIf="res.type === 'CR'" class="text-green-600">CR: {{ res.value | number:'1.2-2' }}</span>
+                    <span *ngIf="res.type === 'DR'" class="text-red-600">DR: {{ res.value | number:'1.2-2' }}</span>
+                    <span *ngIf="!res.type">-</span>
+                  </ng-container>
+                </td>
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
                 </td>
@@ -902,6 +910,32 @@ export class ReportsComponent implements OnInit {
     }).catch(err => {
       console.error('Could not copy text: ', err);
     });
+  }
+
+  getCRDRValue(item: any): { type: 'CR' | 'DR' | null, value: number } {
+    const salePrice = item.salePrice || 0;
+    const ourCost = item.ourCost || 0;
+    const supplierCharges = item.supplierCharges || 0;
+    const paymentFromCard = item.paymentFromCard || 0;
+    const cardType = item.cardType;
+
+    // CR Logic: Client Card + paymentFromCard == salePrice
+    if (cardType === 'Client Card' && paymentFromCard === salePrice) {
+      return { 
+        type: 'CR', 
+        value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100 
+      };
+    }
+
+    // DR Logic: paymentFromCard == 0 && cardType == null
+    if ((!paymentFromCard || paymentFromCard === 0) && (!cardType || cardType === null || cardType === '-')) {
+      return { 
+        type: 'DR', 
+        value: Math.round((ourCost + supplierCharges) * 100) / 100 
+      };
+    }
+
+    return { type: null, value: 0 };
   }
 
   getStatusClass(status: string): string {
