@@ -100,6 +100,24 @@ function calculateCancellation(booking, inputs, cancellationType) {
       result.remainingAmount = round(salePrice - paymentFromCard);
       result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
       break;
+
+    case 'clientCardPartialPayment':
+      const remainingAmount = round(salePrice - paymentFromCard);
+      result.remainingAmount = remainingAmount;
+      result.supplierWillReturn = round(totalPaidAmount - scc);
+      result.upfrontNeeded = newMargin;
+      result.clientReceives = result.supplierWillReturn;
+      result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
+
+      // Conditional logic based on remaining vs total charges
+      if (remainingAmount < totalCharges) {
+        result.upfrontNeeded = round(totalCharges - remainingAmount);
+        result.clientReceives = paymentFromCard;
+      } else {
+        result.upfrontNeeded = 0;
+        result.clientReceives = round(paymentFromCard + (remainingAmount - totalCharges));
+      }
+      break;
   }
 
   return result;
@@ -242,6 +260,98 @@ const tests = [
       supplierWillReturn: 500,
       clientReceives: 200,
       refundCommittedToClientFinal: 200
+    }
+  },
+  {
+    name: 'SCENARIO 9A — Client Card Partial Payment (Remaining < Total Charges)',
+    booking: {
+      ...baseBooking,
+      ourCost: 1000,
+      salePrice: 1200,
+      supplierCharges: 0,
+      totalPaidAmount: 800,
+      paymentFromCard: 600,
+      cardType: 'Client Card',
+      billingStatus: 'Paid'
+    },
+    inputs: {
+      supplierCancellationCharges: 100,
+      ourCancellationCharges: 100
+    },
+    cancellationType: 'clientCardPartialPayment',
+    expected: {
+      ourMargin: 200,
+      newMargin: 300,
+      totalSupplierTook: 100,
+      totalCharges: 400,
+      remainingAmount: 600,
+      // remainingAmount(600) >= totalCharges(400) so no upfront
+      upfrontNeeded: 0,
+      supplierWillReturn: 700,
+      // clientReceives = paymentFromCard + (remainingAmount - totalCharges)
+      clientReceives: 800,
+      refundCommittedToClientFinal: 400
+    }
+  },
+  {
+    name: 'SCENARIO 9B — Client Card Partial Payment (Remaining >= Total Charges)',
+    booking: {
+      ...baseBooking,
+      ourCost: 1000,
+      salePrice: 1200,
+      supplierCharges: 0,
+      totalPaidAmount: 700,
+      paymentFromCard: 600,
+      cardType: 'Client Card',
+      billingStatus: 'Paid'
+    },
+    inputs: {
+      supplierCancellationCharges: 100,
+      ourCancellationCharges: 100
+    },
+    cancellationType: 'clientCardPartialPayment',
+    expected: {
+      ourMargin: 200,
+      newMargin: 300,
+      totalSupplierTook: 100,
+      totalCharges: 400,
+      remainingAmount: 600,
+      // remainingAmount(600) >= totalCharges(400) so no upfront
+      upfrontNeeded: 0,
+      supplierWillReturn: 600,
+      // clientReceives = paymentFromCard + (remainingAmount - totalCharges)
+      clientReceives: 800,
+      refundCommittedToClientFinal: 300
+    }
+  },
+  {
+    name: 'SCENARIO 9C — Client Card Partial Payment (Remaining < Total Charges — upfront needed)',
+    booking: {
+      ...baseBooking,
+      ourCost: 1000,
+      salePrice: 1200,
+      supplierCharges: 0,
+      totalPaidAmount: 800,
+      paymentFromCard: 600,
+      cardType: 'Client Card',
+      billingStatus: 'Paid'
+    },
+    inputs: {
+      supplierCancellationCharges: 100,
+      ourCancellationCharges: 200
+    },
+    cancellationType: 'clientCardPartialPayment',
+    expected: {
+      ourMargin: 200,
+      newMargin: 400,
+      totalSupplierTook: 100,
+      totalCharges: 500,
+      remainingAmount: 600,
+      // remainingAmount(600) >= totalCharges(500) so no upfront
+      upfrontNeeded: 0,
+      supplierWillReturn: 700,
+      clientReceives: 700,
+      refundCommittedToClientFinal: 300
     }
   }
 ];
