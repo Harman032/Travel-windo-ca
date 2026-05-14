@@ -1277,8 +1277,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       } else {
         // partialPaidRefundAmount
         const sra = scc; // in this mode scc is used for refund amount
-        const supplierDeductedVal = Math.round(totalAmountPaid - sra);
-        const refundToClient = Math.round(sra - occ);
+        const supplierDeductedVal = Math.round((totalAmountPaid - sra) * 100) / 100;
+        const refundToClient = Math.round((sra - occ) * 100) / 100;
 
         booking.cancellation = {
           isCancelled: true,
@@ -1289,7 +1289,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
           newMargin: newMarginVal,
           supplierDeducted: supplierDeductedVal,
           refundToClient,
-          refundCommittedToClient: Math.round((totalAmountPaid - supplierDeductedVal - occ) * 100) / 100,
+          totalCharges: Math.round((supplierDeductedVal + ourMargin) * 100) / 100,
+          refundCommittedToClient: Math.round((totalAmountPaid - (supplierDeductedVal + ourMargin)) * 100) / 100,
           supplierRefundAmount: sra,
           ourCancellationCharges: occ,
           cancellationType,
@@ -1600,9 +1601,9 @@ function recalculateCancellationValues(booking) {
   } else if (type === 'partialPaidRefundAmount') {
     const sra = scc; // in this mode scc is used for refund amount
     const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const totalCharges = Math.round((ourMargin + (paidAmount - sra) + occ) * 100) / 100;
+    const totalCharges = Math.round((ourMargin + (paidAmount - sra)) * 100) / 100;
     c.totalCharges = totalCharges;
-    c.refundCommittedToClient = Math.round((sra - occ) * 100) / 100;
+    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
     c.refundableAmount = c.refundCommittedToClient;
   } else if (type === 'supplierCancellationCharges' || type === 'supplierRefundAmount') {
     // Regular fully paid

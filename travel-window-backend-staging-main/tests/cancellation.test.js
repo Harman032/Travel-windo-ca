@@ -65,7 +65,9 @@ function calculateCancellation(booking, inputs, cancellationType) {
     case 'partialPaidRefundAmount':
       result.supplierDeducted = round(totalPaidAmount - scc);
       result.refundToClient = round(scc - occ);
-      result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
+      const scenario4TotalCharges = round(result.supplierDeducted + ourMargin);
+      result.totalCharges = scenario4TotalCharges;
+      result.refundCommittedToClientFinal = round(totalPaidAmount - scenario4TotalCharges);
       break;
 
     case 'clientCard':
