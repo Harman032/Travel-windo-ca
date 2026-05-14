@@ -2229,13 +2229,10 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialClientReceives(): number {
-    const remainingAmount = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.paymentFromCard ?? 0)) * 100) / 100;
-    const totalCharges = this.clientCardPartialTotalCharges;
-    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
-    if (remainingAmount < totalCharges) {
-      return paymentFromCard;
-    }
-    return Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
+    const paidAmount = this.booking?.totalPaidAmount ?? 0;
+    const supplierCancellationCharges = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    const supplierWillReturn = Math.round((paidAmount - supplierCancellationCharges) * 100) / 100;
+    return supplierWillReturn;
   }
 
   get isClientOrCompanyCard(): boolean {
