@@ -716,13 +716,13 @@ import { ToastrService } from 'ngx-toastr';
                           Supplier Will Return
                         </label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ (booking.cardType === 'Client Card' ? cancelClientCardSupplierWillReturn : partialPaidCardClientReceives) | number:'1.2-2' }}
+                          {{ (booking.cardType === 'Client Card' ? clientCardPartialSupplierWillReturn : partialPaidCardClientReceives) | number:'1.2-2' }}
                         </p>
                       </div>
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-                      <p>Upfront Needed: CAD {{ cancelClientCardUpfrontNeeded | number:'1.2-2' }}</p>
-                      <p>Client Receives: CAD {{ cancelClientCardClientReceives | number:'1.2-2' }}</p>
+                      <p>Upfront Needed: CAD {{ clientCardPartialUpfrontNeeded | number:'1.2-2' }}</p>
+                      <p>Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
                     </div>
                     <div *ngIf="booking.cardType === 'Company Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
                       <p>Client Receives: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
@@ -2207,8 +2207,8 @@ export class BookingDetailComponent implements OnInit {
 
   get clientCardPartialNewMargin(): number {
     const ourMargin = this.clientCardPartialOurMargin;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
-    return Math.round(ourMargin + occ);
+    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
+    return Math.round((ourMargin + occ) * 100) / 100;
   }
 
   get clientCardPartialTotalCharges(): number {
@@ -2222,17 +2222,20 @@ export class BookingDetailComponent implements OnInit {
     return Math.round(salePrice - paymentFromCard);
   }
 
+  get clientCardPartialSupplierWillReturn(): number {
+    const paidAmount = this.booking?.totalPaidAmount ?? 0;
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((paidAmount - scc) * 100) / 100;
+  }
+
   get clientCardPartialUpfrontNeeded(): number {
     const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
-    const ourCancellationCharges = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
-    return Math.round((ourMargin + ourCancellationCharges) * 100) / 100;
+    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
+    return Math.round((ourMargin + occ) * 100) / 100;
   }
 
   get clientCardPartialClientReceives(): number {
-    const paidAmount = this.booking?.totalPaidAmount ?? 0;
-    const supplierCancellationCharges = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    const supplierWillReturn = Math.round((paidAmount - supplierCancellationCharges) * 100) / 100;
-    return supplierWillReturn;
+    return this.clientCardPartialSupplierWillReturn;
   }
 
   get isClientOrCompanyCard(): boolean {
