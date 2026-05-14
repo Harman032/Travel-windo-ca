@@ -5,7 +5,8 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node server.local.js",
-    "dev": "nodemon server.local.js"
+    "dev": "nodemon server.local.js",
+    "test:cancellation": "node tests/cancellation.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
