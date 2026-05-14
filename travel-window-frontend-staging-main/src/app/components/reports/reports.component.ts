@@ -467,7 +467,7 @@ import { ToastrService } from 'ngx-toastr';
                   <ng-container *ngIf="getCRDRValue(item) as res">
                     <span *ngIf="res.type === 'CR'" class="text-green-600">CR: {{ res.value | number:'1.2-2' }}</span>
                     <span *ngIf="res.type === 'DR'" class="text-red-600">DR: {{ res.value | number:'1.2-2' }}</span>
-                    <span *ngIf="!res.type">-</span>
+                    <span *ngIf="!res.type" class="text-gray-400">NIL</span>
                   </ng-container>
                 </td>
                 <td class="px-4 py-2 text-sm">
@@ -913,6 +913,11 @@ export class ReportsComponent implements OnInit {
   }
 
   getCRDRValue(item: any): { type: 'CR' | 'DR' | null, value: number } {
+    // For cancelled bookings, always return NIL
+    if (item.status === 'Cancelled') {
+      return { type: null, value: 0 };
+    }
+
     const salePrice = item.salePrice || 0;
     const ourCost = item.ourCost || 0;
     const supplierCharges = item.supplierCharges || 0;
