@@ -703,7 +703,7 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div class="col-span-full border-t border-red-200 pt-4">
