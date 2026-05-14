@@ -1230,12 +1230,12 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         const upfrontNeeded = newMarginVal; // Our Margin + Our Cancellation Charges
         const clientReceives = supplierWillReturn;
 
-        supplierWillReturn: supplierWillReturn,
-        upfrontNeeded: upfrontNeeded,
-        clientReceives: clientReceives,
-        refundableAmount: clientReceives,
-        refundCommittedToClient: Math.round((totalAmountPaid - totalChargesVal) * 100) / 100,
-        refundableAmountToClient: clientReceives,
+        booking.cancellation.supplierWillReturn = supplierWillReturn;
+        booking.cancellation.upfrontNeeded = upfrontNeeded;
+        booking.cancellation.clientReceives = clientReceives;
+        booking.cancellation.refundableAmount = clientReceives;
+        booking.cancellation.refundCommittedToClient = Math.round((totalAmountPaid - totalChargesVal) * 100) / 100;
+        booking.cancellation.refundableAmountToClient = clientReceives;
       } else {
         const clientReceivesVal = Math.round((totalAmountPaid - totalChargesVal) * 100) / 100;
         const supplierWillReturn = Math.round((totalAmountPaid - scc) * 100) / 100;
