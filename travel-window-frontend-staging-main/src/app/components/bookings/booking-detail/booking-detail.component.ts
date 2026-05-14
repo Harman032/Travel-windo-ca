@@ -833,15 +833,16 @@ import { ToastrService } from 'ngx-toastr';
                         </p>
                       </div>
                     </div>
-                    <div class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-                      <ng-container *ngIf="clientCardPartialRemainingAmount < clientCardPartialTotalCharges">
-                        <p>Upfront Needed: CAD {{ clientCardPartialUpfrontNeeded | number:'1.2-2' }}</p>
-                        <p>Client Receives Full Card Payment: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
-                      </ng-container>
-                      <ng-container *ngIf="clientCardPartialRemainingAmount >= clientCardPartialTotalCharges">
-                        <p>No upfront needed</p>
-                        <p>Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
-                      </ng-container>
+                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                      <p class="text-sm font-bold text-red-800">
+                        Upfront Needed from Client: CAD {{ clientCardPartialUpfrontNeeded | number:'1.2-2' }}
+                      </p>
+                      <p class="text-xs text-gray-600">
+                        Our Margin + Our Cancellation Charges
+                      </p>
+                      <p class="text-sm font-bold text-green-800 mt-1">
+                        Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2222,12 +2223,9 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialUpfrontNeeded(): number {
-    const remainingAmount = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.paymentFromCard ?? 0)) * 100) / 100;
-    const totalCharges = this.clientCardPartialTotalCharges;
-    if (remainingAmount < totalCharges) {
-      return Math.round((totalCharges - remainingAmount) * 100) / 100;
-    }
-    return 0;
+    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
+    const ourCancellationCharges = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
+    return Math.round((ourMargin + ourCancellationCharges) * 100) / 100;
   }
 
   get clientCardPartialClientReceives(): number {
