@@ -768,10 +768,6 @@ import { ToastrService } from 'ngx-toastr';
                     <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
-                    <div class="mt-2">
-                      <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
-                      <p class="text-lg font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -795,10 +791,6 @@ import { ToastrService } from 'ngx-toastr';
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label class="block text-sm text-gray-600">Supplier Deducted</label><p class="text-lg font-bold text-red-700">{{ partialPaidSupplierDeducted | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClientSRA | number:'1.2-2' }}</p></div>
-                    <div class="col-span-full mt-2">
-                      <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
-                      <p class="text-lg font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -993,11 +985,7 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSCC | number:'1.2-2' }}</p>
                   </div>
-                  <div class="col-span-full mt-2">
-                    <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
-                    <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
-                    <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
-                  </div>
+
                 </div>
 
                 <!-- Supplier Refund Amount Block -->
@@ -1032,11 +1020,7 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSRA | number:'1.2-2' }}</p>
                   </div>
-                  <div class="col-span-full mt-2">
-                    <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
-                    <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
-                    <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
-                  </div>
+
                 </div>
               </div>
             </ng-container>
