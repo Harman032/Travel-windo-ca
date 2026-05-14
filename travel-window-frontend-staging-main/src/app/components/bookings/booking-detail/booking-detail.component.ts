@@ -2238,19 +2238,33 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialSupplierWillReturn(): number {
-    const paidAmount = this.booking?.totalPaidAmount ?? 0;
+    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
     const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    return Math.round((paidAmount - scc) * 100) / 100;
+    return Math.round((paymentFromCard - scc) * 100) / 100;
   }
 
   get clientCardPartialUpfrontNeeded(): number {
-    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
-    return Math.round((ourMargin + occ) * 100) / 100;
+    const salePrice = this.booking?.salePrice ?? 0;
+    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
+    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
+    const totalCharges = this.clientCardPartialTotalCharges;
+    
+    if (remainingAmount < totalCharges) {
+      return Math.round((totalCharges - remainingAmount) * 100) / 100;
+    }
+    return 0;
   }
 
   get clientCardPartialClientReceives(): number {
-    return this.clientCardPartialSupplierWillReturn;
+    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
+    const salePrice = this.booking?.salePrice ?? 0;
+    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
+    const totalCharges = this.clientCardPartialTotalCharges;
+    
+    if (remainingAmount < totalCharges) {
+      return paymentFromCard;
+    }
+    return Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
   }
 
   get isClientOrCompanyCard(): boolean {
