@@ -703,7 +703,7 @@ import { ToastrService } from 'ngx-toastr';
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Our Cancellation Charges <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
                   <div class="col-span-full border-t border-red-200 pt-4">
@@ -850,7 +850,7 @@ import { ToastrService } from 'ngx-toastr';
             </ng-container>
 
             <!-- 3. Fully Paid Card flow -->
-            <ng-container *ngIf="isClientOrCompanyCard && !isPartialPaid">
+            <ng-container *ngIf="isClientOrCompanyCard">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   {{ booking.cardType }} Cancellation: Review calculated margin and charges below.
@@ -2358,7 +2358,10 @@ export class BookingDetailComponent implements OnInit {
   // --- Partial Paid Card Cancellation Logic ---
 
   get isPartialPaidCard(): boolean {
-    return this.isPartialPaid && this.isClientOrCompanyCard;
+    return !!this.booking &&
+           this.booking.billingStatus === 'Partial Paid' &&
+           (this.booking.cardType === 'Client Card' ||
+            this.booking.cardType === 'Company Card');
   }
 
   get partialPaidCardTotalSupplierTook(): number {
