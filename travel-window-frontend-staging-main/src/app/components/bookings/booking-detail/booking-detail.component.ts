@@ -712,12 +712,15 @@ import { ToastrService } from 'ngx-toastr';
                       <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ partialPaidCardNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidCardTotalCharges | number:'1.2-2' }}</p></div>
                       <div>
-                        <label class="block text-sm text-gray-600">
-                          Supplier Will Return
-                        </label>
+                        <label class="block text-sm text-gray-600">Supplier Will Return</label>
                         <p class="text-lg font-bold text-blue-700">
                           {{ (booking.cardType === 'Client Card' ? clientCardPartialSupplierWillReturn : partialPaidCardClientReceives) | number:'1.2-2' }}
                         </p>
+                      </div>
+                      <div class="col-span-full mt-2">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                        <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                        <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
                       </div>
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
@@ -765,6 +768,10 @@ import { ToastrService } from 'ngx-toastr';
                     <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
+                    <div class="mt-2">
+                      <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                      <p class="text-lg font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -788,6 +795,10 @@ import { ToastrService } from 'ngx-toastr';
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label class="block text-sm text-gray-600">Supplier Deducted</label><p class="text-lg font-bold text-red-700">{{ partialPaidSupplierDeducted | number:'1.2-2' }}</p></div>
                     <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClientSRA | number:'1.2-2' }}</p></div>
+                    <div class="col-span-full mt-2">
+                      <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                      <p class="text-lg font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -840,9 +851,10 @@ import { ToastrService } from 'ngx-toastr';
                       <p class="text-xs text-gray-600">
                         Our Margin + Our Cancellation Charges
                       </p>
-                      <p class="text-sm font-bold text-green-800 mt-1">
-                        Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}
+                      <p class="text-sm font-bold text-green-800 mt-2">
+                        Refund Committed to Client: CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}
                       </p>
+                      <p class="text-xs text-gray-500 italic">Paid Amount – Total Charges</p>
                     </div>
                   </div>
                 </div>
@@ -887,6 +899,11 @@ import { ToastrService } from 'ngx-toastr';
                         <p class="text-lg font-bold text-blue-700">
                           {{ (booking.cardType === 'Client Card' ? cancelClientCardSupplierWillReturn : cancelCompanyCardSupplierWillReturn) | number:'1.2-2' }}
                         </p>
+                      </div>
+                      <div class="col-span-full mt-2">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                        <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                        <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
                       </div>
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
@@ -976,6 +993,11 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSCC | number:'1.2-2' }}</p>
                   </div>
+                  <div class="col-span-full mt-2">
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                    <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                    <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
+                  </div>
                 </div>
 
                 <!-- Supplier Refund Amount Block -->
@@ -1009,6 +1031,11 @@ import { ToastrService } from 'ngx-toastr';
                   <div>
                     <label class="block text-sm text-gray-600">Current Margin</label>
                     <p class="font-semibold text-blue-700">{{ cancelNewMarginSRA | number:'1.2-2' }}</p>
+                  </div>
+                  <div class="col-span-full mt-2">
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                    <p class="text-xl font-bold text-green-700">CAD {{ refundCommittedToClientDisplay | number:'1.2-2' }}</p>
+                    <p class="text-xs text-gray-500">Paid Amount – Total Charges</p>
                   </div>
                 </div>
               </div>
@@ -1046,6 +1073,10 @@ import { ToastrService } from 'ngx-toastr';
                     <p class="text-sm font-semibold text-red-800">
                       Total Charges: CAD {{ (booking.cancellation?.totalCharges ?? 0) | number:'1.2-2' }}
                     </p>
+                    <p class="text-sm font-bold text-green-700 mt-2">
+                      Refund Committed to Client: CAD {{ (booking.cancellation?.refundCommittedToClient ?? 0) | number:'1.2-2' }}
+                    </p>
+                    <p class="text-[10px] text-gray-500 italic">Paid Amount – Total Charges</p>
                     
                     <!-- Company card only -->
                     <div *ngIf="isCompanyCardCancellation">
@@ -2413,6 +2444,31 @@ export class BookingDetailComponent implements OnInit {
   get isCompanyCardCancellation(): boolean {
     const type = this.booking?.cancellation?.cancellationType;
     return type === 'companyCard' || type === 'partialPaidCompanyCard';
+  }
+
+  get refundCommittedToClientDisplay(): number {
+    const paidAmount = this.booking?.totalPaidAmount ?? 0;
+    const totalCharges = this.getCurrentTotalCharges();
+    return Math.round((paidAmount - totalCharges) * 100) / 100;
+  }
+
+  private getCurrentTotalCharges(): number {
+    if (!this.booking) return 0;
+    
+    // 1. Card scenarios (including partial)
+    if (this.isPartialPaidCard || this.isClientOrCompanyCard || this.isClientCardPartialPayment) {
+      if (this.isClientCardPartialPayment) return this.clientCardPartialTotalCharges;
+      if (this.isPartialPaidCard) return this.partialPaidCardTotalCharges;
+      return this.cancelTotalCharges;
+    }
+    
+    // 2. Regular Partial Paid
+    if (this.isPartialPaid) {
+      return this.partialPaidTotalCharges;
+    }
+    
+    // 3. Regular Fully Paid
+    return this.cancelTotalCancellationCharges;
   }
 
   // -----------------------------------
