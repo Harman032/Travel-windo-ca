@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -49,9 +50,41 @@ import { ToastrService } from 'ngx-toastr';
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
               <div class="flex gap-2">
-                <select formControlName="countryCode" class="input w-32 flex-shrink-0" [class.border-red-500]="bookingForm.get('contactNumber')?.invalid && bookingForm.get('contactNumber')?.touched">
-                  <option *ngFor="let c of countryOptions" [value]="c.code">{{ c.code }} {{ c.name }}</option>
-                </select>
+                <div class="relative w-48 flex-shrink-0">
+                  <input
+                    type="text"
+                    [value]="countrySearchInput"
+                    (input)="onCountryCodeInput($event)"
+                    (focus)="showCountryDropdown = true"
+                    placeholder="Search code..."
+                    class="input w-full"
+                    autocomplete="off"
+                    [class.border-red-500]="bookingForm.get('countryCode')?.invalid && bookingForm.get('countryCode')?.touched"
+                  />
+                  
+                  <!-- Dropdown -->
+                  <div
+                    *ngIf="showCountryDropdown"
+                    class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
+                  >
+                    <div
+                      *ngFor="let country of filteredCountryCodes"
+                      (click)="selectCountryCode(country.code)"
+                      class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    >
+                      <span class="font-semibold">{{ country.code }}</span>
+                      <span class="text-gray-600 ml-2">{{ country.country }}</span>
+                    </div>
+                    
+                    <div
+                      *ngIf="filteredCountryCodes.length === 0"
+                      class="px-3 py-2 text-gray-500 text-sm"
+                    >
+                      No countries found
+                    </div>
+                  </div>
+                </div>
+
                 <input
                   type="tel"
                   formControlName="contactNumber"
@@ -62,8 +95,8 @@ import { ToastrService } from 'ngx-toastr';
                   [class.border-red-500]="bookingForm.get('contactNumber')?.invalid && bookingForm.get('contactNumber')?.touched"
                 />
               </div>
-              <p *ngIf="bookingForm.get('contactNumber')?.invalid && bookingForm.get('contactNumber')?.touched" class="text-red-500 text-xs mt-1">
-                {{ getContactNumberError() }}
+              <p *ngIf="(bookingForm.get('contactNumber')?.invalid && bookingForm.get('contactNumber')?.touched) || (bookingForm.get('countryCode')?.invalid && bookingForm.get('countryCode')?.touched)" class="text-red-500 text-xs mt-1">
+                {{ getContactNumberError() || (bookingForm.get('countryCode')?.invalid ? 'Country code is required' : '') }}
               </p>
             </div>
             <div>
@@ -359,82 +392,10 @@ export class NewBookingComponent implements OnInit {
   /** In edit mode: original submitter name; in create mode: same as currentUserName */
   submittedByNameDisplay = '';
 
-  countryOptions: { code: string; name: string }[] = [
-    { code: '+91', name: 'India' },
-    { code: '+1', name: 'US/Canada' },
-    { code: '+44', name: 'UK' },
-    { code: '+971', name: 'UAE' },
-    { code: '+966', name: 'Saudi Arabia' },
-    { code: '+968', name: 'Oman' },
-    { code: '+973', name: 'Bahrain' },
-    { code: '+974', name: 'Qatar' },
-    { code: '+965', name: 'Kuwait' },
-    { code: '+61', name: 'Australia' },
-    { code: '+64', name: 'New Zealand' },
-    { code: '+81', name: 'Japan' },
-    { code: '+86', name: 'China' },
-    { code: '+82', name: 'South Korea' },
-    { code: '+65', name: 'Singapore' },
-    { code: '+60', name: 'Malaysia' },
-    { code: '+66', name: 'Thailand' },
-    { code: '+84', name: 'Vietnam' },
-    { code: '+62', name: 'Indonesia' },
-    { code: '+63', name: 'Philippines' },
-    { code: '+92', name: 'Pakistan' },
-    { code: '+880', name: 'Bangladesh' },
-    { code: '+94', name: 'Sri Lanka' },
-    { code: '+977', name: 'Nepal' },
-    { code: '+960', name: 'Maldives' },
-    { code: '+20', name: 'Egypt' },
-    { code: '+27', name: 'South Africa' },
-    { code: '+234', name: 'Nigeria' },
-    { code: '+254', name: 'Kenya' },
-    { code: '+233', name: 'Ghana' },
-    { code: '+55', name: 'Brazil' },
-    { code: '+52', name: 'Mexico' },
-    { code: '+7', name: 'Russia/Kazakhstan' },
-    { code: '+49', name: 'Germany' },
-    { code: '+33', name: 'France' },
-    { code: '+39', name: 'Italy' },
-    { code: '+34', name: 'Spain' },
-    { code: '+31', name: 'Netherlands' },
-    { code: '+353', name: 'Ireland' },
-    { code: '+46', name: 'Sweden' },
-    { code: '+47', name: 'Norway' },
-    { code: '+45', name: 'Denmark' },
-    { code: '+358', name: 'Finland' },
-    { code: '+48', name: 'Poland' },
-    { code: '+43', name: 'Austria' },
-    { code: '+41', name: 'Switzerland' },
-    { code: '+32', name: 'Belgium' },
-    { code: '+351', name: 'Portugal' },
-    { code: '+30', name: 'Greece' },
-    { code: '+90', name: 'Turkey' },
-    { code: '+972', name: 'Israel' },
-    { code: '+962', name: 'Jordan' },
-    { code: '+961', name: 'Lebanon' },
-    { code: '+98', name: 'Iran' },
-    { code: '+964', name: 'Iraq' },
-    { code: '+967', name: 'Yemen' },
-    { code: '+212', name: 'Morocco' },
-    { code: '+213', name: 'Algeria' },
-    { code: '+251', name: 'Ethiopia' },
-    { code: '+255', name: 'Tanzania' },
-    { code: '+256', name: 'Uganda' },
-    { code: '+260', name: 'Zambia' },
-    { code: '+852', name: 'Hong Kong' },
-    { code: '+853', name: 'Macau' },
-    { code: '+886', name: 'Taiwan' },
-    { code: '+855', name: 'Cambodia' },
-    { code: '+856', name: 'Laos' },
-    { code: '+95', name: 'Myanmar' },
-    { code: '+673', name: 'Brunei' },
-    { code: '+420', name: 'Czech Republic' },
-    { code: '+36', name: 'Hungary' },
-    { code: '+40', name: 'Romania' },
-    { code: '+381', name: 'Serbia' },
-    { code: '+380', name: 'Ukraine' },
-  ];
+  countryCodes: any[] = [];
+  filteredCountryCodes: any[] = [];
+  showCountryDropdown = false;
+  countrySearchInput = '+91';
 
   constructor(
     private fb: FormBuilder,
@@ -443,7 +404,8 @@ export class NewBookingComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private http: HttpClient
   ) {
     this.bookingForm = this.createForm();
     this.authService.currentUser$.subscribe(user => {
@@ -455,6 +417,7 @@ export class NewBookingComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadCountryCodes();
     this.loadSuppliers();
     this.ensurePaymentRowWhenFull();
 
@@ -486,6 +449,45 @@ export class NewBookingComponent implements OnInit {
         }, { emitEvent: false });
       }
     });
+  }
+  loadCountryCodes(): void {
+    this.http.get<any>('assets/data/country-codes.json').subscribe({
+      next: (data) => {
+        this.countryCodes = data.countries.sort((a: any, b: any) => 
+          a.code.localeCompare(b.code)
+        );
+        this.filteredCountryCodes = this.countryCodes;
+      },
+      error: (err) => console.error('Failed to load country codes:', err)
+    });
+  }
+
+  onCountryCodeInput(event: any): void {
+    const input = event.target.value.toLowerCase();
+    this.countrySearchInput = input;
+
+    if (!input) {
+      this.filteredCountryCodes = this.countryCodes;
+    } else {
+      this.filteredCountryCodes = this.countryCodes.filter(c =>
+        c.code.toLowerCase().includes(input) ||
+        c.country.toLowerCase().includes(input)
+      );
+    }
+    this.showCountryDropdown = true;
+  }
+
+  selectCountryCode(code: string): void {
+    this.bookingForm.patchValue({ countryCode: code });
+    this.countrySearchInput = code;
+    this.showCountryDropdown = false;
+  }
+
+  toggleCountryDropdown(): void {
+    this.showCountryDropdown = !this.showCountryDropdown;
+    if (this.showCountryDropdown) {
+      this.filteredCountryCodes = this.countryCodes;
+    }
   }
 
   /** When Full payment is selected, ensure at least one payment row exists */
@@ -598,6 +600,7 @@ export class NewBookingComponent implements OnInit {
           supplier: booking.supplier?._id || booking.supplier || '',
           isCardPayment: !!(booking.cardType || (booking.paymentFromCard && booking.paymentFromCard > 0))
         });
+        this.countrySearchInput = countryCode;
 
         // Clear and repopulate multipleSectors so we don't get duplicate/wrong rows
         while (this.multipleSectorsArray.length) {
