@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
@@ -50,12 +50,13 @@ import { ToastrService } from 'ngx-toastr';
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
               <div class="flex gap-2">
-                <div class="relative w-48 flex-shrink-0">
+                <div class="relative w-64 flex-shrink-0">
                   <input
                     type="text"
+                    #countryInput
                     [value]="countrySearchInput"
                     (input)="onCountryCodeInput($event)"
-                    (focus)="showCountryDropdown = true"
+                    (focus)="onCountryInputFocus($event)"
                     placeholder="Search code..."
                     class="input w-full"
                     autocomplete="off"
@@ -405,7 +406,8 @@ export class NewBookingComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private toastr: ToastrService,
-    private http: HttpClient
+    private http: HttpClient,
+    private el: ElementRef
   ) {
     this.bookingForm = this.createForm();
     this.authService.currentUser$.subscribe(user => {
@@ -484,6 +486,27 @@ export class NewBookingComponent implements OnInit {
       );
     }
     this.showCountryDropdown = true;
+  }
+
+  onCountryInputFocus(event: any): void {
+    this.showCountryDropdown = true;
+    event.target.select();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.el.nativeElement.contains(event.target)) {
+      this.showCountryDropdown = false;
+      
+      // Restore full display name if they clicked away without selecting
+      const currentCode = this.bookingForm.get('countryCode')?.value;
+      if (currentCode) {
+        const country = this.countryCodes.find(c => c.code === currentCode);
+        if (country) {
+          this.countrySearchInput = `${country.code} ${country.country}`;
+        }
+      }
+    }
   }
 
   selectCountryCode(code: string): void {
