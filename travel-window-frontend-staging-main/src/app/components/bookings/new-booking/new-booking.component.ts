@@ -457,6 +457,15 @@ export class NewBookingComponent implements OnInit {
           a.code.localeCompare(b.code)
         );
         this.filteredCountryCodes = this.countryCodes;
+        
+        // If we are in edit mode and booking already loaded, update the display name
+        const currentCode = this.bookingForm.get('countryCode')?.value;
+        if (currentCode && this.countrySearchInput === currentCode) {
+          const country = this.countryCodes.find(c => c.code === currentCode);
+          if (country) {
+            this.countrySearchInput = `${country.code} ${country.country}`;
+          }
+        }
       },
       error: (err) => console.error('Failed to load country codes:', err)
     });
@@ -478,8 +487,10 @@ export class NewBookingComponent implements OnInit {
   }
 
   selectCountryCode(code: string): void {
+    const country = this.countryCodes.find(c => c.code === code);
+    const displayName = country ? `${country.code} ${country.country}` : code;
     this.bookingForm.patchValue({ countryCode: code });
-    this.countrySearchInput = code;
+    this.countrySearchInput = displayName;
     this.showCountryDropdown = false;
   }
 
@@ -600,7 +611,24 @@ export class NewBookingComponent implements OnInit {
           supplier: booking.supplier?._id || booking.supplier || '',
           isCardPayment: !!(booking.cardType || (booking.paymentFromCard && booking.paymentFromCard > 0))
         });
-        this.countrySearchInput = countryCode;
+        
+        // Find country name for display
+        if (this.countryCodes.length > 0) {
+          const country = this.countryCodes.find(c => c.code === countryCode);
+          this.countrySearchInput = country ? `${country.code} ${country.country}` : countryCode;
+        } else {
+          // Fallback if countryCodes not loaded yet (shouldn't happen with ngOnInit sequence but safe)
+          this.countrySearchInput = countryCode;
+          // Retry logic or wait for codes to load
+          const checkInterval = setInterval(() => {
+            if (this.countryCodes.length > 0) {
+              const c = this.countryCodes.find(cx => cx.code === countryCode);
+              this.countrySearchInput = c ? `${c.code} ${c.country}` : countryCode;
+              clearInterval(checkInterval);
+            }
+          }, 100);
+          setTimeout(() => clearInterval(checkInterval), 3000);
+        }
 
         // Clear and repopulate multipleSectors so we don't get duplicate/wrong rows
         while (this.multipleSectorsArray.length) {
