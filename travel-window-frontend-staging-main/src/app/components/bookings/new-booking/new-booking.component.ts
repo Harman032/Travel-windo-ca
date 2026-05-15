@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, HostListener, ElementRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
@@ -50,10 +50,9 @@ import { ToastrService } from 'ngx-toastr';
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
               <div class="flex gap-2">
-                <div class="relative w-64 flex-shrink-0">
+                <div class="relative w-52 flex-shrink-0">
                   <input
                     type="text"
-                    #countryInput
                     [value]="countrySearchInput"
                     (input)="onCountryCodeInput($event)"
                     (focus)="onCountryInputFocus($event)"
