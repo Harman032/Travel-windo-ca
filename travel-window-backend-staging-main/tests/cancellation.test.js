@@ -87,7 +87,9 @@ function calculateCancellation(booking, inputs, cancellationType) {
       break;
 
     case 'partialPaidClientCard':
-      result.supplierWillReturn = round(totalPaidAmount - scc);
+      const totalSupplierTook_ppc = round(supplierCharges + scc);
+      result.totalSupplierTook = totalSupplierTook_ppc;
+      result.supplierWillReturn = round(paymentFromCard - totalSupplierTook_ppc);
       result.upfrontNeeded = newMargin;
       result.clientReceives = result.supplierWillReturn;
       result.remainingAmount = round(salePrice - paymentFromCard);
