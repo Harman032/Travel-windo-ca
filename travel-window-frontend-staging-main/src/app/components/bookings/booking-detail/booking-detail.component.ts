@@ -2361,8 +2361,10 @@ export class BookingDetailComponent implements OnInit {
 
   get cancelClientCardSupplierWillReturn(): number {
     const totalPaidAmount = this.booking?.totalPaidAmount ?? 0;
+    const supplierCharges = this.booking?.supplierCharges ?? 0;
     const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    return Math.round((totalPaidAmount - scc) * 100) / 100;
+    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+    return Math.round((totalPaidAmount - totalSupplierTook) * 100) / 100;
   }
 
   get cancelClientCardOurMargin(): number {
