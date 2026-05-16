@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/travel-window-backend-staging-main/api/index.js"
+    }
+  ]
+}
