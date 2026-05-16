@@ -2318,8 +2318,15 @@ export class BookingDetailComponent implements OnInit {
     return Math.round((totalPaidAmount - scc) * 100) / 100;
   }
 
+  get cancelClientCardOurMargin(): number {
+    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
+    const salePrice = this.booking?.salePrice ?? 0;
+    if (paymentFromCard === salePrice) return 0;
+    return Math.round((salePrice - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
+  }
+
   get cancelClientCardCurrentMargin(): number {
-    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
+    const ourMargin = this.cancelClientCardOurMargin;
     const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
     return Math.round((ourMargin + occ) * 100) / 100;
   }
@@ -2330,7 +2337,9 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelClientCardClientReceives(): number {
-    return this.cancelClientCardSupplierWillReturn;
+    const totalPaidAmount = this.booking?.totalPaidAmount ?? 0;
+    const totalCharges = this.cancelTotalCharges;
+    return Math.round((totalPaidAmount - totalCharges) * 100) / 100;
   }
 
   // --- Partial Paid Cancellation Logic ---
