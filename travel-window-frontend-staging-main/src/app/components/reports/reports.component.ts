@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 import { ReportService } from '../../services/report.service';
 import { SupplierService, Supplier } from '../../services/supplier.service';
 import { UserService, User } from '../../services/user.service';
@@ -762,7 +764,8 @@ export class ReportsComponent implements OnInit {
     private userService: UserService,
     private authService: AuthService,
     private toastr: ToastrService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private http: HttpClient
   ) {
     this.dateWiseForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
     this.supplierWiseForm = this.fb.group({ supplier: [''], dateFrom: [''], dateTo: [''] });
@@ -1069,12 +1072,14 @@ export class ReportsComponent implements OnInit {
   loadVerifiedPayments() {
     const params = this.verifiedPaymentsForm.value;
     this.loading = true;
-    this.reportService.getVerifiedPayments(params).subscribe({
-      next: (data) => {
+    
+    this.http.get(`${environment.apiUrl}/reports/verified-payments`, { params }).subscribe({
+      next: (data: any) => {
         this.verifiedPaymentsData = data;
         this.loading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Verified payments error:', err);
         this.loading = false;
       }
     });
