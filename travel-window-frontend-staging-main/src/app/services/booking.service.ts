@@ -46,6 +46,9 @@ export interface Booking {
   paymentFromCard?: number;
   cardType?: string;
   cardLast4Digits?: string;
+  cancellationVerified?: boolean;
+  cancellationVerifiedBy?: { _id: string; name: string; email: string };
+  cancellationVerifiedAt?: string | Date;
 }
 
 export interface Payment {
