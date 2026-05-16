@@ -483,6 +483,30 @@ import { ToastrService } from 'ngx-toastr';
                 Recalculate Cancellation Values
               </button>
             </div>
+
+            <!-- Cancellation Verification Section (Admin/Account Only) -->
+            <div *ngIf="(isAdmin() || isAccount()) && booking.status === 'Cancelled' && !booking.cancellationVerified" class="col-span-full mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 class="text-md font-semibold text-blue-800 mb-2">Verify Cancellation</h4>
+              <p class="text-sm text-blue-600 mb-4">Click below to formally verify that the cancellation financials are correct.</p>
+              <button type="button" (click)="verifyCancellation()" class="btn btn-primary" [disabled]="verifyingCancellation">
+                {{ verifyingCancellation ? 'Verifying...' : 'Verify Cancellation' }}
+              </button>
+            </div>
+
+            <!-- Cancellation Verified Status -->
+            <div *ngIf="booking.cancellationVerified" class="col-span-full mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+              <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-semibold text-green-800">Cancellation Verified</p>
+                <p class="text-sm text-green-600">
+                  Verified by {{ booking.cancellationVerifiedBy?.name }} on {{ booking.cancellationVerifiedAt | date:'dd-MM-yyyy HH:mm' }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1256,6 +1280,7 @@ export class BookingDetailComponent implements OnInit {
   adminVerifiedStatus = false;
   accountVerifiedStatus = false;
   selectedStatus = '';
+  verifyingCancellation = false;
 
   constructor(
     private bookingService: BookingService,
@@ -1582,6 +1607,28 @@ export class BookingDetailComponent implements OnInit {
     if (user.role === 'ADMIN') return !!(this.booking.adminVerified || this.booking.verifiedByAdmin);
     if (user.role === 'ACCOUNT') return !!(this.booking.accountVerified || this.booking.verifiedByAccount);
     return false;
+  }
+
+  verifyCancellation() {
+    if (!this.booking || !this.booking._id) return;
+    if (!confirm('Are you sure you want to verify this cancellation?')) return;
+
+    this.verifyingCancellation = true;
+    this.bookingService.verifyCancellation(this.booking._id).subscribe({
+      next: (res) => {
+        this.toastr.success('Cancellation verified successfully');
+        this.verifyingCancellation = false;
+        if (this.booking) {
+          this.booking.cancellationVerified = true;
+          this.booking.cancellationVerifiedBy = res.verifiedBy;
+          this.booking.cancellationVerifiedAt = res.verifiedAt;
+        }
+      },
+      error: (err) => {
+        this.toastr.error(err.error?.message || 'Failed to verify cancellation');
+        this.verifyingCancellation = false;
+      }
+    });
   }
 
   /** Edit: Admin/Account full; Agent1/Agent2 until verified (per spec all can add/edit) */

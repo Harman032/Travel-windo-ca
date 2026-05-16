@@ -32,6 +32,7 @@ import { ToastrService } from 'ngx-toastr';
             <button (click)="selectReportType('unverified-payments')" class="btn" [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'">Unverified Payments</button>
             <button (click)="selectReportType('agent-margin')" class="btn" [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'">Agent Margin</button>
             <button (click)="selectReportType('financial-summary')" class="btn" [ngClass]="selectedReportType === 'financial-summary' ? 'btn-primary' : 'btn-secondary'">Financial Summary</button>
+            <button (click)="selectReportType('verified-payments')" class="btn" [ngClass]="selectedReportType === 'verified-payments' ? 'btn-primary' : 'btn-secondary'">Verified Payments</button>
           </ng-container>
           <button (click)="selectReportType('agent-booking-list')" class="btn" [ngClass]="selectedReportType === 'agent-booking-list' ? 'btn-primary' : 'btn-secondary'">Date Wise Booking List</button>
           <button (click)="selectReportType('agent-margin-report')" class="btn" [ngClass]="selectedReportType === 'agent-margin-report' ? 'btn-primary' : 'btn-secondary'">Date Wise Margin Report</button>
@@ -488,6 +489,100 @@ import { ToastrService } from 'ngx-toastr';
         </div>
       </div>
 
+      <!-- Verified Payments Report Filter (Admin/Account Only) -->
+      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'verified-payments'" class="card mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Verified Payments Report</h3>
+        <form [formGroup]="verifiedPaymentsForm" (ngSubmit)="loadVerifiedPayments()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
+          </div>
+          <div *ngIf="isAdmin()">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+            <select formControlName="agent" class="input">
+              <option value="all">All Agents</option>
+              <option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Verified</label>
+            <select formControlName="cancellationVerified" class="input">
+              <option value="">All</option>
+              <option value="true">Only Cancellation Verified</option>
+            </select>
+          </div>
+          <div class="flex items-end md:col-span-1">
+            <button type="submit" class="btn btn-primary w-full">Generate Report</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Verified Payments Results -->
+      <div *ngIf="selectedReportType === 'verified-payments' && verifiedPaymentsData && !loading" class="card">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Verified Payments Report Results</h3>
+        
+        <div class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Total Bookings</p>
+            <p class="text-2xl font-bold text-blue-900">{{ verifiedPaymentsData.summary?.totalBookings || 0 }}</p>
+          </div>
+          <div class="bg-green-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Total Sale Price</p>
+            <p class="text-2xl font-bold text-green-900">{{ verifiedPaymentsData.summary?.totalSalePrice | number:'1.2-2' }}</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Total Our Cost</p>
+            <p class="text-2xl font-bold text-indigo-900">{{ verifiedPaymentsData.summary?.totalOurCost | number:'1.2-2' }}</p>
+          </div>
+          <div class="bg-orange-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Total Margin</p>
+            <p class="text-2xl font-bold text-orange-900">{{ verifiedPaymentsData.summary?.totalMargin | number:'1.2-2' }}</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pax Name</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Cost</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Margin</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference No</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Verified By</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Verified At</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr *ngFor="let b of verifiedPaymentsData.bookings">
+                <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.submittedBy?.name }}</td>
+                <td class="px-4 py-2 text-sm font-semibold">{{ b.totalSalePrice | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.ourCost | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.supplierCharges | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm font-bold text-green-700">{{ (b.totalSalePrice - b.ourCost - b.supplierCharges) | number:'1.2-2' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.payments && b.payments.length > 0 ? b.payments[0].referenceNo : '-' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminUser?.name }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminDate | date:'dd-MM-yyyy' }}</td>
+              </tr>
+              <tr *ngIf="verifiedPaymentsData.bookings.length === 0">
+                <td colspan="11" class="px-4 py-8 text-center text-gray-500">No verified payments found for the selected filters.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Agent Margin Results -->
       <div *ngIf="selectedReportType === 'agent-margin' && agentMarginData && !loading" class="card">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Agent Margin Report Results</h3>
@@ -646,6 +741,7 @@ export class ReportsComponent implements OnInit {
   agentBookingListForm: FormGroup;
   agentMarginReportForm: FormGroup;
   financialSummaryForm: FormGroup;
+  verifiedPaymentsForm: FormGroup;
 
   dateWiseData: any = null;
   supplierWiseData: any = null;
@@ -658,6 +754,7 @@ export class ReportsComponent implements OnInit {
   agentBookingListData: any = null;
   agentMarginReportData: any = null;
   financialSummaryData: any = null;
+  verifiedPaymentsData: any = null;
 
   constructor(
     private reportService: ReportService,
@@ -675,6 +772,7 @@ export class ReportsComponent implements OnInit {
     this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
+    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], cancellationVerified: [''] });
   }
 
   isAgent(): boolean {
@@ -966,5 +1064,19 @@ export class ReportsComponent implements OnInit {
       'Unticketed': 'bg-orange-100 text-orange-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  loadVerifiedPayments() {
+    const params = this.verifiedPaymentsForm.value;
+    this.loading = true;
+    this.reportService.getVerifiedPayments(params).subscribe({
+      next: (data) => {
+        this.verifiedPaymentsData = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
   }
 }

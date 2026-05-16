@@ -91,4 +91,13 @@ export class ReportService {
   verifyBookingFromReport(bookingId: string): Observable<any> {
     return this.http.put(`${this.apiUrl}/bookings/${bookingId}`, { accountVerified: true });
   }
+
+  getVerifiedPayments(params: any): Observable<any> {
+    let httpParams = new HttpParams();
+    if (params.dateFrom) httpParams = httpParams.set('dateFrom', params.dateFrom);
+    if (params.dateTo) httpParams = httpParams.set('dateTo', params.dateTo);
+    if (params.agent) httpParams = httpParams.set('agent', params.agent);
+    if (params.cancellationVerified) httpParams = httpParams.set('cancellationVerified', params.cancellationVerified);
+    return this.http.get(`${this.apiUrl}/reports/verified-payments`, { params: httpParams });
+  }
 }

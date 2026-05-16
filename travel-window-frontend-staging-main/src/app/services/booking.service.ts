@@ -136,4 +136,8 @@ export class BookingService {
   recalculateCancellation(bookingId: string): Observable<Booking> {
     return this.http.post<Booking>(`${this.apiUrl}/bookings/${bookingId}/recalculate-cancellation`, {});
   }
+
+  verifyCancellation(id: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/bookings/${id}/verify-cancellation`, {});
+  }
 }
