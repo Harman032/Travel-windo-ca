@@ -71,9 +71,15 @@ function calculateCancellation(booking, inputs, cancellationType) {
       break;
 
     case 'clientCard':
+      const isCardEqualToSalePrice_cc = paymentFromCard === salePrice;
+      const effectiveMargin_cc = isCardEqualToSalePrice_cc ? 0 : ourMargin;
+      const clientCardNewMargin = round(effectiveMargin_cc + occ);
+      const clientCardTotalCharges = round(totalSupplierTook + clientCardNewMargin);
+      result.newMargin = clientCardNewMargin;
+      result.totalCharges = clientCardTotalCharges;
       result.supplierWillReturn = round(totalPaidAmount - scc);
       result.upfrontNeeded = occ;
-      result.clientReceives = round(totalPaidAmount - totalCharges);
+      result.clientReceives = round(totalPaidAmount - clientCardTotalCharges);
       result.refundCommittedToClientFinal = result.clientReceives;
       break;
 
@@ -182,13 +188,40 @@ const tests = [
     cancellationType: 'clientCard',
     expected: {
       ourMargin: 200,
-      newMargin: 300,
+      newMargin: 100,
       totalSupplierTook: 100,
-      totalCharges: 400,
+      totalCharges: 200,
       supplierWillReturn: 1100,
       upfrontNeeded: 100,
-      clientReceives: 800,
-      refundCommittedToClientFinal: 800
+      clientReceives: 1000,
+      refundCommittedToClientFinal: 1000
+    }
+  },
+  {
+    name: 'SCENARIO 5B — Client Card Fully Paid (Card == Sale Price, Margin = 0)',
+    booking: {
+      ...baseBooking,
+      ourCost: 500,
+      salePrice: 700,
+      supplierCharges: 0,
+      totalPaidAmount: 700,
+      paymentFromCard: 700,
+      cardType: 'Client Card'
+    },
+    inputs: {
+      supplierCancellationCharges: 0,
+      ourCancellationCharges: 0
+    },
+    cancellationType: 'clientCard',
+    expected: {
+      ourMargin: 200,
+      newMargin: 0,
+      totalSupplierTook: 0,
+      totalCharges: 0,
+      supplierWillReturn: 700,
+      upfrontNeeded: 0,
+      clientReceives: 700,
+      refundCommittedToClientFinal: 700
     }
   },
   {

@@ -1172,18 +1172,22 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         };
       } else {
         // clientCard
+        const isCardEqualToSalePrice = paymentFromCard === totalSalePrice;
+        const effectiveMargin = isCardEqualToSalePrice ? 0 : ourMargin;
+        const newMarginVal = Math.round((effectiveMargin + occ) * 100) / 100;
+        const totalChargesVal = Math.round((totalSupplierTook + newMarginVal) * 100) / 100;
         const supplierWillReturn = Math.round((totalAmountPaid - scc) * 100) / 100;
         const upfrontNeeded = occ;
-        const clientReceives = Math.round((totalAmountPaid - totalCharges) * 100) / 100;
+        const clientReceives = Math.round((totalAmountPaid - totalChargesVal) * 100) / 100;
 
         booking.cancellation = {
           isCancelled: true,
           paymentModeWas: 'Credit Card',
           totalAmountPaidByClient: totalAmountPaid,
-          oldMargin: ourMargin,
+          oldMargin: effectiveMargin,
           newMargin: newMarginVal,
           totalSupplierTook,
-          totalCharges,
+          totalCharges: totalChargesVal,
           supplierWillReturn,
           upfrontNeeded,
           clientReceives,
@@ -1559,11 +1563,14 @@ function recalculateCancellationValues(booking) {
     c.refundableAmount = clientReceives;
     c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
   } else if (type === 'clientCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
+    const isCardEqualToSalePrice = booking.paymentFromCard === salePrice;
+    const ourMarginVal = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+    const effectiveMargin = isCardEqualToSalePrice ? 0 : ourMarginVal;
+    const newMargin = Math.round((effectiveMargin + occ) * 100) / 100;
     const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
     const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
 
+    c.oldMargin = effectiveMargin;
     c.totalSupplierTook = totalSupplierTook;
     c.newMargin = newMargin;
     c.totalCharges = totalCharges;
