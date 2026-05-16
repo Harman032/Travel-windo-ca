@@ -932,6 +932,11 @@ export class ReportsComponent implements OnInit {
       };
     }
 
+    // New logic for Company Card where payment from card matches our cost (NIL)
+    if (cardType === 'Company Card' && paymentFromCard === ourCost) {
+      return { type: null, value: 0 };
+    }
+
     // Logic for Client/Company Card full payment (Margin Credit)
     if (cardType === 'Client Card' || cardType === 'Company Card') {
       return { 
