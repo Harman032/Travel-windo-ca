@@ -429,5 +429,60 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
   }
 });
 
+router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+  try {
+    const { dateFrom, dateTo, agent, cancellationVerified } = req.query;
+
+    const matchQuery = {};
+
+    // Use correct verified fields — check both admin and account verification
+    matchQuery.$or = [
+      { adminVerified: true },
+      { accountVerified: true }
+    ];
+
+    if (dateFrom || dateTo) {
+      matchQuery.dateOfSubmission = {};
+      if (dateFrom) matchQuery.dateOfSubmission.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        matchQuery.dateOfSubmission.$lte = endOfDay;
+      }
+    }
+
+    if (agent && agent !== 'all') {
+      try {
+        matchQuery.submittedBy = new mongoose.Types.ObjectId(agent);
+      } catch (e) {
+        return res.status(400).json({ message: 'Invalid agent ID' });
+      }
+    }
+
+    if (cancellationVerified === 'true') {
+      matchQuery.cancellationVerified = true;
+    }
+
+    const bookings = await Booking.find(matchQuery)
+      .populate('submittedBy', 'name email')
+      .populate('verifiedByAdminUser', 'name')
+      .populate('cancellationVerifiedBy', 'name')
+      .sort({ dateOfSubmission: -1 })
+      .lean();
+
+    const summary = {
+      totalBookings: bookings.length,
+      totalSalePrice: bookings.reduce((sum, b) => sum + (b.totalSalePrice ?? 0), 0),
+      totalOurCost: bookings.reduce((sum, b) => sum + (b.ourCost ?? 0), 0),
+      totalMargin: bookings.reduce((sum, b) => sum + ((b.totalSalePrice ?? 0) - (b.ourCost ?? 0) - (b.supplierCharges ?? 0)), 0)
+    };
+
+    res.json({ bookings, summary });
+  } catch (error) {
+    console.error('Verified payments report error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;
 

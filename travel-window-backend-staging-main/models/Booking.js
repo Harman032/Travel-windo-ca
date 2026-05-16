@@ -219,6 +219,11 @@ const bookingSchema = new mongoose.Schema({
     default: false
   },
   
+  // Cancellation Verification Tracking
+  cancellationVerified: { type: Boolean, default: false },
+  cancellationVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  cancellationVerifiedAt: { type: Date },
+  
   // Assignment
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,

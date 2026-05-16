@@ -1452,6 +1452,32 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
   }
 });
 
+// Verify cancellation (Admin and Account only)
+router.post('/:id/verify-cancellation', auth, authorize('ADMIN', 'ACCOUNT'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.status !== 'Cancelled') {
+      return res.status(400).json({ message: 'Booking is not cancelled' });
+    }
+
+    booking.cancellationVerified = true;
+    booking.cancellationVerifiedBy = req.user._id;
+    booking.cancellationVerifiedAt = new Date();
+
+    await booking.save();
+
+    const populated = await Booking.findById(booking._id)
+      .populate('cancellationVerifiedBy', 'name email')
+      .populate('supplier', 'name');
+
+    res.json(populated);
+  } catch (error) {
+    console.error('Verify cancellation error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Recalculate cancellation values for ALL cancelled bookings (Admin only)
 router.post('/recalculate-all-cancellations', auth, authorize('ADMIN'), async (req, res) => {
   try {
