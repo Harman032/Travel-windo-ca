@@ -1176,7 +1176,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         const effectiveMargin = isCardEqualToSalePrice ? 0 : ourMargin;
         const newMarginVal = Math.round((effectiveMargin + occ) * 100) / 100;
         const totalChargesVal = Math.round((totalSupplierTook + newMarginVal) * 100) / 100;
-        const supplierWillReturn = Math.round((totalAmountPaid - scc) * 100) / 100;
+        const supplierWillReturn = Math.round((totalAmountPaid - totalSupplierTook) * 100) / 100;
         const upfrontNeeded = occ;
         const clientReceives = Math.round((totalAmountPaid - totalChargesVal) * 100) / 100;
 
@@ -1600,7 +1600,7 @@ function recalculateCancellationValues(booking) {
     c.totalSupplierTook = totalSupplierTook;
     c.newMargin = newMargin;
     c.totalCharges = totalCharges;
-    c.supplierWillReturn = Math.round((paidAmount - scc) * 100) / 100;
+    c.supplierWillReturn = Math.round((paidAmount - totalSupplierTook) * 100) / 100;
     c.upfrontNeeded = occ;
     c.clientReceives = Math.round((paidAmount - totalCharges) * 100) / 100;
     c.refundableAmount = c.clientReceives;

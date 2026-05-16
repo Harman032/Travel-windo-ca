@@ -73,12 +73,13 @@ function calculateCancellation(booking, inputs, cancellationType) {
     case 'clientCard':
       const isCardEqualToSalePrice_cc = paymentFromCard === salePrice;
       const effectiveMargin_cc = isCardEqualToSalePrice_cc ? 0 : ourMargin;
-      const clientCardNewMargin = round(effectiveMargin_cc + occ);
-      const clientCardTotalCharges = round(totalSupplierTook + clientCardNewMargin);
-      result.newMargin = clientCardNewMargin;
-      result.totalCharges = clientCardTotalCharges;
-      result.supplierWillReturn = round(totalPaidAmount - scc);
+      result.newMargin = effectiveMargin_cc;
+      const totalSupplierTook_cc = round(supplierCharges + scc);
+      result.totalSupplierTook = totalSupplierTook_cc;
+      result.supplierWillReturn = round(totalPaidAmount - totalSupplierTook_cc);
       result.upfrontNeeded = occ;
+      const clientCardTotalCharges = round(totalSupplierTook_cc + effectiveMargin_cc);
+      result.totalCharges = clientCardTotalCharges;
       result.clientReceives = round(totalPaidAmount - clientCardTotalCharges);
       result.refundCommittedToClientFinal = result.clientReceives;
       break;
@@ -188,13 +189,13 @@ const tests = [
     cancellationType: 'clientCard',
     expected: {
       ourMargin: 200,
-      newMargin: 100,
+      newMargin: 0,
       totalSupplierTook: 100,
-      totalCharges: 200,
+      totalCharges: 100,
       supplierWillReturn: 1100,
       upfrontNeeded: 100,
-      clientReceives: 1000,
-      refundCommittedToClientFinal: 1000
+      clientReceives: 1100,
+      refundCommittedToClientFinal: 1100
     }
   },
   {
