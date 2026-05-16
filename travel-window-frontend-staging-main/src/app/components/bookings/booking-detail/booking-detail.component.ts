@@ -360,7 +360,7 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'clientCard' && booking.cancellation.newMargin">
@@ -428,11 +428,11 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-red-600">CAD {{ (booking.cancellation.upfrontNeeded ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
@@ -467,7 +467,7 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-red-600">CAD {{ booking.cancellation.upfrontNeeded | number:'1.2-2' }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Client Receives</label>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
@@ -725,10 +725,10 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
                       <p>Upfront Needed: CAD {{ clientCardPartialUpfrontNeeded | number:'1.2-2' }}</p>
-                      <p>Client Receives: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
+                      <p>Refund Committed to Client: CAD {{ clientCardPartialClientReceives | number:'1.2-2' }}</p>
                     </div>
                     <div *ngIf="booking.cardType === 'Company Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-                      <p>Client Receives: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
+                      <p>Refund Committed to Client: CAD {{ partialPaidCardClientReceives | number:'1.2-2' }}</p>
                     </div>
                   </div>
                 </div>
@@ -829,7 +829,7 @@ import { ToastrService } from 'ngx-toastr';
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ clientCardPartialTotalCharges | number:'1.2-2' }}</p></div>
                       <div>
                         <label class="block text-sm text-gray-600">
-                          {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Client Receives Full Card Payment' : 'Client Receives' }}
+                          {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Refund Committed to Client Full Card Payment' : 'Refund Committed to Client' }}
                         </label>
                         <p class="text-lg font-bold text-blue-700">
                           {{ clientCardPartialClientReceives | number:'1.2-2' }}
@@ -900,10 +900,10 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                     <div *ngIf="booking.cardType === 'Client Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
                       <p>Upfront Needed: CAD {{ cancelClientCardUpfrontNeeded | number:'1.2-2' }}</p>
-                      <p>Client Receives: CAD {{ cancelClientCardClientReceives | number:'1.2-2' }}</p>
+                      <p>Refund Committed to Client: CAD {{ cancelClientCardClientReceives | number:'1.2-2' }}</p>
                     </div>
                     <div *ngIf="booking.cardType === 'Company Card'" class="mt-2 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-                      <p>Client Receives: CAD {{ cancelCompanyCardClientReceives | number:'1.2-2' }}</p>
+                      <p>Refund Committed to Client: CAD {{ cancelCompanyCardClientReceives | number:'1.2-2' }}</p>
                     </div>
                   </div>
                 </div>
@@ -1065,7 +1065,7 @@ import { ToastrService } from 'ngx-toastr';
                     <!-- Company card only -->
                     <div *ngIf="isCompanyCardCancellation">
                       <p class="text-sm font-bold text-green-800 mt-2">
-                        Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
+                        Refund Committed to Client: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
 
@@ -1075,7 +1075,7 @@ import { ToastrService } from 'ngx-toastr';
                         Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded ?? 0) | number:'1.2-2' }}
                       </p>
                       <p class="text-sm font-bold text-green-800">
-                        Client Receives: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
+                        Refund Committed to Client: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
                       </p>
                     </div>
 
@@ -1086,7 +1086,7 @@ import { ToastrService } from 'ngx-toastr';
                           Upfront Needed: CAD {{ booking.cancellation?.upfrontNeeded | number:'1.2-2' }}
                         </p>
                         <p class="text-sm font-bold text-green-800">
-                          Client Receives Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}
+                          Refund Committed to Client Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}
                         </p>
                       </ng-container>
                       <ng-container *ngIf="(booking.cancellation?.upfrontNeeded || 0) <= 0">
@@ -1094,7 +1094,7 @@ import { ToastrService } from 'ngx-toastr';
                           No upfront needed
                         </p>
                         <p class="text-sm font-bold text-green-800">
-                          Client Receives: CAD {{ booking.cancellation?.clientReceives | number:'1.2-2' }}
+                          Refund Committed to Client: CAD {{ booking.cancellation?.clientReceives | number:'1.2-2' }}
                         </p>
                       </ng-container>
                     </div>
@@ -2318,11 +2318,15 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelClientCardSupplierWillReturn(): number {
-    if (!this.booking) return 0;
-    const salePrice = this.baseSalePrice;
-    const ourMargin = this.cancelOurMargin;
-    const totalSupplierTook = this.cancelTotalSupplierTook;
-    return Math.round((salePrice - ourMargin - totalSupplierTook) * 100) / 100;
+    const totalPaidAmount = this.booking?.totalPaidAmount ?? 0;
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((totalPaidAmount - scc) * 100) / 100;
+  }
+
+  get cancelClientCardCurrentMargin(): number {
+    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
+    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
+    return Math.round((ourMargin + occ) * 100) / 100;
   }
 
   get cancelClientCardUpfrontNeeded(): number {
