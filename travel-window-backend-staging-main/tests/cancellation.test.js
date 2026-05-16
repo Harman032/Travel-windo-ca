@@ -71,10 +71,10 @@ function calculateCancellation(booking, inputs, cancellationType) {
       break;
 
     case 'clientCard':
-      result.supplierWillReturn = round(salePrice - ourMargin - totalSupplierTook);
+      result.supplierWillReturn = round(totalPaidAmount - scc);
       result.upfrontNeeded = occ;
-      result.clientReceives = result.supplierWillReturn;
-      result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
+      result.clientReceives = round(totalPaidAmount - totalCharges);
+      result.refundCommittedToClientFinal = result.clientReceives;
       break;
 
     case 'companyCard':
@@ -185,9 +185,9 @@ const tests = [
       newMargin: 300,
       totalSupplierTook: 100,
       totalCharges: 400,
-      supplierWillReturn: 900,
+      supplierWillReturn: 1100,
       upfrontNeeded: 100,
-      clientReceives: 900,
+      clientReceives: 800,
       refundCommittedToClientFinal: 800
     }
   },
