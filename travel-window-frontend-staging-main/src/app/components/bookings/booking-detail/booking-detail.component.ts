@@ -351,9 +351,13 @@ import { ToastrService } from 'ngx-toastr';
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
                 <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
               </div>
-              <div>
+              <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
                 <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.ourCancellationCharges || 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.cancellationType === 'clientCard'">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
@@ -362,10 +366,6 @@ import { ToastrService } from 'ngx-toastr';
               <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'clientCard' && booking.cancellation.newMargin">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin After Cancellation</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
 
@@ -882,7 +882,7 @@ import { ToastrService } from 'ngx-toastr';
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardNewMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardCurrentMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
                       <div>
                         <label class="block text-sm text-gray-600">
@@ -1958,7 +1958,7 @@ export class BookingDetailComponent implements OnInit {
         totalCharges: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelTotalCharges : 0,
         clientReceives: this.isClientOrCompanyCard ? 
                         (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardClientReceives : this.cancelClientCardClientReceives) : 0,
-        newMargin: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelClientCardNewMargin : 0,
+        newMargin: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelClientCardCurrentMargin : 0,
         supplierWillReturn: this.isClientOrCompanyCard ? 
                             (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardSupplierWillReturn : this.cancelClientCardSupplierWillReturn) : 0,
         upfrontNeeded: this.isClientOrCompanyCard && this.booking.cardType === 'Client Card' ? this.cancelClientCardUpfrontNeeded : 0
@@ -2282,15 +2282,10 @@ export class BookingDetailComponent implements OnInit {
     return Math.round((supplierCharges + scc) * 100) / 100;
   }
 
-  get cancelClientCardNewMargin(): number {
-    const ourMargin = this.cancelOurMargin;
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value) || 0;
-    return Math.round((ourMargin + occ) * 100) / 100;
-  }
 
   get cancelTotalCharges(): number {
     const totalSupplierTook = this.cancelTotalSupplierTook;
-    const newMargin = this.cancelClientCardNewMargin;
+    const newMargin = this.cancelClientCardCurrentMargin;
     return Math.round((totalSupplierTook + newMargin) * 100) / 100;
   }
 
