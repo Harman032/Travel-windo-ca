@@ -50,17 +50,25 @@ import { ToastrService } from 'ngx-toastr';
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
               <div class="flex gap-2">
-                <div class="relative w-52 flex-shrink-0">
+                <div class="relative w-52 flex-shrink-0 country-selector-container">
                   <input
                     type="text"
                     [value]="countrySearchInput"
                     (input)="onCountryCodeInput($event)"
                     (focus)="onCountryInputFocus($event)"
                     placeholder="Search code..."
-                    class="input w-full"
+                    class="input w-full pr-10"
                     autocomplete="off"
                     [class.border-red-500]="bookingForm.get('countryCode')?.invalid && bookingForm.get('countryCode')?.touched"
                   />
+                  <div 
+                    (click)="toggleCountryDropdown(); $event.stopPropagation()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                   
                   <!-- Dropdown -->
                   <div
@@ -487,6 +495,7 @@ export class NewBookingComponent implements OnInit {
     this.showCountryDropdown = true;
   }
 
+
   onCountryInputFocus(event: any): void {
     this.showCountryDropdown = true;
     event.target.select();
@@ -494,7 +503,10 @@ export class NewBookingComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.el.nativeElement.contains(event.target)) {
+    const target = event.target as HTMLElement;
+    const isInside = target.closest('.country-selector-container');
+    
+    if (!isInside) {
       this.showCountryDropdown = false;
       
       // Restore full display name if they clicked away without selecting
