@@ -230,7 +230,10 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
     const { paymentType } = req.query;
     
     const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({ verifiedByAccount: false }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
+    const bookings = await Booking.find({
+      adminVerified: { $ne: true },
+      accountVerified: { $ne: true }
+    }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
     const unverifiedPayments = [];
     
     bookings.forEach(b => {
