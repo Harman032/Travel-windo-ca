@@ -1104,7 +1104,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
       booking.cancellation = {
         isCancelled: true,
-        paymentModeWas: 'Credit Card',
+        paymentModeWas: 'Machine Charge',
         totalAmountPaidByClient: totalAmountPaid,
         oldMargin: ourMargin,
         newMargin: newMarginVal,
@@ -1148,7 +1148,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
         booking.cancellation = {
           isCancelled: true,
-          paymentModeWas: 'Credit Card',
+          paymentModeWas: 'Machine Charge',
           totalAmountPaidByClient: totalAmountPaid,
           oldMargin: ourMargin,
           newMargin: newMarginVal,
@@ -1182,7 +1182,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
         booking.cancellation = {
           isCancelled: true,
-          paymentModeWas: 'Credit Card',
+          paymentModeWas: 'Machine Charge',
           totalAmountPaidByClient: totalAmountPaid,
           oldMargin: effectiveMargin,
           newMargin: newMarginVal,
@@ -1212,7 +1212,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
 
       booking.cancellation = {
         isCancelled: true,
-        paymentModeWas: 'Credit Card',
+        paymentModeWas: 'Machine Charge',
         totalAmountPaidByClient: totalAmountPaid,
         oldMargin: ourMargin,
         newMargin: newMarginVal,
@@ -1307,7 +1307,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         };
       }
     } else {
-      if (paymentModeWas === 'Credit Card') {
+      if (paymentModeWas === 'Machine Charge') {
         refundableAmountToClient = totalSalePrice - supplierDeducted;
         const base = oldMargin;
         currentMargin = chargeFromClientVal > 0 ? (chargeFromClientVal < base ? base - chargeFromClientVal : base) : 0;
@@ -1315,7 +1315,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         refundCommittedToClient = totalSalePrice - supplierDeducted - chargeFromClientVal;
         finalCommittedToClient = refundCommittedToClient;
         if (chargeFromClient === undefined || chargeFromClient === null) {
-          return res.status(400).json({ message: 'Charge from client is required for credit card payments' });
+          return res.status(400).json({ message: 'Charge from client is required for machine charge payments' });
         }
       } else {
         totalCancellationCharges = oldMargin + supplierDeducted + occ;
@@ -1332,7 +1332,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         isCancelled: true,
         paymentModeWas,
         totalAmountPaidByClient: totalAmountPaid,
-        refundableAmount: refundableAmount || (paymentModeWas === 'Credit Card' ? refundableAmountToClient : refundableAmountCommittedToClient),
+        refundableAmount: refundableAmount || (paymentModeWas === 'Machine Charge' ? refundableAmountToClient : refundableAmountCommittedToClient),
         oldMargin,
         committedToClient: finalCommittedToClient,
         chargeFromClient: chargeFromClientVal,
@@ -1672,4 +1672,48 @@ router.post('/migrate-cheque-to-etransfer', auth, authorize('ADMIN'), async (req
   }
 });
 
+// Migration: Swap Credit Card and Machine Charge in paymentMode fields
+router.post('/migrate-swap-paymentmode-credit-machine', auth, authorize('ADMIN'), async (req, res) => {
+  try {
+    // Step 1: Credit Card → TEMP
+    await Booking.updateMany(
+      { 'payments.paymentMode': 'Credit Card' },
+      { $set: { 'payments.$[elem].paymentMode': 'TEMP_CREDIT' } },
+      { arrayFilters: [{ 'elem.paymentMode': 'Credit Card' }] }
+    );
+    await Booking.updateMany(
+      { 'cancellation.paymentModeWas': 'Credit Card' },
+      { $set: { 'cancellation.paymentModeWas': 'TEMP_CREDIT' } }
+    );
+
+    // Step 2: Machine Charge → Credit Card
+    await Booking.updateMany(
+      { 'payments.paymentMode': 'Machine Charge' },
+      { $set: { 'payments.$[elem].paymentMode': 'Credit Card' } },
+      { arrayFilters: [{ 'elem.paymentMode': 'Machine Charge' }] }
+    );
+    await Booking.updateMany(
+      { 'cancellation.paymentModeWas': 'Machine Charge' },
+      { $set: { 'cancellation.paymentModeWas': 'Credit Card' } }
+    );
+
+    // Step 3: TEMP → Machine Charge
+    await Booking.updateMany(
+      { 'payments.paymentMode': 'TEMP_CREDIT' },
+      { $set: { 'payments.$[elem].paymentMode': 'Machine Charge' } },
+      { arrayFilters: [{ 'elem.paymentMode': 'TEMP_CREDIT' }] }
+    );
+    await Booking.updateMany(
+      { 'cancellation.paymentModeWas': 'TEMP_CREDIT' },
+      { $set: { 'cancellation.paymentModeWas': 'Machine Charge' } }
+    );
+
+    res.json({ message: 'Payment mode swap completed successfully' });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ message: 'Migration failed', error: error.message });
+  }
+});
+
 module.exports = router;
+
