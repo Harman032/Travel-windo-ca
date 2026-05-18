@@ -942,8 +942,8 @@ import { ToastrService } from 'ngx-toastr';
                 <select formControlName="paymentModeWas" class="input" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
                   <option value="">Select payment mode</option>
                   <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
                   <option value="Machine Charge">Machine Charge</option>
+                  <option value="Credit Card">Credit Card</option>
                   <option value="E-Transfer">E-Transfer</option>
                 </select>
               </div>
@@ -1329,7 +1329,7 @@ export class BookingDetailComponent implements OnInit {
     // Watch payment mode changes to update validators
     this.cancelForm.get('paymentModeWas')?.valueChanges.subscribe(mode => {
       const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
-      if (mode === 'Credit Card' && !isCardFlow) {
+      if (mode === 'Machine Charge' && !isCardFlow) {
         this.cancelForm.get('chargeFromClient')?.setValidators([Validators.required]);
         this.cancelForm.get('committedToClient')?.clearValidators();
       } else {
@@ -1597,7 +1597,7 @@ export class BookingDetailComponent implements OnInit {
       return !best || amount > (typeof best.paidAmount === 'number' ? best.paidAmount : Number(best.paidAmount) || 0) ? p : best;
     }, payments[0]);
     const mode = (primary?.paymentMode || '').trim();
-    if (mode === 'Credit Card' || mode === 'Cheque') return mode;
+    if (mode === 'Machine Charge' || mode === 'Cheque') return mode;
     return 'Cash';
   }
 
@@ -1976,7 +1976,7 @@ export class BookingDetailComponent implements OnInit {
   onCancel() {
     const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
     if (isCardFlow) {
-      this.cancelForm.patchValue({ paymentModeWas: 'Credit Card' });
+      this.cancelForm.patchValue({ paymentModeWas: 'Machine Charge' });
     }
 
     if (this.cancelForm.invalid) {
@@ -1984,10 +1984,10 @@ export class BookingDetailComponent implements OnInit {
       return;
     }
     const formValue = this.cancelForm.getRawValue();
-    const paymentModeWas = isCardFlow ? 'Credit Card' : formValue.paymentModeWas;
+    const paymentModeWas = isCardFlow ? 'Machine Charge' : formValue.paymentModeWas;
     
     if (this.booking && paymentModeWas) {
-      const isCC = paymentModeWas === 'Credit Card';
+      const isCC = paymentModeWas === 'Machine Charge';
       this.bookingService.cancelBooking(this.booking._id!, {
         paymentModeWas: paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
@@ -2124,7 +2124,7 @@ export class BookingDetailComponent implements OnInit {
   get cancelCurrentMargin(): number {
     if (!this.booking) return 0;
     const paymentMode = this.cancelForm?.get('paymentModeWas')?.value;
-    if (paymentMode === 'Credit Card') {
+    if (paymentMode === 'Machine Charge') {
       return this.cancelOldMarginCC;
     }
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
@@ -2194,7 +2194,7 @@ export class BookingDetailComponent implements OnInit {
     const formValue = this.cancelForm.getRawValue();
     const paymentMode = formValue.paymentModeWas;
 
-    if (paymentMode === 'Credit Card') {
+    if (paymentMode === 'Machine Charge') {
       const chargeRaw = formValue.chargeFromClient;
       const charge = (chargeRaw !== null && chargeRaw !== undefined && chargeRaw !== '') ? (typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0) : 0;
       const base = this.baseMargin;

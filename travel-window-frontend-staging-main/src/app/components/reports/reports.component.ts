@@ -452,9 +452,9 @@ import { ToastrService } from 'ngx-toastr';
                 <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.ourCost | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">
                   {{ item.paymentMode }}
-                  <span *ngIf="item.paymentMode === 'Machine Charge'" 
+                  <span *ngIf="item.paymentMode === 'Credit Card'" 
                         class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-1 font-medium">
-                    Machine Charge
+                    Credit Card
                   </span>
                 </td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>

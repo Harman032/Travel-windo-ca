@@ -53,7 +53,7 @@ export interface Booking {
 
 export interface Payment {
   paidAmount: number;
-  paymentMode: 'Cash' | 'Credit Card' | 'UPI' | 'E-Transfer' | 'Kotak Bank' | 'Kotak Bank UPI' | 'Travobirds' | 'Machine Charge' | string;
+  paymentMode: 'Cash' | 'Machine Charge' | 'UPI' | 'E-Transfer' | 'Kotak Bank' | 'Kotak Bank UPI' | 'Travobirds' | 'Credit Card' | string;
   paymentDate: Date;
   referenceNo?: string;
 }
