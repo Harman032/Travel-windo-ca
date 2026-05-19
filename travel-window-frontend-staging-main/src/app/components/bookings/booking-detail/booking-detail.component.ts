@@ -84,11 +84,11 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div *ngIf="booking.status === 'Cancelled' && booking.cancellation && booking.cancellation.ourCancellationCharges !== undefined">
               <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-              <p class="text-gray-900 font-medium text-red-600">CAD {{ booking.cancellation.ourCancellationCharges | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.cancellationType === 'machineCharge' ? booking.cancellation.newMargin : booking.cancellation.ourCancellationCharges) | number:'1.2-2' }}</p>
             </div>
             <div *ngIf="booking.status === 'Cancelled' && booking.cancellation">
               <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin After Cancellation</label>
-              <p class="text-gray-900 font-medium text-green-600">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ (booking.cancellation.cancellationType === 'machineCharge' ? booking.cancellation.chargeFromClient : booking.cancellation.newMargin) | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
@@ -326,6 +326,10 @@ import { ToastrService } from 'ngx-toastr';
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
                 <p class="text-gray-900 font-medium text-green-700">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.chargeFromClient | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
