@@ -2040,7 +2040,7 @@ export class BookingDetailComponent implements OnInit {
   }
 
   onCancel() {
-    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
+    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment;
     if (isCardFlow || this.isMachineChargeOnly) {
       this.cancelForm.patchValue({ paymentModeWas: 'Machine Charge' });
     }
@@ -2076,11 +2076,11 @@ export class BookingDetailComponent implements OnInit {
                           this.isClientOrCompanyCard ?
                           (this.booking.cardType === 'Client Card' ? 'clientCard' : 'companyCard') :
                           formValue.cancellationType,
-        totalSupplierTook: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelTotalSupplierTook : 0,
-        totalCharges: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelTotalCharges : 0,
+        totalSupplierTook: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelTotalSupplierTook : 0,
+        totalCharges: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelTotalCharges : 0,
         clientReceives: this.isClientOrCompanyCard ? 
                         (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardClientReceives : this.cancelClientCardClientReceives) : 0,
-        newMargin: (this.isClientOrCompanyCard || this.isPartialPaidCard) ? this.cancelClientCardCurrentMargin : 0,
+        newMargin: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelClientCardCurrentMargin : 0,
         supplierWillReturn: this.isClientOrCompanyCard ? 
                             (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardSupplierWillReturn : this.cancelClientCardSupplierWillReturn) : 0,
         upfrontNeeded: this.isClientOrCompanyCard && this.booking.cardType === 'Client Card' ? this.cancelClientCardUpfrontNeeded : 0
