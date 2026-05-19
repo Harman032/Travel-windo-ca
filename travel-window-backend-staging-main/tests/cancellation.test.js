@@ -130,10 +130,19 @@ function calculateCancellation(booking, inputs, cancellationType) {
       break;
 
     case 'machineCharge':
-      result.refundableAmountToClient = round(salePrice - scc);
-      result.newMargin = round(chargeFromClient - ourMargin);
-      result.refundCommittedToClientFinal = round(result.refundableAmountToClient - chargeFromClient);
-      result.ourMargin = ourMargin;
+      const oldMargin_mc = round(salePrice - ourCost - supplierCharges);
+      const refundableToClient_mc = round(salePrice - scc);
+      const chargeFromClient_mc = occ;
+      const oldMarginRow2_mc = round(Math.min(chargeFromClient_mc, oldMargin_mc));
+      const newMargin_mc = round(Math.max(0, chargeFromClient_mc - oldMargin_mc));
+      const refundCommitted_mc = round(refundableToClient_mc - chargeFromClient_mc);
+
+      result.ourMargin = oldMargin_mc;
+      result.refundableToClient = refundableToClient_mc;
+      result.oldMarginRow2 = oldMarginRow2_mc;
+      result.newMargin = newMargin_mc;
+      result.refundCommittedToClient = refundCommitted_mc;
+      result.refundCommittedToClientFinal = refundCommitted_mc;
       break;
   }
 
@@ -399,15 +408,30 @@ const tests = [
     }
   },
   {
-    name: 'SCENARIO 10 — Machine Charge Only',
-    booking: { ...baseBooking, totalPaidAmount: 1200, paymentMode: 'Machine Charge', cardType: null },
-    inputs: { ...cancellationInputs, chargeFromClient: 250 }, // scc=100, occ=100 from base
+    name: 'SCENARIO 10 — Machine Charge Only (No Card Type)',
+    booking: {
+      ...baseBooking,
+      ourCost: 1000,
+      salePrice: 1200,
+      supplierCharges: 0,
+      totalPaidAmount: 1200,
+      paymentFromCard: 0,
+      cardType: null,
+      billingStatus: 'Paid',
+      payments: [{ paymentMode: 'Machine Charge' }]
+    },
+    inputs: {
+      supplierCancellationCharges: 100,
+      ourCancellationCharges: 50  // chargeFromClient
+    },
     cancellationType: 'machineCharge',
     expected: {
       ourMargin: 200,
-      newMargin: 50,  // chargeFromClient (250) - oldMargin (200) = 50
-      refundableAmountToClient: 1100, // salePrice (1200) - scc (100) = 1100
-      refundCommittedToClientFinal: 850 // refundableAmount (1100) - chargeFromClient (250) = 850
+      refundableToClient: 1100,  // 1200 - 100
+      oldMarginRow2: 50,          // MIN(50, 200) = 50
+      newMargin: 0,               // MAX(0, 50 - 200) = 0
+      refundCommittedToClient: 1050,  // 1100 - 50
+      refundCommittedToClientFinal: 1050
     }
   }
 ];

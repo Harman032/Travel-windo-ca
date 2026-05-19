@@ -1033,7 +1033,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     const {
       paymentModeWas,
-      refundableAmount,
+      refundableAmount: reqRefundableAmount,
       committedToClient,
       chargeFromClient,
       supplierCancellationCharges = 0,
@@ -1045,6 +1045,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     if (!paymentModeWas || !remarks) {
       return res.status(400).json({ message: 'Payment mode and remarks are required' });
     }
+
+    let refundableAmount = reqRefundableAmount;
     
     // Cancellation is computed only on base booking values (date/flight add-ons are non-refundable).
     const dateChangeSaleAddon = (booking.dateChanges || []).reduce((sum, d) => sum + (Number(d?.salePriceAddon) || 0), 0);
@@ -1058,7 +1060,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     const totalSalePrice = baseSalePrice;
     const totalAmountPaid = booking.totalPaidAmount || 0;
     const paymentFromCard = Number(booking.paymentFromCard) || 0;
-    const oldMargin = baseSalePrice - baseOurCost - supplierCharges;
+    let oldMargin = baseSalePrice - baseOurCost - supplierCharges;
     const scc = parseFloat(supplierCancellationCharges) || 0;
     const occ = parseFloat(ourCancellationCharges) || 0;
     const chargeFromClientVal = chargeFromClient != null ? parseFloat(chargeFromClient) : 0;
@@ -1083,21 +1085,31 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     }
 
     if (cancellationType === 'machineCharge') {
-      const refundableAmountToClient = baseSalePrice - scc;
-      const refundCommittedToClient = refundableAmountToClient - chargeFromClientVal;
-      const newMargin = chargeFromClientVal - oldMargin;
+      const oldMarginVal = Math.round((baseSalePrice - baseOurCost - supplierCharges) * 100) / 100;
+      const refundableToClient = Math.round((baseSalePrice - scc) * 100) / 100;
+      const chargeFromClientValNum = Number(chargeFromClientVal ?? 0);
+      const oldMarginRow2 = Math.round(Math.min(chargeFromClientValNum, oldMarginVal) * 100) / 100;
+      const newMarginVal = Math.round(Math.max(0, chargeFromClientValNum - oldMarginVal) * 100) / 100;
+      const refundCommittedToClientVal = Math.round((refundableToClient - chargeFromClientValNum) * 100) / 100;
+
+      oldMargin = oldMarginVal;
+      newMargin = newMarginVal;
+      refundableAmount = refundableToClient;
 
       booking.cancellation = {
         isCancelled: true,
         paymentModeWas: 'Machine Charge',
         totalAmountPaidByClient: totalAmountPaid,
-        oldMargin: oldMargin,
-        newMargin: newMargin,
-        refundableAmount: refundableAmountToClient,
-        committedToClient: refundCommittedToClient,
-        chargeFromClient: chargeFromClientVal,
+        oldMargin: oldMarginVal,
+        oldMarginRow2: oldMarginRow2,
+        newMargin: newMarginVal,
+        refundableAmount: refundableToClient,
+        refundCommittedToClient: refundCommittedToClientVal,
+        clientReceives: refundCommittedToClientVal,
+        chargeFromClient: chargeFromClientValNum,
         supplierCancellationCharges: scc,
         ourCancellationCharges: 0,
+        totalCharges: Math.round((scc + chargeFromClientValNum) * 100) / 100,
         cancellationType: 'machineCharge',
         refundProcessed: false,
         remarks: remarks,

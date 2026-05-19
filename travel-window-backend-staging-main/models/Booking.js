@@ -313,6 +313,10 @@ const bookingSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
+    oldMarginRow2: {
+      type: Number,
+      default: 0
+    },
     committedToClient: {
       type: Number,
       default: 0

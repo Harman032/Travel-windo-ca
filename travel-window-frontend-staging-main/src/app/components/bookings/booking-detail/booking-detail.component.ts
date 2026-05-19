@@ -324,16 +324,16 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.refundableAmount | number:'1.2-2' }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-                <p class="text-gray-900 font-medium text-green-700">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
-              </div>
-              <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.chargeFromClient | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.oldMarginRow2 != null ? booking.cancellation.oldMarginRow2 : 0) | number:'1.2-2' }}</p>
+              </div>
+              <div *ngIf="booking.cancellation.newMargin > 0">
+                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-blue-700">CAD {{ booking.cancellation.committedToClient | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-blue-700">CAD {{ (booking.cancellation.refundCommittedToClient != null ? booking.cancellation.refundCommittedToClient : booking.cancellation.committedToClient) | number:'1.2-2' }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Processed</label>
@@ -766,11 +766,26 @@ import { ToastrService } from 'ngx-toastr';
                   Machine Charge Cancellation: Review calculated charges below.
                 </p>
               </div>
+
+              <!-- Payment Mode Was -->
+              <div class="mb-4">
+                <label class="block text-sm text-gray-600">Payment Mode Was</label>
+                <p class="font-semibold text-gray-800">Credit Card</p>
+              </div>
+
               <div class="mt-4 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Old Margin</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }}</p></div>
-                  
+                  <!-- Row 1 -->
+                  <div>
+                    <label class="block text-sm text-gray-600">Base Sale Price</label>
+                    <p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600">Old Margin</label>
+                    <p class="font-semibold">{{ machineChargeOldMargin | number:'1.2-2' }}</p>
+                  </div>
+
+                  <!-- Inputs -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
@@ -779,18 +794,35 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
                   </div>
-                  
-                  <div class="col-span-full border-t border-red-200 pt-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Refundable Amount to Client</label><p class="text-lg font-bold text-orange-700">{{ machineChargeRefundableToClient | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Old Margin</label><p class="text-lg font-bold text-gray-700">{{ machineChargeOldMarginRow2 | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ machineChargeNewMargin | number:'1.2-2' }}</p></div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
-                        <p class="text-xl font-bold text-blue-700">CAD {{ machineChargeRefundCommitted | number:'1.2-2' }}</p>
-                        <p class="text-xs text-gray-500">Refundable Amount – Charge From Client</p>
-                      </div>
-                    </div>
+
+                  <!-- Calculated Row -->
+                  <div>
+                    <label class="block text-sm text-gray-600 font-medium">Refundable Amount to Client</label>
+                    <p class="text-lg font-bold text-orange-600">
+                      {{ machineChargeRefundableToClient | number:'1.2-2' }}
+                    </p>
+                  </div>
+                  <div *ngIf="machineChargeOldMarginRow2 > 0">
+                    <label class="block text-sm text-gray-600 font-medium">Old Margin</label>
+                    <p class="text-lg font-bold text-orange-600">
+                      {{ machineChargeOldMarginRow2 | number:'1.2-2' }}
+                    </p>
+                  </div>
+
+                  <!-- New Margin — only show if > 0 -->
+                  <div *ngIf="machineChargeNewMargin > 0">
+                    <label class="block text-sm text-gray-600 font-medium">New Margin</label>
+                    <p class="text-lg font-bold text-green-700">
+                      {{ machineChargeNewMargin | number:'1.2-2' }}
+                    </p>
+                  </div>
+
+                  <!-- Refund Committed -->
+                  <div>
+                    <label class="block text-sm text-gray-600 font-medium">Refund Committed to Client</label>
+                    <p class="text-lg font-bold text-green-700">
+                      CAD {{ machineChargeRefundCommitted | number:'1.2-2' }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1214,7 +1246,7 @@ import { ToastrService } from 'ngx-toastr';
                     </div>
                   </ng-container>
                   
-                  <ng-container *ngIf="!isCardCancellation">
+                  <ng-container *ngIf="!isCardCancellation && booking.cancellation?.cancellationType !== 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
                       Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
                     </p>
@@ -1223,6 +1255,21 @@ import { ToastrService } from 'ngx-toastr';
                     </p>
                     <p class="text-xs text-orange-700">
                       Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || booking.cancellation?.refundToClient || 0) | number:'1.2-2' }}
+                    </p>
+                  </ng-container>
+
+                  <ng-container *ngIf="booking.cancellation?.cancellationType === 'machineCharge'">
+                    <p class="text-sm font-semibold text-orange-800">
+                      Refundable Amount to Client: CAD {{ (booking.cancellation?.refundableAmount ?? 0) | number:'1.2-2' }}
+                    </p>
+                    <p class="text-sm font-semibold text-orange-800">
+                      Current Margin: CAD {{ (booking.cancellation?.oldMarginRow2 ?? 0) | number:'1.2-2' }}
+                    </p>
+                    <p *ngIf="(booking.cancellation?.newMargin ?? 0) > 0" class="text-sm font-semibold text-green-800">
+                      New Margin: CAD {{ (booking.cancellation?.newMargin ?? 0) | number:'1.2-2' }}
+                    </p>
+                    <p class="text-sm font-bold text-green-700 mt-2">
+                      Refund Committed to Client: CAD {{ (booking.cancellation?.refundCommittedToClient ?? booking.cancellation?.committedToClient ?? 0) | number:'1.2-2' }}
                     </p>
                   </ng-container>
                 </div>
@@ -2296,28 +2343,37 @@ export class BookingDetailComponent implements OnInit {
     return hasNoCardType && hasMachineChargePayment;
   }
 
+  get machineChargeOldMargin(): number {
+    const salePrice = this.booking?.salePrice ?? 0;
+    const ourCost = this.booking?.ourCost ?? 0;
+    const supplierCharges = this.booking?.supplierCharges ?? 0;
+    return Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+  }
+
   get machineChargeRefundableToClient(): number {
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value) || 0;
-    return Math.max(0, this.baseSalePrice - scc);
+    const salePrice = this.booking?.salePrice ?? 0;
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((salePrice - scc) * 100) / 100;
   }
 
   get machineChargeOldMarginRow2(): number {
-    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
-    if (chargeRaw === null || chargeRaw === undefined || chargeRaw === '') return 0;
-    return this.baseMargin;
+    const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value ?? 0);
+    if (!chargeFromClient || chargeFromClient <= 0) return 0;
+    const oldMargin = this.machineChargeOldMargin;
+    return Math.round(Math.min(chargeFromClient, oldMargin) * 100) / 100;
   }
 
   get machineChargeNewMargin(): number {
-    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
-    if (chargeRaw === null || chargeRaw === undefined || chargeRaw === '') return 0;
-    const charge = typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0;
-    return charge - this.baseMargin;
+    const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value ?? 0);
+    if (!chargeFromClient || chargeFromClient <= 0) return 0;
+    const oldMargin = this.machineChargeOldMargin;
+    return Math.round(Math.max(0, chargeFromClient - oldMargin) * 100) / 100;
   }
 
   get machineChargeRefundCommitted(): number {
-    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
-    const charge = (chargeRaw !== null && chargeRaw !== undefined && chargeRaw !== '') ? (typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0) : 0;
-    return Math.max(0, this.machineChargeRefundableToClient - charge);
+    const refundable = this.machineChargeRefundableToClient;
+    const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value ?? 0);
+    return Math.round((refundable - chargeFromClient) * 100) / 100;
   }
 
   // --- New Card Cancellation Logic ---
