@@ -1260,7 +1260,7 @@ import { ToastrService } from 'ngx-toastr';
 
                   <ng-container *ngIf="booking.cancellation?.cancellationType === 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Refundable Amount to Client: CAD {{ (booking.cancellation?.refundableAmount ?? 0) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ (booking.cancellation?.refundableAmount ?? 0) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-orange-800">
                       Current Margin: CAD {{ (booking.cancellation?.oldMarginRow2 ?? 0) | number:'1.2-2' }}
@@ -1272,6 +1272,8 @@ import { ToastrService } from 'ngx-toastr';
                       Refund Committed to Client: CAD {{ (booking.cancellation?.refundCommittedToClient ?? booking.cancellation?.committedToClient ?? 0) | number:'1.2-2' }}
                     </p>
                   </ng-container>
+
+
                 </div>
                 <p class="text-xs text-gray-500 mt-2 italic">Automatically set when cancellation is confirmed</p>
               </div>
