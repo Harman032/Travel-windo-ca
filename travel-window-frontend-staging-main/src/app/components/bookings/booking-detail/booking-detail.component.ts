@@ -296,8 +296,55 @@ import { ToastrService } from 'ngx-toastr';
         <!-- Cancellation Details -->
         <div *ngIf="booking.cancellation && booking.cancellation.isCancelled" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancellation Details</h3>
+          
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
+            <ng-container *ngIf="booking.cancellation.cancellationType === 'machineCharge'; else defaultCancellationDetails">
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode Was</label>
+                <p class="text-gray-900">{{ booking.cancellation.paymentModeWas }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Base Sale Price</label>
+                <p class="text-gray-900">{{ booking.salePrice | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Old Margin</label>
+                <p class="text-gray-900">{{ booking.cancellation.oldMargin | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Cancellation Charges</label>
+                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierCancellationCharges | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Charge From Client</label>
+                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.chargeFromClient | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount to Client</label>
+                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.refundableAmount | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
+                <p class="text-gray-900 font-medium text-green-700">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
+                <p class="text-gray-900 font-bold text-blue-700">CAD {{ booking.cancellation.committedToClient | number:'1.2-2' }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Processed</label>
+                <span class="badge" [ngClass]="booking.cancellation.refundProcessed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                  {{ booking.cancellation.refundProcessed ? 'Yes' : 'No' }}
+                </span>
+              </div>
+              <div class="col-span-full mt-4">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
+                <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
+              </div>
+            </ng-container>
+
+            <ng-template #defaultCancellationDetails>
+              <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode Was</label>
               <p class="text-gray-900">{{ booking.cancellation.paymentModeWas }}</p>
             </div>
@@ -471,10 +518,11 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
-            <div class="col-span-full">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
-              <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
-            </div>
+              <div class="col-span-full mt-4">
+                <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
+                <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
+              </div>
+            </ng-template>
             <div *ngIf="isAdmin()" class="col-span-full mt-4 pt-4 border-t border-red-200 flex space-x-2">
               <button type="button" (click)="revertCancellation()" class="btn btn-primary">
                 Revert to active (admin)
@@ -707,8 +755,45 @@ import { ToastrService } from 'ngx-toastr';
         <div *ngIf="showCancelForm" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancel Booking</h3>
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
-            <!-- 1. Partial Paid Card flow (MUST COME FIRST) -->
-            <ng-container *ngIf="isPartialPaidCard">
+            <!-- 1. Machine Charge Only (no card type) — HIGHEST PRIORITY -->
+            <ng-container *ngIf="isMachineChargeOnly">
+              <div class="mb-4">
+                <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                  Machine Charge Cancellation: Review calculated charges below.
+                </p>
+              </div>
+              <div class="mt-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="block text-sm text-gray-600">Base Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Old Margin</label><p class="font-semibold">{{ baseMargin | number:'1.2-2' }}</p></div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
+                  </div>
+                  
+                  <div class="col-span-full border-t border-red-200 pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="block text-sm text-gray-600">Refundable Amount to Client</label><p class="text-lg font-bold text-orange-700">{{ machineChargeRefundableToClient | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Old Margin</label><p class="text-lg font-bold text-gray-700">{{ machineChargeOldMarginRow2 | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">New Margin</label><p class="text-lg font-bold text-green-700">{{ machineChargeNewMargin | number:'1.2-2' }}</p></div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client (Not Editable)</label>
+                        <p class="text-xl font-bold text-blue-700">CAD {{ machineChargeRefundCommitted | number:'1.2-2' }}</p>
+                        <p class="text-xs text-gray-500">Refundable Amount – Charge From Client</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 2. Partial Paid Card flow -->
+            <ng-container *ngIf="isPartialPaidCard && !isMachineChargeOnly">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   Partial Paid {{ booking.cardType }} Cancellation: Review calculated charges below.
@@ -760,8 +845,8 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </ng-container>
 
-            <!-- 2. Regular Partial Paid flow (Non-Card) -->
-            <ng-container *ngIf="isPartialPaid && !isPartialPaidCard">
+            <!-- 3. Regular Partial Paid flow (Non-Card) -->
+            <ng-container *ngIf="isPartialPaid && !isPartialPaidCard && !isMachineChargeOnly">
               <div class="flex items-center gap-6 py-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="radio" formControlName="cancellationType" value="partialPaidCancellationCharges" class="h-4 w-4 accent-red-600" />
@@ -821,8 +906,8 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </ng-container>
 
-            <!-- 2.5 Client Card Partial Payment flow -->
-            <ng-container *ngIf="isClientCardPartialPayment">
+            <!-- 4. Client Card Partial Payment flow -->
+            <ng-container *ngIf="isClientCardPartialPayment && !isMachineChargeOnly">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   Client Card Partial Payment Cancellation: Review calculated charges below.
@@ -878,8 +963,8 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </ng-container>
 
-            <!-- 3. Fully Paid Card flow -->
-            <ng-container *ngIf="isClientOrCompanyCard">
+            <!-- 5. Fully Paid Card flow -->
+            <ng-container *ngIf="isClientOrCompanyCard && !isMachineChargeOnly">
               <div class="mb-4">
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   {{ booking.cardType }} Cancellation: Review calculated margin and charges below.
@@ -935,8 +1020,8 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </ng-container>
 
-            <!-- 4. Regular Fully Paid flow (Non-Card) -->
-            <ng-container *ngIf="!isPartialPaid && !isClientOrCompanyCard && !isClientCardPartialPayment">
+            <!-- 6. Regular Fully Paid flow (Non-Card) -->
+            <ng-container *ngIf="!isPartialPaid && !isClientOrCompanyCard && !isClientCardPartialPayment && !isMachineChargeOnly">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode Was <span class="text-red-500">*</span></label>
                 <select formControlName="paymentModeWas" class="input" required [class.border-red-500]="cancelForm.get('paymentModeWas')?.invalid && cancelForm.get('paymentModeWas')?.touched">
@@ -1975,8 +2060,15 @@ export class BookingDetailComponent implements OnInit {
 
   onCancel() {
     const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
-    if (isCardFlow) {
+    if (isCardFlow || this.isMachineChargeOnly) {
       this.cancelForm.patchValue({ paymentModeWas: 'Machine Charge' });
+    }
+
+    if (this.isMachineChargeOnly) {
+      this.cancelForm.get('supplierCancellationCharges')?.setValidators([Validators.required, Validators.min(0)]);
+      this.cancelForm.get('chargeFromClient')?.setValidators([Validators.required, Validators.min(0)]);
+      this.cancelForm.get('supplierCancellationCharges')?.updateValueAndValidity();
+      this.cancelForm.get('chargeFromClient')?.updateValueAndValidity();
     }
 
     if (this.cancelForm.invalid) {
@@ -1984,7 +2076,7 @@ export class BookingDetailComponent implements OnInit {
       return;
     }
     const formValue = this.cancelForm.getRawValue();
-    const paymentModeWas = isCardFlow ? 'Machine Charge' : formValue.paymentModeWas;
+    const paymentModeWas = (isCardFlow || this.isMachineChargeOnly) ? 'Machine Charge' : formValue.paymentModeWas;
     
     if (this.booking && paymentModeWas) {
       const isCC = paymentModeWas === 'Machine Charge';
@@ -1996,7 +2088,8 @@ export class BookingDetailComponent implements OnInit {
         supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
         ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
         remarks: formValue.remarks,
-        cancellationType: this.isPartialPaidCard ?
+        cancellationType: this.isMachineChargeOnly ? 'machineCharge' :
+                          this.isPartialPaidCard ?
                           (this.booking.cardType === 'Client Card' ? 'partialPaidClientCard' : 'partialPaidCompanyCard') :
                           this.isClientCardPartialPayment ? 'clientCardPartialPayment' :
                           this.isClientOrCompanyCard ?
@@ -2246,6 +2339,40 @@ export class BookingDetailComponent implements OnInit {
     if (status === 'Unticketed') return 'Unticketed';
     if (status === 'Ticketed') return 'Ticketed';
     return status || 'Draft';
+  }
+
+  get isMachineChargeOnly(): boolean {
+    const hasNoCardType = !this.booking?.cardType || 
+                           this.booking.cardType === '' || 
+                           this.booking.cardType === null;
+    const hasMachineChargePayment = this.booking?.payments?.some(
+      p => p.paymentMode === 'Machine Charge'
+    ) ?? false;
+    return hasNoCardType && hasMachineChargePayment;
+  }
+
+  get machineChargeRefundableToClient(): number {
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value) || 0;
+    return Math.max(0, this.baseSalePrice - scc);
+  }
+
+  get machineChargeOldMarginRow2(): number {
+    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
+    if (chargeRaw === null || chargeRaw === undefined || chargeRaw === '') return 0;
+    return this.baseMargin;
+  }
+
+  get machineChargeNewMargin(): number {
+    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
+    if (chargeRaw === null || chargeRaw === undefined || chargeRaw === '') return 0;
+    const charge = typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0;
+    return charge - this.baseMargin;
+  }
+
+  get machineChargeRefundCommitted(): number {
+    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
+    const charge = (chargeRaw !== null && chargeRaw !== undefined && chargeRaw !== '') ? (typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0) : 0;
+    return Math.max(0, this.machineChargeRefundableToClient - charge);
   }
 
   // --- New Card Cancellation Logic ---
