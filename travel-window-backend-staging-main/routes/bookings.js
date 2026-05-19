@@ -1083,7 +1083,31 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       finalCommittedToClient = totalSalePrice - (oldMargin + supplierDeducted + occ);
     }
 
-    if (cancellationType === 'clientCardPartialPayment') {
+    if (cancellationType === 'machineCharge') {
+      const refundableAmountToClient = baseSalePrice - scc;
+      const refundCommittedToClient = refundableAmountToClient - chargeFromClientVal;
+      const newMargin = chargeFromClientVal - oldMargin;
+
+      booking.cancellation = {
+        isCancelled: true,
+        paymentModeWas: 'Machine Charge',
+        totalAmountPaidByClient: totalAmountPaid,
+        oldMargin: oldMargin,
+        newMargin: newMargin,
+        refundableAmount: refundableAmountToClient,
+        committedToClient: refundCommittedToClient,
+        chargeFromClient: chargeFromClientVal,
+        supplierCancellationCharges: scc,
+        ourCancellationCharges: 0,
+        cancellationType: 'machineCharge',
+        refundProcessed: false,
+        remarks: remarks,
+        cancelledBy: req.user._id,
+        cancelledAt: new Date(),
+        refundReceivedFromSupplier: { date: null, remarks: '' },
+        refundPaidToClient: { date: null, remarks: '' }
+      };
+    } else if (cancellationType === 'clientCardPartialPayment') {
       const ourMargin = Math.round((totalSalePrice - baseOurCost - supplierCharges) * 100) / 100;
       const newMarginVal = Math.round((ourMargin + occ) * 100) / 100;
       const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
@@ -1307,16 +1331,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         };
       }
     } else {
-      if (paymentModeWas === 'Machine Charge') {
-        refundableAmountToClient = totalSalePrice - supplierDeducted;
-        const base = oldMargin;
-        currentMargin = chargeFromClientVal > 0 ? (chargeFromClientVal < base ? base - chargeFromClientVal : base) : 0;
-        newMargin = chargeFromClientVal > base ? chargeFromClientVal - base : 0;
-        refundCommittedToClient = totalSalePrice - supplierDeducted - chargeFromClientVal;
-        finalCommittedToClient = refundCommittedToClient;
-        if (chargeFromClient === undefined || chargeFromClient === null) {
-          return res.status(400).json({ message: 'Charge from client is required for machine charge payments' });
-        }
+      if (false) { // Old machine charge block replaced by explicit cancellationType
+        // Not reached
       } else {
         totalCancellationCharges = oldMargin + supplierDeducted + occ;
         refundableAmountCommittedToClient = finalCommittedToClient;
@@ -1332,7 +1348,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         isCancelled: true,
         paymentModeWas,
         totalAmountPaidByClient: totalAmountPaid,
-        refundableAmount: refundableAmount || (paymentModeWas === 'Machine Charge' ? refundableAmountToClient : refundableAmountCommittedToClient),
+        refundableAmount: refundableAmount || refundableAmountCommittedToClient,
         oldMargin,
         committedToClient: finalCommittedToClient,
         chargeFromClient: chargeFromClientVal,

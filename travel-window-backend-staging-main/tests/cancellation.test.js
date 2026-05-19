@@ -25,7 +25,8 @@ function calculateCancellation(booking, inputs, cancellationType) {
 
   const {
     supplierCancellationCharges: scc,
-    ourCancellationCharges: occ
+    ourCancellationCharges: occ,
+    chargeFromClient = 0
   } = inputs;
 
   const round = (val) => Math.round(val * 100) / 100;
@@ -126,6 +127,13 @@ function calculateCancellation(booking, inputs, cancellationType) {
         result.upfrontNeeded = 0;
         result.clientReceives = round(paymentFromCard + (remainingAmount - totalCharges));
       }
+      break;
+
+    case 'machineCharge':
+      result.refundableAmountToClient = round(salePrice - scc);
+      result.newMargin = round(chargeFromClient - ourMargin);
+      result.refundCommittedToClientFinal = round(result.refundableAmountToClient - chargeFromClient);
+      result.ourMargin = ourMargin;
       break;
   }
 
@@ -388,6 +396,18 @@ const tests = [
       supplierWillReturn: 700,
       clientReceives: 700,
       refundCommittedToClientFinal: 300
+    }
+  },
+  {
+    name: 'SCENARIO 10 — Machine Charge Only',
+    booking: { ...baseBooking, totalPaidAmount: 1200, paymentMode: 'Machine Charge', cardType: null },
+    inputs: { ...cancellationInputs, chargeFromClient: 250 }, // scc=100, occ=100 from base
+    cancellationType: 'machineCharge',
+    expected: {
+      ourMargin: 200,
+      newMargin: 50,  // chargeFromClient (250) - oldMargin (200) = 50
+      refundableAmountToClient: 1100, // salePrice (1200) - scc (100) = 1100
+      refundCommittedToClientFinal: 850 // refundableAmount (1100) - chargeFromClient (250) = 850
     }
   }
 ];
