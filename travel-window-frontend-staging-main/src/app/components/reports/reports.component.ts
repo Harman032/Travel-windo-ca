@@ -6,7 +6,6 @@ import { environment } from '../../../environments/environment';
 import { ReportService } from '../../services/report.service';
 import { SupplierService, Supplier } from '../../services/supplier.service';
 import { UserService, User } from '../../services/user.service';
-import { Booking } from '../../services/booking.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastrService } from 'ngx-toastr';
 

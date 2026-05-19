@@ -1370,7 +1370,6 @@ export class BookingDetailComponent implements OnInit {
   adminVerifiedStatus = false;
   accountVerifiedStatus = false;
   selectedStatus = '';
-  verifyingCancellation = false;
 
   constructor(
     private bookingService: BookingService,
@@ -1697,28 +1696,6 @@ export class BookingDetailComponent implements OnInit {
     if (user.role === 'ADMIN') return !!(this.booking.adminVerified || this.booking.verifiedByAdmin);
     if (user.role === 'ACCOUNT') return !!(this.booking.accountVerified || this.booking.verifiedByAccount);
     return false;
-  }
-
-  verifyCancellation() {
-    if (!this.booking || !this.booking._id) return;
-    if (!confirm('Are you sure you want to verify this cancellation?')) return;
-
-    this.verifyingCancellation = true;
-    this.bookingService.verifyCancellation(this.booking._id).subscribe({
-      next: (res) => {
-        this.toastr.success('Cancellation verified successfully');
-        this.verifyingCancellation = false;
-        if (this.booking) {
-          this.booking.cancellationVerified = true;
-          this.booking.cancellationVerifiedBy = res.verifiedBy;
-          this.booking.cancellationVerifiedAt = res.verifiedAt;
-        }
-      },
-      error: (err) => {
-        this.toastr.error(err.error?.message || 'Failed to verify cancellation');
-        this.verifyingCancellation = false;
-      }
-    });
   }
 
   /** Edit: Admin/Account full; Agent1/Agent2 until verified (per spec all can add/edit) */
@@ -2163,11 +2140,6 @@ export class BookingDetailComponent implements OnInit {
     });
   }
 
-  get oldMargin(): number {
-    if (!this.booking) return 0;
-    return (this.booking.salePrice || 0) - (this.booking.ourCost || 0);
-  }
-
   /** Sum of Date Change our-cost add-ons (refund not applicable) */
   get dateChangeOurAddon(): number {
     if (!this.booking?.dateChanges?.length) return 0;
@@ -2218,27 +2190,6 @@ export class BookingDetailComponent implements OnInit {
     return Math.max(0, this.refundablePortionOfSalePrice - scc);
   }
 
-  get cancelCurrentMargin(): number {
-    if (!this.booking) return 0;
-    const paymentMode = this.cancelForm?.get('paymentModeWas')?.value;
-    if (paymentMode === 'Machine Charge') {
-      return this.cancelOldMarginCC;
-    }
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const refundable = this.cancelRefundableToClient;
-    return this.baseMargin + scc + refundable - this.refundablePortionOfSalePrice;
-  }
-
-  /** Credit Card cancel: Old Margin = 0 when Any Charges From Client empty; else if Charge < Base Margin then Base Margin − Charge else Base Margin */
-  get cancelOldMarginCC(): number {
-    const chargeRaw = this.cancelForm?.get('chargeFromClient')?.value;
-    if (chargeRaw === null || chargeRaw === undefined || chargeRaw === '') return 0;
-    const charge = typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw);
-    if (isNaN(charge) || charge <= 0) return 0;
-    const base = this.baseMargin;
-    return charge < base ? base - charge : base;
-  }
-
   get cancelRefundCommittedToClient(): number {
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const charge = this.cancelForm?.get('chargeFromClient')?.value ?? 0;
@@ -2250,10 +2201,6 @@ export class BookingDetailComponent implements OnInit {
     const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
     const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
     return this.baseMargin + scc + occ;
-  }
-
-  get cancelRefundableCommittedToClient(): number {
-    return Math.max(0, this.refundablePortionOfSalePrice - this.cancelTotalCancellationCharges);
   }
 
   /** Non–Credit Card: Refund Committed To Client = Total Sale Price − Total Cancellation Charges (read-only, no textbox) */
@@ -2337,12 +2284,6 @@ export class BookingDetailComponent implements OnInit {
       const oldMargin = c.oldMargin || 0;
       return baseSale - scc - oldMargin;
     }
-  }
-
-  getStatusDisplay(status: string): string {
-    if (status === 'Unticketed') return 'Unticketed';
-    if (status === 'Ticketed') return 'Ticketed';
-    return status || 'Draft';
   }
 
   get isMachineChargeOnly(): boolean {
@@ -2595,10 +2536,6 @@ export class BookingDetailComponent implements OnInit {
     const totalSupplierTook = this.partialPaidCardTotalSupplierTook;
     const newMargin = this.partialPaidCardNewMargin;
     return Math.round((totalSupplierTook + newMargin) * 100) / 100;
-  }
-
-  get partialPaidCardUpfrontNeeded(): number {
-    return this.partialPaidCardTotalCharges;
   }
 
   get partialPaidCardClientReceives(): number {

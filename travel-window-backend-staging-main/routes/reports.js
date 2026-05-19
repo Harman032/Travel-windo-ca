@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 

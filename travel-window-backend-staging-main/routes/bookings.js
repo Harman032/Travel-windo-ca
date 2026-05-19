@@ -350,7 +350,6 @@ router.post('/:id/assign', auth, async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
-    const User = require('../models/User');
     const assignToUser = await User.findById(assignToUserId).select('name role isActive');
     if (!assignToUser || assignToUser.isActive === false) {
       return res.status(400).json({ message: 'Invalid assignee user' });
@@ -1331,18 +1330,14 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
         };
       }
     } else {
-      if (false) { // Old machine charge block replaced by explicit cancellationType
-        // Not reached
-      } else {
-        totalCancellationCharges = oldMargin + supplierDeducted + occ;
-        refundableAmountCommittedToClient = finalCommittedToClient;
-        // New Margin = Total Inflow - Total Outflow
-        // Total Inflow = Sale Price - Committed to Client
-        // Total Outflow = Our Cost - Supplier Refund
-        // Supplier Refund = Our Cost - Supplier Deducted
-        // Total Outflow = Our Cost - (Our Cost - Supplier Deducted) = Supplier Deducted
-        newMargin = (totalSalePrice - finalCommittedToClient) - supplierDeducted;
-      }
+      totalCancellationCharges = oldMargin + supplierDeducted + occ;
+      refundableAmountCommittedToClient = finalCommittedToClient;
+      // New Margin = Total Inflow - Total Outflow
+      // Total Inflow = Sale Price - Committed to Client
+      // Total Outflow = Our Cost - Supplier Refund
+      // Supplier Refund = Our Cost - Supplier Deducted
+      // Total Outflow = Our Cost - (Our Cost - Supplier Deducted) = Supplier Deducted
+      newMargin = (totalSalePrice - finalCommittedToClient) - supplierDeducted;
       
       booking.cancellation = {
         isCancelled: true,
@@ -1663,7 +1658,9 @@ function recalculateCancellationValues(booking) {
   }
 }
 
-// Migration endpoint: Run once to migrate existing cheque payments
+// MIGRATION COMPLETED - kept for reference only
+// POST /migrate-cheque-to-etransfer — run on 2026-05-19
+/*
 router.post('/migrate-cheque-to-etransfer', auth, authorize('ADMIN'), async (req, res) => {
   try {
     const result1 = await Booking.updateMany(
@@ -1687,8 +1684,10 @@ router.post('/migrate-cheque-to-etransfer', auth, authorize('ADMIN'), async (req
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+*/
 
-// Migration: Swap Credit Card and Machine Charge in paymentMode fields
+// POST /migrate-swap-paymentmode-credit-machine — run on 2026-05-19
+/*
 router.post('/migrate-swap-paymentmode-credit-machine', auth, authorize('ADMIN'), async (req, res) => {
   try {
     // Step 1: Credit Card → TEMP
@@ -1730,6 +1729,7 @@ router.post('/migrate-swap-paymentmode-credit-machine', auth, authorize('ADMIN')
     res.status(500).json({ message: 'Migration failed', error: error.message });
   }
 });
+*/
 
 module.exports = router;
 

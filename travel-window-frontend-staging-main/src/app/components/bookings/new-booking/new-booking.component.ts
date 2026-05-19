@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { BookingService, Booking, Payment } from '../../../services/booking.service';
+import { BookingService } from '../../../services/booking.service';
 import { SupplierService, Supplier } from '../../../services/supplier.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastrService } from 'ngx-toastr';

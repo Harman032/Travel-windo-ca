@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { BookingService, Booking } from '../../../services/booking.service';
 import { SupplierService, Supplier } from '../../../services/supplier.service';
@@ -207,7 +207,6 @@ export class BookingListComponent implements OnInit {
     private supplierService: SupplierService,
     private authService: AuthService,
     private fb: FormBuilder,
-    private router: Router,
     private route: ActivatedRoute
   ) {
     this.filterForm = this.fb.group({
