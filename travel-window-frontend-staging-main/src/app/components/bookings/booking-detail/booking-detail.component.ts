@@ -325,7 +325,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.oldMarginRow2 != null ? booking.cancellation.oldMarginRow2 : 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.chargeFromClient != null ? booking.cancellation.chargeFromClient : 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.newMargin > 0">
                 <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
@@ -1263,7 +1263,7 @@ import { ToastrService } from 'ngx-toastr';
                       Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-orange-800">
-                      Current Margin: CAD {{ (booking.cancellation?.oldMarginRow2 ?? 0) | number:'1.2-2' }}
+                      Current Margin: CAD {{ (booking.cancellation?.chargeFromClient ?? 0) | number:'1.2-2' }}
                     </p>
                     <p *ngIf="(booking.cancellation?.newMargin ?? 0) > 0" class="text-sm font-semibold text-green-800">
                       New Margin: CAD {{ (booking.cancellation?.newMargin ?? 0) | number:'1.2-2' }}
