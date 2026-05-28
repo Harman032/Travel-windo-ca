@@ -17,7 +17,7 @@ router.get('/', auth, async (req, res) => {
 // Create supplier (Admin only)
 router.post('/', auth, authorize('ADMIN'), async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, bookingCharge, updationCharge, cancellationCharge } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'Supplier name is required' });
@@ -31,7 +31,12 @@ router.post('/', auth, authorize('ADMIN'), async (req, res) => {
       return res.status(400).json({ message: 'Supplier already exists' });
     }
     
-    const supplier = new Supplier({ name });
+    const supplier = new Supplier({ 
+      name,
+      bookingCharge: bookingCharge || 0,
+      updationCharge: updationCharge || 0,
+      cancellationCharge: cancellationCharge || 0
+    });
     await supplier.save();
     
     res.status(201).json(supplier);
@@ -43,7 +48,7 @@ router.post('/', auth, authorize('ADMIN'), async (req, res) => {
 // Update supplier (Admin only)
 router.put('/:id', auth, authorize('ADMIN'), async (req, res) => {
   try {
-    const { name, isActive } = req.body;
+    const { name, isActive, bookingCharge, updationCharge, cancellationCharge } = req.body;
     
     const supplier = await Supplier.findById(req.params.id);
     if (!supplier) {
@@ -64,6 +69,9 @@ router.put('/:id', auth, authorize('ADMIN'), async (req, res) => {
     }
     
     if (isActive !== undefined) supplier.isActive = isActive;
+    if (bookingCharge !== undefined) supplier.bookingCharge = bookingCharge;
+    if (updationCharge !== undefined) supplier.updationCharge = updationCharge;
+    if (cancellationCharge !== undefined) supplier.cancellationCharge = cancellationCharge;
     
     await supplier.save();
     

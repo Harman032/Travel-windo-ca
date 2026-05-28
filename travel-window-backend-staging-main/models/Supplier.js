@@ -9,6 +9,18 @@ const supplierSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  bookingCharge: {
+    type: Number,
+    default: 0
+  },
+  updationCharge: {
+    type: Number,
+    default: 0
+  },
+  cancellationCharge: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

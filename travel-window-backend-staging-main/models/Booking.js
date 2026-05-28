@@ -141,6 +141,14 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  supplierBookingCharge: {
+    type: Number,
+    default: 0
+  },
+  supplierUpdationCharge: {
+    type: Number,
+    default: 0
+  },
   additionalService: {
     type: String,
     default: ''
@@ -329,7 +337,8 @@ const bookingSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    supplierCancellationCharges: { type: Number, default: 0 },
+    airlineCancellationCharges: { type: Number, default: 0 },
+    supplierCancellationCharge: { type: Number, default: 0 },
     supplierRefundAmount: { type: Number, default: 0 },
     supplierDeducted: { type: Number, default: 0 },
     ourCancellationCharges: { type: Number, default: 0 },
