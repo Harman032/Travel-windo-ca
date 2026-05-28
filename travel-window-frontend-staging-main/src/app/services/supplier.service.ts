@@ -6,6 +6,9 @@ export interface Supplier {
   _id?: string;
   name: string;
   isActive?: boolean;
+  bookingCharge?: number;
+  updationCharge?: number;
+  cancellationCharge?: number;
 }
 
 import { environment } from '../../environments/environment';

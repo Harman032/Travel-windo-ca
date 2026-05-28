@@ -261,7 +261,7 @@ import { ToastrService } from 'ngx-toastr';
             <ng-container *ngIf="bookingForm.get('isCardPayment')?.value">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Charges/Service charges</label>
-                <input type="number" formControlName="supplierCharges" class="input" placeholder="0" />
+                <input type="number" formControlName="supplierCharges" class="input bg-gray-100" placeholder="0" readonly />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Payment From Card</label>
@@ -442,6 +442,16 @@ export class NewBookingComponent implements OnInit {
 
     this.bookingForm.get('paymentType')?.valueChanges.subscribe(() => {
       this.ensurePaymentRowWhenFull();
+    });
+
+    this.bookingForm.get('supplier')?.valueChanges.subscribe(supplierId => {
+      if (supplierId && !this.isEditMode) {
+        const supplier = this.suppliers.find(s => s._id === supplierId);
+        if (supplier) {
+          const bookingCharge = Number(supplier.bookingCharge) || 0;
+          this.bookingForm.patchValue({ supplierCharges: bookingCharge }, { emitEvent: false });
+        }
+      }
     });
 
     this.bookingForm.valueChanges.subscribe(() => {

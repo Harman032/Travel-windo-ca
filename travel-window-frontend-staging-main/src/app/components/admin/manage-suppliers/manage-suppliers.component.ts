@@ -42,6 +42,18 @@ import Swal from 'sweetalert2';
               <input type="checkbox" formControlName="isActive" id="isActive" class="mr-2 h-4 w-4 rounded border-gray-300 accent-button focus:ring-2 focus:ring-button focus:ring-offset-0" />
               <label for="isActive" class="text-sm font-medium text-gray-700">Active</label>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Booking Charge <span class="text-red-500">*</span></label>
+              <input type="number" formControlName="bookingCharge" class="input" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Updation Charge <span class="text-red-500">*</span></label>
+              <input type="number" formControlName="updationCharge" class="input" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Charge <span class="text-red-500">*</span></label>
+              <input type="number" formControlName="cancellationCharge" class="input" placeholder="0.00" min="0" step="0.01" />
+            </div>
           </div>
           <div class="mt-4 flex justify-end space-x-2">
             <button 
@@ -159,7 +171,10 @@ export class ManageSuppliersComponent implements OnInit {
   ) {
     this.supplierForm = this.fb.group({
       name: ['', Validators.required],
-      isActive: [true]
+      isActive: [true],
+      bookingCharge: [0, [Validators.required, Validators.min(0)]],
+      updationCharge: [0, [Validators.required, Validators.min(0)]],
+      cancellationCharge: [0, [Validators.required, Validators.min(0)]]
     });
   }
 
@@ -192,7 +207,10 @@ export class ManageSuppliersComponent implements OnInit {
       // Update supplier
       this.supplierService.updateSupplier(this.editingSupplier._id!, {
         name: formValue.name,
-        isActive: formValue.isActive
+        isActive: formValue.isActive,
+        bookingCharge: formValue.bookingCharge,
+        updationCharge: formValue.updationCharge,
+        cancellationCharge: formValue.cancellationCharge
       }).subscribe({
         next: () => {
           this.toastr.success('Supplier updated successfully', 'Success');
@@ -207,7 +225,10 @@ export class ManageSuppliersComponent implements OnInit {
       // Create supplier
       this.supplierService.createSupplier({
         name: formValue.name,
-        isActive: formValue.isActive
+        isActive: formValue.isActive,
+        bookingCharge: formValue.bookingCharge,
+        updationCharge: formValue.updationCharge,
+        cancellationCharge: formValue.cancellationCharge
       }).subscribe({
         next: () => {
           this.toastr.success('Supplier created successfully', 'Success');
@@ -226,7 +247,10 @@ export class ManageSuppliersComponent implements OnInit {
     this.showAddForm = true;
     this.supplierForm.patchValue({
       name: supplier.name,
-      isActive: supplier.isActive !== false
+      isActive: supplier.isActive !== false,
+      bookingCharge: supplier.bookingCharge || 0,
+      updationCharge: supplier.updationCharge || 0,
+      cancellationCharge: supplier.cancellationCharge || 0
     });
   }
 
@@ -262,6 +286,11 @@ export class ManageSuppliersComponent implements OnInit {
     this.showAddForm = false;
     this.editingSupplier = null;
     this.supplierForm.reset();
-    this.supplierForm.patchValue({ isActive: true });
+    this.supplierForm.patchValue({ 
+      isActive: true,
+      bookingCharge: 0,
+      updationCharge: 0,
+      cancellationCharge: 0
+    });
   }
 }

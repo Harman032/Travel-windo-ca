@@ -82,13 +82,13 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
               <p class="text-gray-900 font-medium text-green-600">CAD {{ ((booking?.salePrice || 0) - (booking?.ourCost || 0) - (booking?.supplierCharges || 0)) | number:'1.2-2' }}</p>
             </div>
-            <div *ngIf="booking.status === 'Cancelled' && booking.cancellation && booking.cancellation.ourCancellationCharges !== undefined">
+            <div *ngIf="booking.status === 'Cancelled' && booking.cancellation && booking.cancellation.newMargin !== undefined">
               <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-              <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.cancellationType === 'machineCharge' ? booking.cancellation.newMargin : booking.cancellation.ourCancellationCharges) | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-red-600">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
             </div>
-            <div *ngIf="booking.status === 'Cancelled' && booking.cancellation">
+            <div *ngIf="booking.status === 'Cancelled' && booking.cancellation && booking.cancellation.currentMargin !== undefined">
               <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin After Cancellation</label>
-              <p class="text-gray-900 font-medium text-green-600">CAD {{ (booking.cancellation.cancellationType === 'machineCharge' ? booking.cancellation.chargeFromClient : booking.cancellation.newMargin) | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ booking.cancellation.currentMargin | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
@@ -1196,80 +1196,21 @@ import { ToastrService } from 'ngx-toastr';
               <div>
                 <p class="font-medium text-gray-800">Refund Awaited from Supplier</p>
                 <div class="mt-2 space-y-2">
-                  <ng-container *ngIf="isCardCancellation">
+                  <ng-container *ngIf="booking.cancellation?.cancellationType !== 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn != null ? booking.cancellation.supplierWillReturn : expectedSupplierReturn) | number:'1.2-2' }}
-                    </p>
-                    <p class="text-sm font-semibold text-red-800">
-                      Total Charges: CAD {{ (booking.cancellation?.totalCharges ?? 0) | number:'1.2-2' }}
-                    </p>
-                    <p class="text-sm font-bold text-green-700 mt-2">
-                      Refund Committed to Client: CAD {{ (booking.cancellation?.refundCommittedToClient ?? 0) | number:'1.2-2' }}
-                    </p>
-                    <p class="text-[10px] text-gray-500 italic">Paid Amount – Total Charges</p>
-                    
-                    <!-- Company card only -->
-                    <div *ngIf="isCompanyCardCancellation">
-                      <p class="text-sm font-bold text-green-800 mt-2">
-                        Refund Committed to Client: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
-                      </p>
-                    </div>
-
-                    <!-- Client card only -->
-                    <div *ngIf="isClientCardCancellation" class="mt-2 space-y-1">
-                      <p class="text-sm font-bold text-red-800">
-                        Upfront Needed: CAD {{ (booking.cancellation?.upfrontNeeded ?? 0) | number:'1.2-2' }}
-                      </p>
-                      <p class="text-sm font-bold text-green-800">
-                        Refund Committed to Client: CAD {{ (booking.cancellation?.clientReceives ?? 0) | number:'1.2-2' }}
-                      </p>
-                    </div>
-
-                    <!-- Client Card Partial Payment only -->
-                    <div *ngIf="booking.cancellation?.cancellationType === 'clientCardPartialPayment'" class="mt-2 space-y-1">
-                      <ng-container *ngIf="(booking.cancellation?.upfrontNeeded || 0) > 0">
-                        <p class="text-sm font-bold text-red-800">
-                          Upfront Needed: CAD {{ booking.cancellation?.upfrontNeeded | number:'1.2-2' }}
-                        </p>
-                        <p class="text-sm font-bold text-green-800">
-                          Refund Committed to Client Card Payment: CAD {{ (booking?.paymentFromCard || 0) | number:'1.2-2' }}
-                        </p>
-                      </ng-container>
-                      <ng-container *ngIf="(booking.cancellation?.upfrontNeeded || 0) <= 0">
-                        <p class="text-sm font-bold text-gray-600">
-                          No upfront needed
-                        </p>
-                        <p class="text-sm font-bold text-green-800">
-                          Refund Committed to Client: CAD {{ booking.cancellation?.clientReceives | number:'1.2-2' }}
-                        </p>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                  
-                  <ng-container *ngIf="!isCardCancellation && booking.cancellation?.cancellationType !== 'machineCharge'">
-                    <p class="text-sm font-semibold text-orange-800">
-                      Amount Supplier Will Return: CAD {{ expectedSupplierReturn | number:'1.2-2' }}
-                    </p>
-                    <p *ngIf="booking.cancellation?.cancellationType === 'supplierRefundAmount'" class="text-xs text-orange-700">
-                      Supplier Deducted: CAD {{ (booking.cancellation?.supplierDeducted || 0) | number:'1.2-2' }}
-                    </p>
-                    <p class="text-xs text-orange-700">
-                      Refund Committed to Client: CAD {{ (booking.cancellation?.committedToClient || booking.cancellation?.refundToClient || 0) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.airlineCancellationCharges ?? booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
                     </p>
                   </ng-container>
 
                   <ng-container *ngIf="booking.cancellation?.cancellationType === 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.airlineCancellationCharges ?? booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-orange-800">
-                      Current Margin: CAD {{ (booking.cancellation?.chargeFromClient ?? 0) | number:'1.2-2' }}
+                      Current Margin: CAD {{ (booking.cancellation?.currentMargin ?? 0) | number:'1.2-2' }}
                     </p>
                     <p *ngIf="(booking.cancellation?.newMargin ?? 0) > 0" class="text-sm font-semibold text-green-800">
                       New Margin: CAD {{ (booking.cancellation?.newMargin ?? 0) | number:'1.2-2' }}
-                    </p>
-                    <p class="text-sm font-bold text-green-700 mt-2">
-                      Refund Committed to Client: CAD {{ (booking.cancellation?.refundCommittedToClient ?? booking.cancellation?.committedToClient ?? 0) | number:'1.2-2' }}
                     </p>
                   </ng-container>
 

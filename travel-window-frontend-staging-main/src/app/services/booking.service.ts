@@ -24,6 +24,11 @@ export interface Booking {
   ourCost?: number;
   salePrice?: number;
   supplierCharges?: number;
+  supplierBookingCharge?: number;
+  supplierUpdationCharge?: number;
+  supplierCancellationCharge?: number;
+  airlineCancellationCharges?: number;
+  airlineRefundAmount?: number;
   additionalService?: string;
   additionalServicePrice?: number;
   totalSalePrice?: number;
