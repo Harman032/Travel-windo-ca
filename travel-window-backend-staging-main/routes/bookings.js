@@ -1099,8 +1099,12 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     }
     
     booking.supplierCancellationCharge = sccAuto;
-    // ensure we accumulate the charge correctly if not already added. We will just set it as part of totals.
-    const supplierCharges = (Number(booking.supplierCharges) || 0) + sccAuto;
+    // Accumulate total supplier charges
+    const supplierCharges = Math.round((
+      (booking.supplierBookingCharge || 0) +
+      (booking.supplierUpdationCharge || 0) +
+      sccAuto
+    ) * 100) / 100;
     booking.supplierCharges = supplierCharges;
     
     const ourMargin = Math.round((baseSalePrice - (baseOurCost + (booking.supplierBookingCharge || 0))) * 100) / 100;
@@ -1148,7 +1152,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     } else if (!isPartialPaid && isClientCard) {
       if (isChargesMode) {
         refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        supplierWillReturn = Math.round((baseSalePrice - (acc + booking.supplierCancellationCharge)) * 100) / 100;
+        supplierWillReturn = Math.round((baseSalePrice - acc) * 100) / 100;
         airlineDeducted = acc;
       } else {
         airlineDeducted = Math.round((baseSalePrice - ara) * 100) / 100;
