@@ -2218,26 +2218,20 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelRefundableToClient(): number {
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    return Math.max(0, this.refundablePortionOfSalePrice - scc);
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   get cancelRefundCommittedToClient(): number {
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const charge = this.cancelForm?.get('chargeFromClient')?.value ?? 0;
-    const chargeNum = typeof charge === 'number' ? charge : parseFloat(charge) || 0;
-    return Math.max(0, this.refundablePortionOfSalePrice - scc - chargeNum);
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   get cancelTotalCancellationCharges(): number {
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
-    return this.baseMargin + scc + occ;
+    return this.cancellationResult.totalCharges ?? 0;
   }
 
   /** Non–Credit Card: Refund Committed To Client = Total Sale Price − Total Cancellation Charges (read-only, no textbox) */
   get refundCommittedToClientNonCC(): number {
-    return Math.max(0, this.totalSalePriceForCancel - this.cancelTotalCancellationCharges);
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   /** Supplier Refund Amount mode: Supplier Deducted = Our Cost − Supplier Refund Amount */
@@ -2249,45 +2243,21 @@ export class BookingDetailComponent implements OnInit {
 
   /** Supplier Refund Amount mode: Refund Committed To Client = Supplier Refund Amount − Our Cancellation Charges */
   get refundCommittedToClientRefundMode(): number {
-    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value ?? 0;
-    return Math.max(0, Number(sra) - Number(occ));
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   /** SCC mode: New Margin = (Sale Price − Committed To Client) − Supplier Deducted */
   get cancelNewMarginSCC(): number {
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value) || 0;
-    return Math.round((this.totalSalePriceForCancel - this.refundCommittedToClientNonCC - scc) * 100) / 100;
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   /** SRA mode: New Margin = (Sale Price − Committed To Client) − Supplier Deducted */
   get cancelNewMarginSRA(): number {
-    return Math.round((this.totalSalePriceForCancel - this.refundCommittedToClientRefundMode - this.supplierDeductedRefundMode) * 100) / 100;
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   get newMargin(): number {
-    if (!this.booking || !this.cancelForm) return 0;
-    const formValue = this.cancelForm.getRawValue();
-    const paymentMode = formValue.paymentModeWas;
-
-    if (paymentMode === 'Machine Charge') {
-      const chargeRaw = formValue.chargeFromClient;
-      const charge = (chargeRaw !== null && chargeRaw !== undefined && chargeRaw !== '') ? (typeof chargeRaw === 'number' ? chargeRaw : parseFloat(chargeRaw) || 0) : 0;
-      const base = this.baseMargin;
-      return charge > base ? charge - base : 0;
-    } else {
-      const isRefundMode = formValue.cancellationType === 'supplierRefundAmount';
-      const sra = Number(formValue.supplierCancellationCharges) || 0; // scc field used for refund amount in refund mode
-      const occ = Number(formValue.ourCancellationCharges) || 0;
-      const committed = isRefundMode ? this.refundCommittedToClientRefundMode : this.refundCommittedToClientNonCC;
-      
-      // Profit = (Sale Price - Committed to Client) - (Our Cost - Supplier Refund)
-      const inflow = this.refundablePortionOfSalePrice - committed;
-      const supplierRefund = isRefundMode ? sra : (this.baseOurCost - sra); // In charge mode, supplier refund = our cost - charge
-      const outflow = this.baseOurCost - supplierRefund;
-      
-      return inflow - outflow;
-    }
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   get expectedSupplierReturn(): number {
@@ -2371,22 +2341,19 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialOurMargin(): number {
-    if (!this.booking) return 0;
-    return Math.round((this.booking.salePrice || 0) - (this.booking.ourCost || 0) - (this.booking.supplierCharges || 0));
+    return this.cancellationResult.ourMargin ?? 0;
   }
 
   get clientCardPartialTotalSupplierTook(): number {
-    return this.cancelTotalSupplierTook;
+    return this.cancellationResult.totalSupplierTook ?? 0;
   }
 
   get clientCardPartialNewMargin(): number {
-    const ourMargin = this.clientCardPartialOurMargin;
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
-    return Math.round((ourMargin + occ) * 100) / 100;
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   get clientCardPartialTotalCharges(): number {
-    return Math.round((this.clientCardPartialTotalSupplierTook + this.clientCardPartialNewMargin) * 100) / 100;
+    return this.cancellationResult.totalCharges ?? 0;
   }
 
   get clientCardPartialRemainingAmount(): number {
@@ -2397,27 +2364,15 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialSupplierWillReturn(): number {
-    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
-    const supplierCharges = this.booking?.supplierCharges ?? 0;
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    return Math.round((paymentFromCard - totalSupplierTook) * 100) / 100;
+    return this.cancellationResult.supplierWillReturn ?? 0;
   }
 
   get clientCardPartialUpfrontNeeded(): number {
-    const salePrice = this.booking?.salePrice ?? 0;
-    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
-    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
-    const totalCharges = this.clientCardPartialTotalCharges;
-    
-    if (remainingAmount < totalCharges) {
-      return Math.round((totalCharges - remainingAmount) * 100) / 100;
-    }
-    return 0;
+    return this.cancellationResult.upfrontNeeded ?? 0;
   }
 
   get clientCardPartialClientReceives(): number {
-    return this.clientCardPartialSupplierWillReturn;
+    return this.cancellationResult.clientReceives ?? 0;
   }
 
   get isClientOrCompanyCard(): boolean {
@@ -2428,80 +2383,174 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelOurMargin(): number {
-    if (!this.booking) return 0;
-    const salePrice = this.baseSalePrice;
-    const ourCost = this.baseOurCost;
+    return this.cancellationResult.ourMargin ?? 0;
+  }
+
+
+  get cancellationResult(): any {
+    if (!this.booking) return {};
+
+    const round = (val: number) => Math.round(val * 100) / 100;
+
+    const salePrice = this.booking.salePrice || 0;
+    const ourCost = this.booking.ourCost || 0;
     const supplierCharges = this.booking.supplierCharges || 0;
-    return Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
+    const totalPaidAmount = this.booking.totalPaidAmount || 0;
+    const paymentFromCard = this.booking.paymentFromCard || 0;
+    const supplierBookingCharge = this.booking.supplierBookingCharge || 0;
+    const supplierUpdationCharge = this.booking.supplierUpdationCharge || 0;
+    const autoSupplierCancellationCharge = this.autoSupplierCancellationCharge || 0;
+
+    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value || 0);
+    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
+    const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value || 0);
+
+    const cancellationType = this.cancelForm?.get('cancellationType')?.value || '';
+
+    const totalSupplierTook = round(supplierBookingCharge + supplierUpdationCharge + autoSupplierCancellationCharge);
+    const ourMargin = round(salePrice - ourCost - supplierCharges);
+    const newMargin = round(ourMargin + occ);
+
+    let result: any = {
+      ourMargin,
+      newMargin,
+      totalSupplierTook,
+      cancellationType,
+      supplierWillReturn: 0,
+      refundCommittedToClient: 0,
+      clientReceives: 0,
+      totalCharges: 0,
+      upfrontNeeded: 0
+    };
+
+    const isRefundAmount = cancellationType.includes('RefundAmount');
+    const airlineDeductedFromSale = isRefundAmount ? round(salePrice - scc) : 0;
+    const airlineDeductedFromPaid = isRefundAmount ? round(totalPaidAmount - scc) : 0;
+    const airlineDeducted = isRefundAmount ? round(ourCost - scc) : 0; 
+    
+    switch (cancellationType) {
+      case 'supplierCancellationCharges':
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(ourCost - scc - autoSupplierCancellationCharge);
+        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
+        break;
+
+      case 'supplierRefundAmount':
+        result.totalCharges = round(totalSupplierTook + airlineDeducted);
+        result.supplierWillReturn = round(ourCost - airlineDeducted - autoSupplierCancellationCharge);
+        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
+        break;
+
+      case 'partialPaidCancellationCharges':
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(totalPaidAmount - scc - autoSupplierCancellationCharge);
+        result.refundCommittedToClient = round(totalPaidAmount - (result.totalCharges + newMargin));
+        break;
+
+      case 'partialPaidRefundAmount':
+        result.totalCharges = round(totalSupplierTook + airlineDeductedFromPaid);
+        result.supplierWillReturn = round(totalPaidAmount - airlineDeductedFromPaid - autoSupplierCancellationCharge);
+        result.refundCommittedToClient = round(totalPaidAmount - (result.totalCharges + newMargin));
+        break;
+
+      case 'clientCard':
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(salePrice - scc);
+        result.upfrontNeeded = round(newMargin + totalSupplierTook);
+        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
+        result.clientReceives = result.refundCommittedToClient;
+        break;
+
+      case 'companyCard':
+        const isCardEqualToSalePrice = paymentFromCard === salePrice;
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = isCardEqualToSalePrice ? round(salePrice - totalSupplierTook) : round(ourCost - totalSupplierTook);
+        result.clientReceives = round(salePrice - (newMargin + result.totalCharges));
+        result.refundCommittedToClient = result.clientReceives;
+        break;
+
+      case 'partialPaidClientCard':
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
+        result.upfrontNeeded = round(newMargin + totalSupplierTook);
+        result.refundCommittedToClient = round(totalPaidAmount - (newMargin + result.totalCharges));
+        result.clientReceives = result.refundCommittedToClient;
+        break;
+
+      case 'partialPaidCompanyCard':
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
+        result.refundCommittedToClient = round(totalPaidAmount - (newMargin + result.totalCharges));
+        result.clientReceives = result.refundCommittedToClient;
+        break;
+        
+      case 'clientCardPartialPayment':
+        const remainingAmount = round(salePrice - paymentFromCard);
+        result.totalCharges = round(totalSupplierTook + scc);
+        result.supplierWillReturn = round(totalPaidAmount - scc);
+        result.upfrontNeeded = newMargin;
+        result.clientReceives = result.supplierWillReturn;
+        result.refundCommittedToClient = round(totalPaidAmount - result.totalCharges);
+
+        if (remainingAmount < result.totalCharges) {
+          result.upfrontNeeded = round(result.totalCharges - remainingAmount);
+          result.clientReceives = paymentFromCard;
+        } else {
+          result.upfrontNeeded = 0;
+          result.clientReceives = round(paymentFromCard + (remainingAmount - result.totalCharges));
+        }
+        break;
+        
+      case 'machineCharge':
+        const oldMargin_mc = round(salePrice - ourCost - supplierCharges);
+        const refundableToClient_mc = round(salePrice - scc);
+        const chargeFromClient_mc = occ;
+        const newMargin_mc = round(Math.max(0, chargeFromClient_mc - oldMargin_mc));
+        const refundCommitted_mc = round(refundableToClient_mc - chargeFromClient_mc);
+
+        result.newMargin = newMargin_mc;
+        result.refundCommittedToClient = refundCommitted_mc;
+        break;
+    }
+
+    return result;
   }
 
   get cancelTotalSupplierTook(): number {
-    const bookingCharge = this.booking?.supplierBookingCharge ?? 0;
-    const updationCharge = this.booking?.supplierUpdationCharge ?? 0;
-    const cancellationCharge = this.autoSupplierCancellationCharge ?? 0;
-    return Math.round((bookingCharge + updationCharge + cancellationCharge) * 100) / 100;
+    return this.cancellationResult.totalSupplierTook ?? 0;
   }
 
 
   get cancelTotalCharges(): number {
-    const totalSupplierTook = this.cancelTotalSupplierTook;
-    const airlineCancellation = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    return Math.round((totalSupplierTook + airlineCancellation) * 100) / 100;
+    return this.cancellationResult.totalCharges ?? 0;
   }
 
   get cancelCompanyCardClientReceives(): number {
-    const salePrice = this.baseSalePrice;
-    const totalCharges = this.cancelTotalCharges;
-    return Math.round((salePrice - totalCharges) * 100) / 100;
+    return this.cancellationResult.clientReceives ?? 0;
   }
 
   get cancelCompanyCardSupplierWillReturn(): number {
-    if (!this.booking) return 0;
-    const isCardEqualToSalePrice = this.booking.paymentFromCard === this.booking.salePrice;
-    const isCardEqualToOurCost = this.booking.paymentFromCard === this.booking.ourCost;
-    const salePrice = this.baseSalePrice;
-    const ourCost = this.baseOurCost;
-    const totalSupplierTook = this.cancelTotalSupplierTook;
-
-    if (isCardEqualToSalePrice) {
-      return Math.round((salePrice - totalSupplierTook) * 100) / 100;
-    } else if (isCardEqualToOurCost) {
-      return Math.round((ourCost - totalSupplierTook) * 100) / 100;
-    } else {
-      return Math.round((ourCost - totalSupplierTook) * 100) / 100;
-    }
+    return this.cancellationResult.supplierWillReturn ?? 0;
   }
 
   get cancelClientCardSupplierWillReturn(): number {
-    const salePrice = this.booking?.salePrice ?? 0;
-    const airlineCancellation = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    return Math.round((salePrice - airlineCancellation) * 100) / 100;
+    return this.cancellationResult.supplierWillReturn ?? 0;
   }
 
   get cancelClientCardOurMargin(): number {
-    const paymentFromCard = this.booking?.paymentFromCard ?? 0;
-    const salePrice = this.booking?.salePrice ?? 0;
-    if (paymentFromCard === salePrice) return 0;
-    return Math.round((salePrice - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
+    return this.cancellationResult.ourMargin ?? 0;
   }
 
   get cancelClientCardCurrentMargin(): number {
-    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
-    return Math.round((ourMargin + occ) * 100) / 100;
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   get cancelClientCardUpfrontNeeded(): number {
-    const currentMargin = this.cancelClientCardCurrentMargin;
-    const totalSupplierTook = this.cancelTotalSupplierTook;
-    return Math.round((currentMargin + totalSupplierTook) * 100) / 100;
+    return this.cancellationResult.upfrontNeeded ?? 0;
   }
 
   get cancelClientCardClientReceives(): number {
-    const salePrice = this.booking?.salePrice ?? 0;
-    const currentMargin = this.cancelClientCardCurrentMargin;
-    const totalCharges = this.cancelTotalCharges;
-    return Math.round((salePrice - (currentMargin + totalCharges)) * 100) / 100;
+    return this.cancellationResult.clientReceives ?? 0;
   }
 
   // --- Partial Paid Cancellation Logic ---
@@ -2511,24 +2560,15 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get partialPaidOurMargin(): number {
-    if (!this.booking) return 0;
-    return Math.round((this.booking.salePrice || 0) - (this.booking.ourCost || 0) - (this.booking.supplierCharges || 0));
+    return this.cancellationResult.ourMargin ?? 0;
   }
 
   get partialPaidTotalCharges(): number {
-    if (!this.booking) return 0;
-    const ourMargin = this.partialPaidOurMargin;
-    const supplierCharges = this.booking.supplierCharges || 0;
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
-    return Math.round((ourMargin + supplierCharges + scc + occ) * 100) / 100;
+    return this.cancellationResult.totalCharges ?? 0;
   }
 
   get partialPaidRefundToClient(): number {
-    if (!this.booking) return 0;
-    const paidAmount = this.booking.totalPaidAmount || 0;
-    const totalCharges = this.partialPaidTotalCharges;
-    return Math.round((paidAmount - totalCharges) * 100) / 100;
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   get partialPaidSupplierDeducted(): number {
@@ -2539,16 +2579,11 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get partialPaidRefundToClientSRA(): number {
-    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
-    return Math.round((sra - occ) * 100) / 100;
+    return this.cancellationResult.refundCommittedToClient ?? 0;
   }
 
   get partialPaidSupplierWillReturn(): number {
-    if (!this.booking) return 0;
-    const paidAmount = this.booking.totalPaidAmount || 0;
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    return Math.round((paidAmount - scc) * 100) / 100;
+    return this.cancellationResult.supplierWillReturn ?? 0;
   }
 
   // --- Partial Paid Card Cancellation Logic ---
@@ -2561,28 +2596,19 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get partialPaidCardTotalSupplierTook(): number {
-    return this.cancelTotalSupplierTook;
+    return this.cancellationResult.totalSupplierTook ?? 0;
   }
 
   get partialPaidCardNewMargin(): number {
-    const ourMargin = this.partialPaidOurMargin;
-    const occ = this.cancelForm?.get('ourCancellationCharges')?.value || 0;
-    return Math.round((ourMargin + occ) * 100) / 100;
+    return this.cancellationResult.newMargin ?? 0;
   }
 
   get partialPaidCardTotalCharges(): number {
-    const totalSupplierTook = this.partialPaidCardTotalSupplierTook;
-    const newMargin = this.partialPaidCardNewMargin;
-    return Math.round((totalSupplierTook + newMargin) * 100) / 100;
+    return this.cancellationResult.totalCharges ?? 0;
   }
 
   get partialPaidCardClientReceives(): number {
-    const paidAmount = this.booking?.totalPaidAmount || 0;
-    if (this.booking?.cardType === 'Client Card') {
-      return paidAmount;
-    }
-    const totalCharges = this.partialPaidCardTotalCharges;
-    return Math.round((paidAmount - totalCharges) * 100) / 100;
+    return this.cancellationResult.clientReceives ?? 0;
   }
 
   get isCardCancellation(): boolean {
