@@ -811,10 +811,16 @@ import { ToastrService } from 'ngx-toastr';
                   </div>
 
                   <!-- Inputs -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+
+                  <div *ngIf="cancellationMode === 'charges'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
+                  <div *ngIf="cancellationMode === 'refundAmount'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Refund Amount <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineRefundAmount" class="input" step="0.01" min="0" />
+                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
@@ -856,6 +862,17 @@ import { ToastrService } from 'ngx-toastr';
             <!-- 2. Partial Paid Card flow -->
             <ng-container *ngIf="isPartialPaidCard && !isMachineChargeOnly">
               <div class="mb-4">
+              <div class="flex gap-6 mb-4 mt-4 border-b border-gray-200 pb-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="charges" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Cancellation Charges</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="refundAmount" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Refund Amount</span>
+                </label>
+              </div>
+
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   Partial Paid {{ booking.cardType }} Cancellation: Review calculated charges below.
                 </p>
@@ -869,10 +886,16 @@ import { ToastrService } from 'ngx-toastr';
                   <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+
+                  <div *ngIf="cancellationMode === 'charges'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
+                  <div *ngIf="cancellationMode === 'refundAmount'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Refund Amount <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineRefundAmount" class="input" step="0.01" min="0" />
+                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
@@ -882,6 +905,10 @@ import { ToastrService } from 'ngx-toastr';
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ partialPaidCardTotalSupplierTook | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ partialPaidCardNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidCardTotalCharges | number:'1.2-2' }}</p></div>
+                      <div *ngIf="cancellationMode === 'refundAmount'">
+                        <label class="block text-sm text-gray-600">Airline Deducted</label>
+                        <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
+                      </div>
                       <div>
                         <label class="block text-sm text-gray-600">Supplier Will Return</label>
                         <p class="text-lg font-bold text-blue-700">
@@ -970,6 +997,17 @@ import { ToastrService } from 'ngx-toastr';
             <!-- 4. Client Card Partial Payment flow -->
             <ng-container *ngIf="isClientCardPartialPayment && !isMachineChargeOnly">
               <div class="mb-4">
+              <div class="flex gap-6 mb-4 mt-4 border-b border-gray-200 pb-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="charges" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Cancellation Charges</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="refundAmount" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Refund Amount</span>
+                </label>
+              </div>
+
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   Client Card Partial Payment Cancellation: Review calculated charges below.
                 </p>
@@ -984,10 +1022,16 @@ import { ToastrService } from 'ngx-toastr';
                   <div><label class="block text-sm text-gray-600">Payment From Card</label><p class="font-semibold">{{ (booking.paymentFromCard || 0) | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Remaining Amount</label><p class="font-semibold">{{ clientCardPartialRemainingAmount | number:'1.2-2' }}</p></div>
                   
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+
+                  <div *ngIf="cancellationMode === 'charges'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
+                  <div *ngIf="cancellationMode === 'refundAmount'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Refund Amount <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineRefundAmount" class="input" step="0.01" min="0" />
+                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
@@ -998,6 +1042,10 @@ import { ToastrService } from 'ngx-toastr';
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ clientCardPartialTotalSupplierTook | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ clientCardPartialNewMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ clientCardPartialTotalCharges | number:'1.2-2' }}</p></div>
+                      <div *ngIf="cancellationMode === 'refundAmount'">
+                        <label class="block text-sm text-gray-600">Airline Deducted</label>
+                        <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
+                      </div>
                       <div>
                         <label class="block text-sm text-gray-600">
                           {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Refund Committed to Client Full Card Payment' : 'Refund Committed to Client' }}
@@ -1027,6 +1075,17 @@ import { ToastrService } from 'ngx-toastr';
             <!-- 5. Fully Paid Card flow -->
             <ng-container *ngIf="isClientOrCompanyCard && !isMachineChargeOnly">
               <div class="mb-4">
+              <div class="flex gap-6 mb-4 mt-4 border-b border-gray-200 pb-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="charges" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Cancellation Charges</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="cancellationMode" value="refundAmount" [(ngModel)]="cancellationMode" [ngModelOptions]="{standalone: true}" (change)="onCancellationModeChange()" class="h-4 w-4 accent-red-600">
+                  <span class="text-sm font-medium text-gray-700">Airline Refund Amount</span>
+                </label>
+              </div>
+
                 <p class="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
                   {{ booking.cardType }} Cancellation: Review calculated margin and charges below.
                 </p>
@@ -1041,10 +1100,16 @@ import { ToastrService } from 'ngx-toastr';
                   <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ (booking.totalPaidAmount || booking.salePrice) | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
                   
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Cancellation Charges <span class="text-red-500">*</span></label>
-                    <input type="number" formControlName="supplierCancellationCharges" class="input" step="0.01" min="0" />
+
+                  <div *ngIf="cancellationMode === 'charges'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Cancellation Charges <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineCancellationCharges" class="input" step="0.01" min="0" />
                   </div>
+                  <div *ngIf="cancellationMode === 'refundAmount'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Airline Refund Amount <span class="text-red-500">*</span></label>
+                    <input type="number" formControlName="airlineRefundAmount" class="input" step="0.01" min="0" />
+                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">New Margin <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="ourCancellationCharges" class="input" step="0.01" min="0" />
@@ -1055,6 +1120,10 @@ import { ToastrService } from 'ngx-toastr';
                       <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardCurrentMargin | number:'1.2-2' }}</p></div>
                       <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
+                      <div *ngIf="cancellationMode === 'refundAmount'">
+                        <label class="block text-sm text-gray-600">Airline Deducted</label>
+                        <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
+                      </div>
                       <div>
                         <label class="block text-sm text-gray-600">
                           Supplier Will Return
@@ -1361,6 +1430,7 @@ import { ToastrService } from 'ngx-toastr';
   `
 })
 export class BookingDetailComponent implements OnInit {
+  cancellationMode: 'charges' | 'refundAmount' = 'charges';
   booking: Booking | null = null;
   loading = true;
   loadError: string | null = null;
@@ -1428,6 +1498,8 @@ export class BookingDetailComponent implements OnInit {
       cancellationType: ['supplierCancellationCharges'],
       supplierCancellationCharges: [0],
       ourCancellationCharges: [0],
+      airlineCancellationCharges: [0],
+      airlineRefundAmount: [0],
       remarks: ['', Validators.required]
     });
 
@@ -1759,7 +1831,23 @@ export class BookingDetailComponent implements OnInit {
   }
 
   /** Open only Cancel form; close Date Change and Flight Change */
+  onCancellationModeChange(): void {
+    if (this.cancellationMode === 'charges') {
+      this.cancelForm.get('airlineCancellationCharges')?.setValidators([Validators.required, Validators.min(0)]);
+      this.cancelForm.get('airlineRefundAmount')?.clearValidators();
+      this.cancelForm.patchValue({ airlineRefundAmount: 0 });
+    } else {
+      this.cancelForm.get('airlineRefundAmount')?.setValidators([Validators.required, Validators.min(0)]);
+      this.cancelForm.get('airlineCancellationCharges')?.clearValidators();
+      this.cancelForm.patchValue({ airlineCancellationCharges: 0 });
+    }
+    this.cancelForm.get('airlineCancellationCharges')?.updateValueAndValidity();
+    this.cancelForm.get('airlineRefundAmount')?.updateValueAndValidity();
+  }
+
   openCancelFormOnly() {
+    this.cancellationMode = 'charges';
+    this.onCancellationModeChange();
     if (this.showCancelForm) {
       this.showCancelForm = false;
       return;
