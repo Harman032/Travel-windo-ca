@@ -1856,6 +1856,26 @@ export class BookingDetailComponent implements OnInit {
 
   /** Open only Cancel form; close Date Change and Flight Change */
   onCancellationModeChange(): void {
+    const isCardType = this.isClientOrCompanyCard ||
+                       this.isPartialPaidCard ||
+                       this.isClientCardPartialPayment;
+
+    if (!isCardType) {
+      // For non-card: change cancellationType based on mode and billing status
+      if (this.cancellationMode === 'charges') {
+        const ct = this.isPartialPaid
+          ? 'partialPaidCancellationCharges'
+          : 'supplierCancellationCharges';
+        this.cancelForm.patchValue({ cancellationType: ct });
+      } else {
+        const ct = this.isPartialPaid
+          ? 'partialPaidRefundAmount'
+          : 'supplierRefundAmount';
+        this.cancelForm.patchValue({ cancellationType: ct });
+      }
+    }
+    // Card types keep their cancellationType unchanged — mode switch is handled by cancellationMode variable
+
     if (this.cancellationMode === 'charges') {
       this.cancelForm.get('airlineCancellationCharges')?.setValidators([Validators.required, Validators.min(0)]);
       this.cancelForm.get('airlineRefundAmount')?.clearValidators();
@@ -1871,7 +1891,29 @@ export class BookingDetailComponent implements OnInit {
 
   openCancelFormOnly() {
     this.cancellationMode = 'charges';
+    
+    // Determine cancellation type based on booking
+    let cancellationType = 'supplierCancellationCharges'; // default
+
+    if (this.isMachineChargeOnly) {
+      cancellationType = 'machineCharge';
+    } else if (this.isPartialPaidCard) {
+      cancellationType = this.booking?.cardType === 'Client Card'
+        ? 'partialPaidClientCard'
+        : 'partialPaidCompanyCard';
+    } else if (this.isClientCardPartialPayment) {
+      cancellationType = 'clientCardPartialPayment';
+    } else if (this.isClientOrCompanyCard) {
+      cancellationType = this.booking?.cardType === 'Client Card'
+        ? 'clientCard'
+        : 'companyCard';
+    } else if (this.isPartialPaid) {
+      cancellationType = 'partialPaidCancellationCharges';
+    }
+
+    this.cancelForm.patchValue({ cancellationType: cancellationType });
     this.onCancellationModeChange();
+
     if (this.showCancelForm) {
       this.showCancelForm = false;
       return;
