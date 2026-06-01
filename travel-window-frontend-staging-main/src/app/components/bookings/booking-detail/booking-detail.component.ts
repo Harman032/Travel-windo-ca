@@ -2526,7 +2526,8 @@ export class BookingDetailComponent implements OnInit {
     const cancellationType = this.cancelForm?.get('cancellationType')?.value || '';
 
     const totalSupplierTook = round(supplierBookingCharge + supplierUpdationCharge + autoSupplierCancellationCharge);
-    const ourMargin = round(salePrice - ourCost - supplierCharges);
+    // ourMargin uses only supplierBookingCharge (not full supplierCharges which is already accumulated)
+    const ourMargin = round(salePrice - ourCost - supplierBookingCharge);
     const newMargin = round(ourMargin + occ); // currentMargin
 
     let result: any = {
