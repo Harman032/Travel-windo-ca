@@ -2621,6 +2621,7 @@ export class BookingDetailComponent implements OnInit {
         result.totalCharges = round(totalSupplierTook + airlineDeducted_nonCard);
         result.supplierWillReturn = round(ourCost - airlineDeducted_nonCard - autoSupplierCancellationCharge);
         result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
+        result.airlineDeducted = airlineDeducted_nonCard;
         break;
 
       case 'partialPaidCancellationCharges':
