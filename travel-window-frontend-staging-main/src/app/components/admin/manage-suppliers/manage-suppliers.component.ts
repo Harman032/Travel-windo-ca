@@ -42,16 +42,22 @@ import Swal from 'sweetalert2';
               <input type="checkbox" formControlName="isActive" id="isActive" class="mr-2 h-4 w-4 rounded border-gray-300 accent-button focus:ring-2 focus:ring-button focus:ring-offset-0" />
               <label for="isActive" class="text-sm font-medium text-gray-700">Active</label>
             </div>
+          </div>
+
+          <div class="border-t border-gray-200 my-4"></div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">Supplier Charges Configuration</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Booking Charge <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Booking Charge</label>
               <input type="number" formControlName="bookingCharge" class="input" placeholder="0.00" min="0" step="0.01" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Updation Charge <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Updation Charge</label>
               <input type="number" formControlName="updationCharge" class="input" placeholder="0.00" min="0" step="0.01" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Charge <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Charge</label>
               <input type="number" formControlName="cancellationCharge" class="input" placeholder="0.00" min="0" step="0.01" />
             </div>
           </div>
@@ -92,6 +98,9 @@ import Swal from 'sweetalert2';
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updation</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cancellation</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -99,6 +108,9 @@ import Swal from 'sweetalert2';
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr *ngFor="let i of [1,2,3,4,5]" class="animate-pulse">
                   <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-32 h-4"></div></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-16 h-4"></div></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-16 h-4"></div></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-16 h-4"></div></td>
                   <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-16 h-4"></div></td>
                   <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-24 h-4"></div></td>
                 </tr>
@@ -109,6 +121,9 @@ import Swal from 'sweetalert2';
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updation</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cancellation</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -116,6 +131,9 @@ import Swal from 'sweetalert2';
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let supplier of suppliers" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ supplier.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.bookingCharge | number:'1.2-2' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.updationCharge | number:'1.2-2' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supplier.cancellationCharge | number:'1.2-2' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   <span class="badge" [ngClass]="supplier.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
                     {{ supplier.isActive !== false ? 'Active' : 'Inactive' }}
@@ -147,7 +165,7 @@ import Swal from 'sweetalert2';
                 </td>
               </tr>
               <tr *ngIf="suppliers.length === 0">
-                <td colspan="3" class="px-6 py-4 text-center text-gray-500">No suppliers found</td>
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500">No suppliers found</td>
               </tr>
             </tbody>
           </table>

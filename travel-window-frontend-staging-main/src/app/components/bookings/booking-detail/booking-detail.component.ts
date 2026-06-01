@@ -759,6 +759,30 @@ import { ToastrService } from 'ngx-toastr';
         <div *ngIf="showCancelForm" class="card bg-red-50">
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancel Booking</h3>
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
+            <!-- Supplier Charges Breakdown — read only, auto-picked -->
+            <div class="col-span-full p-3 bg-white border border-gray-200 shadow-sm rounded mb-4">
+              <p class="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Supplier Charges Breakdown (Auto)</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <p class="text-xs text-gray-500">Booking Charge</p>
+                  <p class="font-medium text-sm">{{ booking.supplierBookingCharge | number:'1.2-2' }}</p>
+                </div>
+                <div *ngIf="(booking.supplierUpdationCharge || 0) > 0">
+                  <p class="text-xs text-gray-500">Updation Charge</p>
+                  <p class="font-medium text-sm">{{ booking.supplierUpdationCharge | number:'1.2-2' }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500">Cancellation Charge (Auto)</p>
+                  <p class="font-medium text-sm">{{ booking.supplierCancellationCharge | number:'1.2-2' }}</p>
+                </div>
+                <div class="col-span-full border-t border-gray-200 pt-2 mt-1">
+                  <p class="text-xs text-gray-500">Total Supplier Charges</p>
+                  <p class="font-bold text-sm text-orange-600">
+                    CAD {{ ((booking.supplierBookingCharge || 0) + (booking.supplierUpdationCharge || 0) + (booking.supplierCancellationCharge || 0)) | number:'1.2-2' }}
+                  </p>
+                </div>
+              </div>
+            </div>
             <!-- 1. Machine Charge Only (no card type) — HIGHEST PRIORITY -->
             <ng-container *ngIf="isMachineChargeOnly">
               <div class="mb-4">
