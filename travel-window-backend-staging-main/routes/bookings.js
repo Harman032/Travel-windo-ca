@@ -1133,13 +1133,27 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     let upfrontNeeded = 0;
     let scenarioTotalCharges = totalCharges; // track per-scenario totalCharges for refund modes
     
-    const isMachineCharge = paymentModeWas === 'Machine Charge';
+    const isMachineCharge = !booking.cardType && booking.payments?.some(p => p.paymentMode === 'Machine Charge');
     const isPartialPaid = booking.paymentType === 'Partial';
     const isClientCard = booking.cardType === 'Client Card';
     const isCompanyCard = booking.cardType === 'Company Card';
     
-    // Scenario 1: Regular fully paid (cash/bank) or machine charge
-    if (isMachineCharge || (!isPartialPaid && !isClientCard && !isCompanyCard)) {
+    let cfc = 0;
+    let oldMarginRow2 = 0;
+    let refundCommittedToClientVal = 0;
+
+    if (isMachineCharge) {
+      // Machine Charge specific logic
+      const refundableToClient = Math.round((baseSalePrice - acc) * 100) / 100;
+      cfc = Number(chargeFromClient) || 0;
+      oldMarginRow2 = Math.round(Math.min(cfc, ourMargin) * 100) / 100;
+      const mcNewMargin = Math.round(Math.max(0, cfc - ourMargin) * 100) / 100;
+      refundCommittedToClientVal = Math.round((refundableToClient - cfc) * 100) / 100;
+      supplierWillReturn = Math.round((baseOurCost - acc) * 100) / 100;
+      refundToClient = refundableToClient;
+
+    } else if (!isPartialPaid && !isClientCard && !isCompanyCard) {
+      // Scenario 1: Regular fully paid (cash/bank)
       if (isChargesMode) {
         // 1A: supplierWillReturn = ourCost - acc - sccAuto = 1000 - 100 - 30 = 870
         supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
@@ -1226,16 +1240,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       }
     }
 
-    let cfc = 0;
-    let oldMarginRow2 = 0;
-    let refundCommittedToClientVal = refundToClient;
-    if (isMachineCharge) {
-       cfc = Number(chargeFromClient) || 0;
-       
-       oldMarginRow2 = Math.round(Math.min(cfc, ourMargin) * 100) / 100;
-       const userNewMargin = Math.round(Math.max(0, cfc - ourMargin) * 100) / 100;
-       
-       refundCommittedToClientVal = Math.round((refundToClient - cfc) * 100) / 100;
+    if (!isMachineCharge) {
+      refundCommittedToClientVal = refundToClient;
     }
 
     booking.cancellation = {
@@ -1246,14 +1252,16 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       airlineCancellationCharges: isChargesMode ? acc : 0,
       airlineRefundAmount: isChargesMode ? 0 : ara,
       oldMargin: ourMargin,
-      newMargin: isMachineCharge ? Math.round(Math.max(0, cfc - ourMargin) * 100) / 100 : nm,
+      newMargin: isMachineCharge
+        ? Math.round(Math.max(0, cfc - ourMargin) * 100) / 100
+        : nm,
       oldMarginRow2: isMachineCharge ? oldMarginRow2 : 0,
       currentMargin: currentMargin,
       totalSupplierTook,
       totalCharges: scenarioTotalCharges,
       supplierWillReturn,
       refundCommittedToClient: refundCommittedToClientVal,
-      refundableAmount: refundToClient,
+      refundableAmount: isMachineCharge ? Math.round((baseSalePrice - acc) * 100) / 100 : refundToClient,
       upfrontNeeded,
       chargeFromClient: cfc,
       refundProcessed: false,
