@@ -1171,15 +1171,15 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       }
     } else if (isPartialPaid && isClientCard) {
       if (isChargesMode) {
-        upfrontNeeded = currentMargin;
-        supplierWillReturn = Math.round((paidAmount - (acc + booking.supplierCancellationCharge)) * 100) / 100;
-        refundToClient = supplierWillReturn;
+        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
+        supplierWillReturn = Math.round((paidAmount - totalCharges) * 100) / 100;
+        refundToClient = Math.round((paidAmount - (currentMargin + totalCharges)) * 100) / 100;
         airlineDeducted = acc;
       } else {
         airlineDeducted = Math.round((paidAmount - ara) * 100) / 100;
-        supplierWillReturn = Math.round((ara - booking.supplierCancellationCharge) * 100) / 100;
-        refundToClient = supplierWillReturn;
-        upfrontNeeded = currentMargin;
+        supplierWillReturn = Math.round((paidAmount - totalCharges) * 100) / 100;
+        refundToClient = Math.round((paidAmount - (currentMargin + totalCharges)) * 100) / 100;
+        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
       }
     } else {
       // Default to Scenario 1 if unmatched

@@ -29,9 +29,13 @@ function calculateCancellation(booking, inputs, cancellationType) {
 
   const {
     supplierCancellationCharges: scc,
+    airlineRefundAmount: ara,
+    cancellationMode = 'charges',
     ourCancellationCharges: occ,
     chargeFromClient = 0
   } = inputs;
+  
+  const isRefundAmount = cancellationMode === 'refundAmount';
 
   const round = (val) => Math.round(val * 100) / 100;
 
@@ -78,30 +82,48 @@ function calculateCancellation(booking, inputs, cancellationType) {
     case 'clientCard':
       result.newMargin = ourMargin;
       result.totalSupplierTook = totalSupplierTook;
-      result.supplierWillReturn = round(salePrice - scc);
+      if (isRefundAmount) {
+         result.airlineDeducted = round(salePrice - ara);
+         result.supplierWillReturn = round(salePrice - result.airlineDeducted);
+         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+      } else {
+         result.supplierWillReturn = round(salePrice - scc);
+         result.totalCharges = round(totalSupplierTook + scc);
+      }
       result.upfrontNeeded = round(ourMargin + totalSupplierTook);
-      const clientCardTotalCharges = round(totalSupplierTook + scc);
-      result.totalCharges = clientCardTotalCharges;
-      result.clientReceives = round(salePrice - (ourMargin + clientCardTotalCharges));
+      result.clientReceives = round(salePrice - (ourMargin + result.totalCharges));
       result.refundCommittedToClientFinal = result.clientReceives;
       break;
 
     case 'companyCard':
       const isCardEqualToSalePrice = paymentFromCard === salePrice;
+      if (isRefundAmount) {
+         result.airlineDeducted = round(ourCost - ara);
+         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+      } else {
+         result.totalCharges = round(totalSupplierTook + scc);
+      }
       result.supplierWillReturn = isCardEqualToSalePrice
         ? round(salePrice - totalSupplierTook)
-        : round(ourCost - totalSupplierTook);
-      result.clientReceives = round(salePrice - totalCharges);
-      result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
+        : (isRefundAmount ? round(ourCost - result.airlineDeducted - autoSupplierCancellationCharge) : round(ourCost - scc - autoSupplierCancellationCharge));
+      result.clientReceives = round(salePrice - result.totalCharges);
+      result.refundCommittedToClientFinal = round(totalPaidAmount - result.totalCharges);
       break;
 
     case 'partialPaidClientCard':
       result.totalSupplierTook = totalSupplierTook;
-      result.supplierWillReturn = round(paymentFromCard - totalSupplierTook);
-      result.upfrontNeeded = newMargin;
-      result.clientReceives = result.supplierWillReturn;
+      if (isRefundAmount) {
+         result.airlineDeducted = round(totalPaidAmount - ara);
+         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+         result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
+      } else {
+         result.totalCharges = round(totalSupplierTook + scc);
+         result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
+      }
+      result.upfrontNeeded = round(ourMargin + totalSupplierTook);
+      result.clientReceives = round(totalPaidAmount - (ourMargin + result.totalCharges));
       result.remainingAmount = round(salePrice - paymentFromCard);
-      result.refundCommittedToClientFinal = round(totalPaidAmount - totalCharges);
+      result.refundCommittedToClientFinal = round(totalPaidAmount - result.totalCharges);
       break;
 
     case 'partialPaidCompanyCard':
@@ -265,7 +287,7 @@ const tests = [
       newMargin: 290,
       totalSupplierTook: 40,
       totalCharges: 140,
-      supplierWillReturn: 960,
+      supplierWillReturn: 870,
       clientReceives: 1060,
       refundCommittedToClientFinal: 1060
     }
@@ -286,9 +308,9 @@ const tests = [
       newMargin: 290,
       totalSupplierTook: 40,
       totalCharges: 140,
-      supplierWillReturn: 560,
-      upfrontNeeded: 290,
-      clientReceives: 560,
+      supplierWillReturn: 460,
+      upfrontNeeded: 230,
+      clientReceives: 270,
       remainingAmount: 600,
       refundCommittedToClientFinal: 460
     }
