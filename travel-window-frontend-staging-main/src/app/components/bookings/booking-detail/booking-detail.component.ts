@@ -1896,7 +1896,7 @@ export class BookingDetailComponent implements OnInit {
     let cancellationType = 'supplierCancellationCharges'; // default
 
     if (this.isMachineChargeOnly) {
-      cancellationType = 'machineCharge';
+      cancellationType = 'supplierCancellationCharges';
     } else if (this.isPartialPaidCard) {
       cancellationType = this.booking?.cardType === 'Client Card'
         ? 'partialPaidClientCard'
@@ -2451,13 +2451,9 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get isMachineChargeOnly(): boolean {
-    const hasNoCardType = !this.booking?.cardType || 
-                           this.booking.cardType === '' || 
-                           this.booking.cardType === null;
-    const hasMachineChargePayment = this.booking?.payments?.some(
-      p => p.paymentMode === 'Machine Charge'
-    ) ?? false;
-    return hasNoCardType && hasMachineChargePayment;
+    return !!this.booking &&
+      !this.booking.cardType &&
+      (this.booking.payments?.some(p => p.paymentMode === 'Machine Charge') ?? false);
   }
 
   get machineChargeOldMargin(): number {
