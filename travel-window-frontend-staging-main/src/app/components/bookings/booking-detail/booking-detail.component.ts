@@ -2205,6 +2205,7 @@ export class BookingDetailComponent implements OnInit {
     
     if (this.booking && paymentModeWas) {
       const isCC = paymentModeWas === 'Machine Charge';
+      const result = this.cancellationResult;
       this.bookingService.cancelBooking(this.booking._id!, {
         paymentModeWas: paymentModeWas,
         refundableAmount: formValue.refundableAmount || 0,
@@ -2220,14 +2221,21 @@ export class BookingDetailComponent implements OnInit {
                           this.isClientOrCompanyCard ?
                           (this.booking.cardType === 'Client Card' ? 'clientCard' : 'companyCard') :
                           formValue.cancellationType,
-        totalSupplierTook: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelTotalSupplierTook : 0,
-        totalCharges: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelTotalCharges : 0,
-        clientReceives: this.isClientOrCompanyCard ? 
-                        (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardClientReceives : this.cancelClientCardClientReceives) : 0,
-        newMargin: (this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment) ? this.cancelClientCardCurrentMargin : 0,
-        supplierWillReturn: this.isClientOrCompanyCard ? 
-                            (this.booking.cardType === 'Company Card' ? this.cancelCompanyCardSupplierWillReturn : this.cancelClientCardSupplierWillReturn) : 0,
-        upfrontNeeded: this.isClientOrCompanyCard && this.booking.cardType === 'Client Card' ? this.cancelClientCardUpfrontNeeded : 0
+        totalSupplierTook: result.totalSupplierTook ?? 0,
+        totalCharges: result.totalCharges ?? 0,
+        clientReceives: result.clientReceives ?? 0,
+        newMargin: result.currentMargin ?? 0,
+        supplierWillReturn: result.supplierWillReturn ?? 0,
+        upfrontNeeded: result.upfrontNeeded ?? 0,
+        refundCommittedToClient: result.refundCommittedToClient ?? 0,
+        airlineDeducted: result.airlineDeducted ?? 0,
+        airlineCancellationCharges: this.cancellationMode === 'charges'
+          ? Number(this.cancelForm.get('airlineCancellationCharges')?.value ?? 0)
+          : 0,
+        airlineRefundAmount: this.cancellationMode === 'refundAmount'
+          ? Number(this.cancelForm.get('airlineRefundAmount')?.value ?? 0)
+          : 0,
+        cancellationMode: this.cancellationMode
       }).subscribe({
         next: () => {
           this.showCancelForm = false;
@@ -2518,8 +2526,8 @@ export class BookingDetailComponent implements OnInit {
     const ara = Number(this.cancelForm?.get('airlineRefundAmount')?.value || 0);
     const mode = this.cancellationMode; // 'charges' | 'refundAmount'
 
-    // Non-card inputs
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value || 0);
+    // Non-card inputs — scc reads airlineCancellationCharges (the user-entered airline charge)
+    const scc = Number(this.cancelForm?.get('airlineCancellationCharges')?.value || 0);
     const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
     const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value || 0);
 
@@ -2554,11 +2562,11 @@ export class BookingDetailComponent implements OnInit {
     // For card cancellations, resolve the effective airline charge from the toggled mode
     const cardCharge = isCardCancellationType ? (mode === 'charges' ? acc : ara) : 0;
 
-    // Non-card: standard airlineDeducted (for supplier refund amount modes)
-    const isRefundAmount = cancellationType.includes('RefundAmount');
-    const airlineDeductedFromSale = isRefundAmount ? round(salePrice - scc) : 0;
-    const airlineDeductedFromPaid = isRefundAmount ? round(totalPaidAmount - scc) : 0;
-    const airlineDeducted_nonCard = isRefundAmount ? round(ourCost - scc) : 0;
+    // Non-card refund amount modes: use ara (airline refund amount) not scc
+    const isRefundAmountMode = cancellationType === 'supplierRefundAmount' || cancellationType === 'partialPaidRefundAmount';
+    const airlineDeductedFromSale = isRefundAmountMode ? round(salePrice - ara) : 0;
+    const airlineDeductedFromPaid = isRefundAmountMode ? round(totalPaidAmount - ara) : 0;
+    const airlineDeducted_nonCard = isRefundAmountMode ? round(ourCost - ara) : 0;
 
     switch (cancellationType) {
       case 'supplierCancellationCharges':
