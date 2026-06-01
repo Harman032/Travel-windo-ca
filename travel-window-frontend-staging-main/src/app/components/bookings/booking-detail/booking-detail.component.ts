@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule, FormArray } from '@angular/forms';
 import { BookingService, Booking } from '../../../services/booking.service';
+import { SupplierService } from '../../../services/supplier.service';
 import { AuthService } from '../../../services/auth.service';
 import { UserService, User } from '../../../services/user.service';
 import { ToastrService } from 'ngx-toastr';
@@ -773,12 +774,12 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
                 <div>
                   <p class="text-xs text-gray-500">Cancellation Charge (Auto)</p>
-                  <p class="font-medium text-sm">{{ booking.supplierCancellationCharge | number:'1.2-2' }}</p>
+                  <p class="font-medium text-sm">{{ autoSupplierCancellationCharge | number:'1.2-2' }}</p>
                 </div>
                 <div class="col-span-full border-t border-gray-200 pt-2 mt-1">
                   <p class="text-xs text-gray-500">Total Supplier Charges</p>
                   <p class="font-bold text-sm text-orange-600">
-                    CAD {{ ((booking.supplierBookingCharge || 0) + (booking.supplierUpdationCharge || 0) + (booking.supplierCancellationCharge || 0)) | number:'1.2-2' }}
+                    CAD {{ ((booking.supplierBookingCharge || 0) + (booking.supplierUpdationCharge || 0) + autoSupplierCancellationCharge) | number:'1.2-2' }}
                   </p>
                 </div>
               </div>
@@ -1384,11 +1385,13 @@ export class BookingDetailComponent implements OnInit {
   adminVerifiedStatus = false;
   accountVerifiedStatus = false;
   selectedStatus = '';
+  autoSupplierCancellationCharge = 0;
 
   constructor(
     private bookingService: BookingService,
     private authService: AuthService,
     private userService: UserService,
+    private supplierService: SupplierService,
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
@@ -1768,6 +1771,21 @@ export class BookingDetailComponent implements OnInit {
       const paymentModeWas = this.getPrimaryPaymentMode();
       this.cancelForm.patchValue({ paymentModeWas: paymentModeWas || '' });
       this.cancelForm.get('paymentModeWas')?.disable();
+
+      // Fetch supplier cancellation charge to pre-fill form
+      const supplierId = this.booking?.supplier?._id ?? this.booking?.supplier;
+      if (supplierId) {
+        this.supplierService.getSuppliers().subscribe({
+          next: (suppliers: any[]) => {
+            const supplier = suppliers.find(s => s._id === supplierId);
+            const scc = supplier?.cancellationCharge ?? 0;
+            this.autoSupplierCancellationCharge = scc;
+            this.cancelForm.patchValue({
+              supplierCancellationCharges: scc
+            });
+          }
+        });
+      }
     }
   }
 
@@ -2358,9 +2376,7 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get clientCardPartialTotalSupplierTook(): number {
-    const supplierCharges = this.booking?.supplierCharges ?? 0;
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    return Math.round((supplierCharges + scc) * 100) / 100;
+    return this.cancelTotalSupplierTook;
   }
 
   get clientCardPartialNewMargin(): number {
@@ -2420,16 +2436,17 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelTotalSupplierTook(): number {
-    const supplierCharges = this.booking?.supplierCharges || 0;
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value) || 0;
-    return Math.round((supplierCharges + scc) * 100) / 100;
+    const bookingCharge = this.booking?.supplierBookingCharge ?? 0;
+    const updationCharge = this.booking?.supplierUpdationCharge ?? 0;
+    const cancellationCharge = this.autoSupplierCancellationCharge ?? 0;
+    return Math.round((bookingCharge + updationCharge + cancellationCharge) * 100) / 100;
   }
 
 
   get cancelTotalCharges(): number {
     const totalSupplierTook = this.cancelTotalSupplierTook;
-    const newMargin = this.cancelClientCardCurrentMargin;
-    return Math.round((totalSupplierTook + newMargin) * 100) / 100;
+    const airlineCancellation = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((totalSupplierTook + airlineCancellation) * 100) / 100;
   }
 
   get cancelCompanyCardClientReceives(): number {
@@ -2456,11 +2473,9 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelClientCardSupplierWillReturn(): number {
-    const totalPaidAmount = this.booking?.totalPaidAmount ?? 0;
-    const supplierCharges = this.booking?.supplierCharges ?? 0;
-    const scc = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    return Math.round((totalPaidAmount - totalSupplierTook) * 100) / 100;
+    const salePrice = this.booking?.salePrice ?? 0;
+    const airlineCancellation = Number(this.cancelForm?.get('supplierCancellationCharges')?.value ?? 0);
+    return Math.round((salePrice - airlineCancellation) * 100) / 100;
   }
 
   get cancelClientCardOurMargin(): number {
@@ -2471,20 +2486,22 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get cancelClientCardCurrentMargin(): number {
-    const ourMargin = this.cancelClientCardOurMargin;
+    const ourMargin = Math.round(((this.booking?.salePrice ?? 0) - (this.booking?.ourCost ?? 0) - (this.booking?.supplierCharges ?? 0)) * 100) / 100;
     const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value ?? 0);
     return Math.round((ourMargin + occ) * 100) / 100;
   }
 
   get cancelClientCardUpfrontNeeded(): number {
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value) || 0;
-    return Math.round(occ * 100) / 100;
+    const currentMargin = this.cancelClientCardCurrentMargin;
+    const totalSupplierTook = this.cancelTotalSupplierTook;
+    return Math.round((currentMargin + totalSupplierTook) * 100) / 100;
   }
 
   get cancelClientCardClientReceives(): number {
-    const totalPaidAmount = this.booking?.totalPaidAmount ?? 0;
+    const salePrice = this.booking?.salePrice ?? 0;
+    const currentMargin = this.cancelClientCardCurrentMargin;
     const totalCharges = this.cancelTotalCharges;
-    return Math.round((totalPaidAmount - totalCharges) * 100) / 100;
+    return Math.round((salePrice - (currentMargin + totalCharges)) * 100) / 100;
   }
 
   // --- Partial Paid Cancellation Logic ---
@@ -2544,9 +2561,7 @@ export class BookingDetailComponent implements OnInit {
   }
 
   get partialPaidCardTotalSupplierTook(): number {
-    const supplierCharges = this.booking?.supplierCharges || 0;
-    const scc = this.cancelForm?.get('supplierCancellationCharges')?.value || 0;
-    return Math.round((supplierCharges + scc) * 100) / 100;
+    return this.cancelTotalSupplierTook;
   }
 
   get partialPaidCardNewMargin(): number {
