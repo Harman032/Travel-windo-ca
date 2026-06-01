@@ -1143,14 +1143,17 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     let refundCommittedToClientVal = 0;
 
     if (isMachineCharge) {
-      // Machine Charge specific logic
-      const refundableToClient = Math.round((baseSalePrice - acc) * 100) / 100;
-      cfc = Number(chargeFromClient) || 0;
-      oldMarginRow2 = Math.round(Math.min(cfc, ourMargin) * 100) / 100;
-      const mcNewMargin = Math.round(Math.max(0, cfc - ourMargin) * 100) / 100;
-      refundCommittedToClientVal = Math.round((refundableToClient - cfc) * 100) / 100;
-      supplierWillReturn = Math.round((baseOurCost - acc) * 100) / 100;
-      refundToClient = refundableToClient;
+      // Treat as Scenario 1A — Regular Fully Paid
+      if (isChargesMode) {
+        supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
+        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
+        airlineDeducted = acc;
+      } else {
+        airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
+        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - sccAuto) * 100) / 100;
+        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
+      }
 
     } else if (!isPartialPaid && !isClientCard && !isCompanyCard) {
       // Scenario 1: Regular fully paid (cash/bank)
@@ -1240,9 +1243,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       }
     }
 
-    if (!isMachineCharge) {
-      refundCommittedToClientVal = refundToClient;
-    }
+    refundCommittedToClientVal = refundToClient;
 
     booking.cancellation = {
       isCancelled: true,
@@ -1252,18 +1253,16 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       airlineCancellationCharges: isChargesMode ? acc : 0,
       airlineRefundAmount: isChargesMode ? 0 : ara,
       oldMargin: ourMargin,
-      newMargin: isMachineCharge
-        ? Math.round(Math.max(0, cfc - ourMargin) * 100) / 100
-        : nm,
-      oldMarginRow2: isMachineCharge ? oldMarginRow2 : 0,
+      newMargin: nm,
+      oldMarginRow2: 0,
       currentMargin: currentMargin,
       totalSupplierTook,
       totalCharges: scenarioTotalCharges,
       supplierWillReturn,
       refundCommittedToClient: refundCommittedToClientVal,
-      refundableAmount: isMachineCharge ? Math.round((baseSalePrice - acc) * 100) / 100 : refundToClient,
+      refundableAmount: refundToClient,
       upfrontNeeded,
-      chargeFromClient: cfc,
+      chargeFromClient: 0,
       refundProcessed: false,
       remarks,
       cancelledBy: req.user._id,
