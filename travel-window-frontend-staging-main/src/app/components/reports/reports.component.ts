@@ -475,16 +475,16 @@ import { ToastrService } from 'ngx-toastr';
                         class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">
                     DR
                   </span>
-                  <span *ngIf="!item.crdr?.type"
+                  <span *ngIf="item.crdr?.type === 'NIL'"
                         class="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-500">
                     NIL
                   </span>
                 </td>
                 <td class="px-4 py-2 text-sm font-bold">
-                  <span *ngIf="item.crdr" [ngClass]="item.crdr.type === 'CR' ? 'text-green-600' : 'text-red-600'">
-                    {{ item.crdr.value | number:'1.2-2' }}
+                  <span *ngIf="item.crdr?.type !== 'NIL'" [ngClass]="item.crdr?.type === 'CR' ? 'text-green-600' : 'text-red-600'">
+                    {{ item.crdr?.value | number:'1.2-2' }}
                   </span>
-                  <span *ngIf="!item.crdr" class="text-gray-400">-</span>
+                  <span *ngIf="item.crdr?.type === 'NIL'" class="text-gray-400">-</span>
                 </td>
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
