@@ -15,59 +15,23 @@ function getCRDR(booking) {
   const ourCost = Number(booking.ourCost ?? 0);
   const supplierCharges = Number(booking.supplierCharges ?? 0);
   const paymentFromCard = Number(booking.paymentFromCard ?? 0);
-  const cardType = booking.cardType ?? null;
 
-  // No card at all — DR: we pay supplier full cost
-  if (!cardType || paymentFromCard === 0) {
-    return {
-      type: 'DR',
-      value: Math.round((ourCost + supplierCharges) * 100) / 100,
-      label: 'DR'
-    };
+  // Universal formula:
+  // Net = paymentFromCard - (Our Cost + Supplier Charges)
+  // Net > 0 → CR (supplier owes us)
+  // Net < 0 → DR (we owe supplier)
+  // Net = 0 → NIL
+
+  const totalOwedToSupplier = Math.round((ourCost + supplierCharges) * 100) / 100;
+  const net = Math.round((paymentFromCard - totalOwedToSupplier) * 100) / 100;
+
+  if (net > 0) {
+    return { type: 'CR', value: net, label: 'CR' };
+  } else if (net < 0) {
+    return { type: 'DR', value: Math.abs(net), label: 'DR' };
+  } else {
+    return { type: 'NIL', value: 0, label: 'NIL' };
   }
-
-  // Client Card paid full sale price — CR: supplier credits us our margin
-  if (cardType === 'Client Card' && paymentFromCard === salePrice) {
-    return {
-      type: 'CR',
-      value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100,
-      label: 'CR'
-    };
-  }
-
-  // Company Card paid sale price — CR: supplier credits us our margin
-  if (cardType === 'Company Card' && paymentFromCard === salePrice) {
-    return {
-      type: 'CR',
-      value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100,
-      label: 'CR'
-    };
-  }
-
-  // Company Card paid our cost — DR: we still owe the margin
-  if (cardType === 'Company Card' && paymentFromCard === ourCost) {
-    return {
-      type: 'DR',
-      value: Math.round((salePrice - ourCost) * 100) / 100,
-      label: 'DR'
-    };
-  }
-
-  // Client Card partial — DR: remaining amount
-  if (cardType === 'Client Card' && paymentFromCard < salePrice) {
-    return {
-      type: 'DR',
-      value: Math.round((ourCost + supplierCharges - paymentFromCard) * 100) / 100,
-      label: 'DR'
-    };
-  }
-
-  // Default DR
-  return {
-    type: 'DR',
-    value: Math.round((ourCost + supplierCharges) * 100) / 100,
-    label: 'DR'
-  };
 }
 
 const router = express.Router();
