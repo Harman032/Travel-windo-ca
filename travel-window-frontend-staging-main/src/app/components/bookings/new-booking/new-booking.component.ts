@@ -795,7 +795,7 @@ export class NewBookingComponent implements OnInit {
       this.toastr.error(messages.length ? messages.join('. ') : 'Please fill all required fields.', 'Validation Error');
       return;
     }
-    const formValue = this.bookingForm.value;
+    const formValue = this.bookingForm.getRawValue();
     const fullContactNumber = (formValue.countryCode || '').replace(/\s/g, '') + ' ' + (formValue.contactNumber || '').trim();
 
     // Transform form data (exclude countryCode from payload; use combined contactNumber)
