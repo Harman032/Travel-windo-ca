@@ -105,7 +105,7 @@ function calculateCancellation(booking, inputs, cancellationType) {
       }
       result.supplierWillReturn = isCardEqualToSalePrice
         ? round(salePrice - totalSupplierTook)
-        : (isRefundAmount ? round(ourCost - result.airlineDeducted - autoSupplierCancellationCharge) : round(ourCost - scc - autoSupplierCancellationCharge));
+        : (isRefundAmount ? round(ourCost - result.airlineDeducted - totalSupplierTook) : round(ourCost - scc - totalSupplierTook));
       result.clientReceives = round(salePrice - result.totalCharges);
       result.refundCommittedToClientFinal = round(totalPaidAmount - result.totalCharges);
       break;
@@ -287,7 +287,7 @@ const tests = [
       newMargin: 290,
       totalSupplierTook: 40,
       totalCharges: 140,
-      supplierWillReturn: 870,
+      supplierWillReturn: 860,
       clientReceives: 1060,
       refundCommittedToClientFinal: 1060
     }

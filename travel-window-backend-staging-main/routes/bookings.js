@@ -1145,13 +1145,13 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     if (isMachineCharge) {
       // Treat as Scenario 1A — Regular Fully Paid
       if (isChargesMode) {
-        supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
         airlineDeducted = acc;
       } else {
         airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
         scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
       }
 
@@ -1159,14 +1159,14 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       // Scenario 1: Regular fully paid (cash/bank)
       if (isChargesMode) {
         // 1A: supplierWillReturn = ourCost - acc - sccAuto = 1000 - 100 - 30 = 870
-        supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
         airlineDeducted = acc;
       } else {
         // 1B: airlineDeducted = ourCost - ara = 1000 - 900 = 100
         airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
         scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
       }
     // Scenario 2: Partial paid (cash/bank)
@@ -1174,13 +1174,13 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       if (isChargesMode) {
         // 2A
         refundToClient = Math.round((paidAmount - (totalCharges + currentMargin)) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - acc - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((paidAmount - acc - totalSupplierTook) * 100) / 100;
         airlineDeducted = acc;
       } else {
         // 2B
         airlineDeducted = Math.round((paidAmount - ara) * 100) / 100;
         scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - airlineDeducted - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((paidAmount - airlineDeducted - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((paidAmount - (currentMargin + scenarioTotalCharges)) * 100) / 100;
       }
     // Scenario 3: Client Card fully paid
@@ -1203,14 +1203,14 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     } else if (!isPartialPaid && isCompanyCard) {
       if (isChargesMode) {
         // 4A: supplierWillReturn = ourCost - acc - sccAuto = 1000 - 100 - 30 = 870
-        supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
         airlineDeducted = acc;
       } else {
         // 4B
         airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
         scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
       }
     // Scenario 5: Partial paid Client Card
@@ -1232,13 +1232,13 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     } else {
       // Default fallback to Scenario 1
       if (isChargesMode) {
-        supplierWillReturn = Math.round((baseOurCost - acc - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
         airlineDeducted = acc;
       } else {
         airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
         scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - sccAuto) * 100) / 100;
+        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
         refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
       }
     }
