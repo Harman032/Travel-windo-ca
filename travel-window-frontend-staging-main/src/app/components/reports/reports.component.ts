@@ -431,7 +431,8 @@ import { ToastrService } from 'ngx-toastr';
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
                 <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR / DR</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Status</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Value</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
@@ -465,12 +466,25 @@ import { ToastrService } from 'ngx-toastr';
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
                 <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
+                <td>
+                  <span *ngIf="item.crdr?.type === 'CR'"
+                        class="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700">
+                    CR
+                  </span>
+                  <span *ngIf="item.crdr?.type === 'DR'"
+                        class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">
+                    DR
+                  </span>
+                  <span *ngIf="!item.crdr?.type"
+                        class="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-500">
+                    NIL
+                  </span>
+                </td>
                 <td class="px-4 py-2 text-sm font-bold">
-                  <ng-container *ngIf="getCRDRValue(item) as res">
-                    <span *ngIf="res.type === 'CR'" class="text-green-600">CR: {{ res.value | number:'1.2-2' }}</span>
-                    <span *ngIf="res.type === 'DR'" class="text-red-600">DR: {{ res.value | number:'1.2-2' }}</span>
-                    <span *ngIf="!res.type" class="text-gray-400">NIL</span>
-                  </ng-container>
+                  <span *ngIf="item.crdr" [ngClass]="item.crdr.type === 'CR' ? 'text-green-600' : 'text-red-600'">
+                    {{ item.crdr.value | number:'1.2-2' }}
+                  </span>
+                  <span *ngIf="!item.crdr" class="text-gray-400">-</span>
                 </td>
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
@@ -1012,45 +1026,6 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  getCRDRValue(item: any): { type: 'CR' | 'DR' | null, value: number } {
-    // For cancelled bookings, always return NIL
-    if (item.status === 'Cancelled') {
-      return { type: null, value: 0 };
-    }
-
-    const salePrice = item.salePrice || 0;
-    const ourCost = item.ourCost || 0;
-    const supplierCharges = item.supplierCharges || 0;
-    const paymentFromCard = item.paymentFromCard || 0;
-    const cardType = item.cardType;
-
-    // Logic for Client Card partial payment (Paid < Our Cost)
-    if (cardType === 'Client Card' && paymentFromCard < ourCost) {
-      return { 
-        type: 'DR', 
-        value: Math.round((ourCost - paymentFromCard + supplierCharges) * 100) / 100 
-      };
-    }
-
-    // New logic for Company Card where payment from card matches our cost (NIL)
-    if (cardType === 'Company Card' && paymentFromCard === ourCost) {
-      return { type: null, value: 0 };
-    }
-
-    // Logic for Client/Company Card full payment (Margin Credit)
-    if (cardType === 'Client Card' || cardType === 'Company Card') {
-      return { 
-        type: 'CR', 
-        value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100 
-      };
-    }
-
-    // Default DR Logic (Cash/Transfer/Unspecified)
-    return { 
-      type: 'DR', 
-      value: Math.round((ourCost + supplierCharges) * 100) / 100 
-    };
-  }
 
   getStatusClass(status: string): string {
     const statusMap: { [key: string]: string } = {
