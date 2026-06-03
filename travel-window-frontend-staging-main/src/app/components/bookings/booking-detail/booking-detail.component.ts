@@ -2225,73 +2225,73 @@ export class BookingDetailComponent implements OnInit {
     }
   }
 
-  onCancel() {
-    const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment;
-    
-    // CORRECT — use actual last payment mode from booking
-    const lastPayment = this.booking?.payments?.[(this.booking.payments?.length ?? 1) - 1];
-    const actualPaymentMode = lastPayment?.paymentMode ?? 'Cash';
-
-    // Only override if no payment mode detected
-    if (!this.cancelForm.get('paymentModeWas')?.value) {
-      this.cancelForm.patchValue({ paymentModeWas: actualPaymentMode });
-    }
-
-    if (this.isMachineChargeOnly) {
-      this.cancelForm.get('supplierCancellationCharges')?.setValidators([Validators.required, Validators.min(0)]);
-      this.cancelForm.get('chargeFromClient')?.setValidators([Validators.required, Validators.min(0)]);
-      this.cancelForm.get('supplierCancellationCharges')?.updateValueAndValidity();
-      this.cancelForm.get('chargeFromClient')?.updateValueAndValidity();
-    }
-
+  onCancel(): void {
     if (this.cancelForm.invalid) {
       this.cancelForm.markAllAsTouched();
       return;
     }
+
     const formValue = this.cancelForm.getRawValue();
-    const paymentModeWas = formValue.paymentModeWas;
-    
-    if (this.booking && paymentModeWas) {
-      const isCC = paymentModeWas === 'Machine Charge';
-      const result = this.cancellationResult;
-      this.bookingService.cancelBooking(this.booking._id!, {
-        paymentModeWas: paymentModeWas,
-        refundableAmount: formValue.refundableAmount || 0,
-        committedToClient: isCC ? formValue.committedToClient : this.refundCommittedToClientNonCC,
-        chargeFromClient: formValue.chargeFromClient,
-        supplierCancellationCharges: formValue.supplierCancellationCharges ?? 0,
-        ourCancellationCharges: formValue.ourCancellationCharges ?? 0,
-        remarks: formValue.remarks,
-        cancellationType: this.isMachineChargeOnly ? 'machineCharge' :
-                          this.isPartialPaidCard ?
-                          (this.booking.cardType === 'Client Card' ? 'partialPaidClientCard' : 'partialPaidCompanyCard') :
-                          this.isClientCardPartialPayment ? 'clientCardPartialPayment' :
-                          this.isClientOrCompanyCard ?
-                          (this.booking.cardType === 'Client Card' ? 'clientCard' : 'companyCard') :
-                          formValue.cancellationType,
-        totalSupplierTook: result.totalSupplierTook ?? 0,
-        totalCharges: result.totalCharges ?? 0,
-        clientReceives: result.clientReceives ?? 0,
-        newMargin: result.currentMargin ?? 0,
-        supplierWillReturn: result.supplierWillReturn ?? 0,
-        upfrontNeeded: result.upfrontNeeded ?? 0,
-        refundCommittedToClient: result.refundCommittedToClient ?? 0,
-        airlineDeducted: result.airlineDeducted ?? 0,
-        airlineCancellationCharges: this.cancellationMode === 'charges'
-          ? Number(this.cancelForm.get('airlineCancellationCharges')?.value ?? 0)
-          : 0,
-        airlineRefundAmount: this.cancellationMode === 'refundAmount'
-          ? Number(this.cancelForm.get('airlineRefundAmount')?.value ?? 0)
-          : 0,
-        cancellationMode: this.cancellationMode
-      }).subscribe({
-        next: () => {
-          this.showCancelForm = false;
-          this.loadBooking(this.booking!._id!);
-        },
-        error: (err) => this.toastr.error(err?.error?.message || 'Cancellation failed', 'Error')
-      });
+    const result = this.cancellationResult;
+
+    // Detect actual payment mode from booking payments
+    const lastPayment = this.booking?.payments?.[(this.booking.payments?.length ?? 1) - 1];
+    const actualPaymentMode = lastPayment?.paymentMode ?? formValue.paymentModeWas ?? 'Cash';
+
+    // Determine cancellation type
+    let cancellationType = formValue.cancellationType;
+    if (this.isMachineChargeOnly) {
+      cancellationType = 'machineCharge';
+    } else if (this.isPartialPaidCard) {
+      cancellationType = this.booking?.cardType === 'Client Card'
+        ? 'partialPaidClientCard' : 'partialPaidCompanyCard';
+    } else if (this.isClientCardPartialPayment) {
+      cancellationType = 'clientCardPartialPayment';
+    } else if (this.isClientOrCompanyCard) {
+      cancellationType = this.booking?.cardType === 'Client Card'
+        ? 'clientCard' : 'companyCard';
     }
+
+    const payload = {
+      paymentModeWas: actualPaymentMode,
+      cancellationType: cancellationType,
+      cancellationMode: this.cancellationMode,
+
+      // Airline inputs
+      airlineCancellationCharges: this.cancellationMode === 'charges'
+        ? Number(formValue.airlineCancellationCharges ?? 0) : 0,
+      airlineRefundAmount: this.cancellationMode === 'refundAmount'
+        ? Number(formValue.airlineRefundAmount ?? 0) : 0,
+
+      // User inputs
+      ourCancellationCharges: Number(formValue.ourCancellationCharges ?? 0),
+      chargeFromClient: Number(formValue.chargeFromClient ?? 0),
+      remarks: formValue.remarks,
+
+      // ALL calculated values from cancellationResult
+      totalSupplierTook: result.totalSupplierTook ?? 0,
+      ourMargin: result.ourMargin ?? 0,
+      newMargin: Number(formValue.ourCancellationCharges ?? 0),
+      // newMargin = user-entered ourCancellationCharges (New Margin input)
+      currentMargin: result.currentMargin ?? 0,
+      totalCharges: result.totalCharges ?? 0,
+      supplierWillReturn: result.supplierWillReturn ?? 0,
+      upfrontNeeded: result.upfrontNeeded ?? 0,
+      refundCommittedToClient: result.refundCommittedToClient ?? 0,
+      clientReceives: result.clientReceives ?? 0,
+      airlineDeducted: result.airlineDeducted ?? 0,
+      refundableAmount: result.refundCommittedToClient ?? 0,
+    };
+
+    console.log('Cancellation payload:', payload); // debug log
+
+    this.bookingService.cancelBooking(this.booking!._id!, payload).subscribe({
+      next: () => {
+        this.showCancelForm = false;
+        this.loadBooking(this.booking!._id!);
+      },
+      error: (err) => this.toastr.error(err?.error?.message || 'Cancellation failed', 'Error')
+    });
   }
 
   processRefund() {
