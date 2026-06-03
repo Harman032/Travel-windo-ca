@@ -11,13 +11,22 @@ function getPaginationParams(req) {
 }
 
 function getCRDR(booking) {
-  const salePrice = booking.salePrice ?? 0;
-  const ourCost = booking.ourCost ?? 0;
-  const supplierCharges = booking.supplierCharges ?? 0;
-  const paymentFromCard = booking.paymentFromCard ?? 0;
+  const salePrice = Number(booking.salePrice ?? 0);
+  const ourCost = Number(booking.ourCost ?? 0);
+  const supplierCharges = Number(booking.supplierCharges ?? 0);
+  const paymentFromCard = Number(booking.paymentFromCard ?? 0);
   const cardType = booking.cardType ?? null;
 
-  // CR: Client Card paid full sale price — supplier credits us our margin
+  // No card at all — DR: we pay supplier full cost
+  if (!cardType || paymentFromCard === 0) {
+    return {
+      type: 'DR',
+      value: Math.round((ourCost + supplierCharges) * 100) / 100,
+      label: 'DR'
+    };
+  }
+
+  // Client Card paid full sale price — CR: supplier credits us our margin
   if (cardType === 'Client Card' && paymentFromCard === salePrice) {
     return {
       type: 'CR',
@@ -26,19 +35,37 @@ function getCRDR(booking) {
     };
   }
 
-  // DR: No card — we pay supplier
-  if (!paymentFromCard || paymentFromCard === 0) {
+  // Company Card paid sale price — CR: supplier credits us our margin
+  if (cardType === 'Company Card' && paymentFromCard === salePrice) {
+    return {
+      type: 'CR',
+      value: Math.round((salePrice - ourCost - supplierCharges) * 100) / 100,
+      label: 'CR'
+    };
+  }
+
+  // Company Card paid our cost — DR: we still owe the margin
+  if (cardType === 'Company Card' && paymentFromCard === ourCost) {
     return {
       type: 'DR',
-      value: Math.round((ourCost + supplierCharges) * 100) / 100,
+      value: Math.round((salePrice - ourCost) * 100) / 100,
       label: 'DR'
     };
   }
 
-  // Mixed/partial — calculate based on what was paid by card vs cash
+  // Client Card partial — DR: remaining amount
+  if (cardType === 'Client Card' && paymentFromCard < salePrice) {
+    return {
+      type: 'DR',
+      value: Math.round((ourCost + supplierCharges - paymentFromCard) * 100) / 100,
+      label: 'DR'
+    };
+  }
+
+  // Default DR
   return {
     type: 'DR',
-    value: Math.round((ourCost + supplierCharges - paymentFromCard) * 100) / 100,
+    value: Math.round((ourCost + supplierCharges) * 100) / 100,
     label: 'DR'
   };
 }
