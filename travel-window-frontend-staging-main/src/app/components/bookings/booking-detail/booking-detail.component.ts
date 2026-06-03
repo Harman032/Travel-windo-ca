@@ -355,7 +355,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Total Amount Paid</label>
-              <p class="text-gray-900">{{ booking.cancellation.totalAmountPaidByClient | number:'1.2-2' }}</p>
+              <p class="text-gray-900">{{ booking.cancellation.totalAmountPaid | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
@@ -417,7 +417,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives || 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient || 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
 
@@ -481,11 +481,11 @@ import { ToastrService } from 'ngx-toastr';
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
               </div>
               <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
             <!-- Client Card Partial Payment Cancellation Fields -->
@@ -520,7 +520,7 @@ import { ToastrService } from 'ngx-toastr';
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.clientReceives ?? 0) | number:'1.2-2' }}</p>
+                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
               </div>
             </ng-container>
               <div class="col-span-full mt-4">
@@ -2227,8 +2227,14 @@ export class BookingDetailComponent implements OnInit {
 
   onCancel() {
     const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard || this.isClientCardPartialPayment;
-    if (isCardFlow || this.isMachineChargeOnly) {
-      this.cancelForm.patchValue({ paymentModeWas: 'Machine Charge' });
+    
+    // CORRECT — use actual last payment mode from booking
+    const lastPayment = this.booking?.payments?.[(this.booking.payments?.length ?? 1) - 1];
+    const actualPaymentMode = lastPayment?.paymentMode ?? 'Cash';
+
+    // Only override if no payment mode detected
+    if (!this.cancelForm.get('paymentModeWas')?.value) {
+      this.cancelForm.patchValue({ paymentModeWas: actualPaymentMode });
     }
 
     if (this.isMachineChargeOnly) {
@@ -2243,7 +2249,7 @@ export class BookingDetailComponent implements OnInit {
       return;
     }
     const formValue = this.cancelForm.getRawValue();
-    const paymentModeWas = (isCardFlow || this.isMachineChargeOnly) ? 'Machine Charge' : formValue.paymentModeWas;
+    const paymentModeWas = formValue.paymentModeWas;
     
     if (this.booking && paymentModeWas) {
       const isCC = paymentModeWas === 'Machine Charge';
