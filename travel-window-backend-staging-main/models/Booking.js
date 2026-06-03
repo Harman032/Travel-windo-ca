@@ -313,6 +313,10 @@ const bookingSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
+    totalAmountPaid: {
+      type: Number,
+      default: 0
+    },
     refundableAmount: {
       type: Number,
       default: 0

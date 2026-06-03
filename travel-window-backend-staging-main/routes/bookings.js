@@ -1250,6 +1250,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       paymentModeWas,
       cancellationMode: isChargesMode ? 'charges' : 'refundAmount',
       cancellationType: cancellationType || '',
+      totalAmountPaid: Number(booking.totalPaidAmount) || 0,
       airlineCancellationCharges: isChargesMode ? acc : 0,
       airlineRefundAmount: isChargesMode ? 0 : ara,
       oldMargin: ourMargin,
