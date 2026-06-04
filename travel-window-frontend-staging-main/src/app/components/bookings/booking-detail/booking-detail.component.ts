@@ -1614,6 +1614,8 @@ export class BookingDetailComponent implements OnInit {
     const payload = {
       remarks: this.cancelForm.get('remarks')?.value,
       cancellationType: cancellationType,
+      cancellationMode: mode,
+      paymentModeWas: this.cancelForm.getRawValue().paymentModeWas,
       supplierCancellationCharges: mode === 'charges' ? acc : ara, // engine expects this legacy field unfortunately
       ourCancellationCharges: nm, // engine expects this legacy field unfortunately
       airlineCancellationCharges: acc,
