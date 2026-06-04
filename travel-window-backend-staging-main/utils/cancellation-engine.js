@@ -71,8 +71,8 @@ function calculateCancellationScenario(p) {
   const isCO = !!p.isCompanyCard;
   const isMC = !!p.isMachineCharge;
 
-  if (isMC || (!isPP && !isCC && !isCO)) {
-    // ── Scenario 1: Regular Fully Paid (+ Machine Charge) ──────────
+  if (isMC) {
+    // ── Machine Charge (uses legacy Scenario 1 math) ───────────────
     if (isChargesMode) {
       scenario            = '1A';
       airlineDeducted     = acc;
@@ -88,19 +88,36 @@ function calculateCancellationScenario(p) {
     }
     refundableAmount = refundCommittedToClient;
 
+  } else if (!isPP && !isCC && !isCO) {
+    // ── Scenario 1: Regular Fully Paid ─────────────────────────────
+    if (isChargesMode) {
+      scenario            = '1A';
+      airlineDeducted     = acc;
+      totalCharges        = round(acc + totalSupplierTook);
+      supplierWillReturn  = round(baseOurCost - acc);
+      refundCommittedToClient = round(baseSalePrice - (currentMargin + totalCharges));
+    } else {
+      scenario            = '1B';
+      airlineDeducted     = round(baseOurCost - ara);
+      totalCharges        = round(airlineDeducted + totalSupplierTook);
+      supplierWillReturn  = round(baseOurCost - ara);
+      refundCommittedToClient = round(baseSalePrice - (currentMargin + totalCharges));
+    }
+    refundableAmount = refundCommittedToClient;
+
   } else if (isPP && !isCC && !isCO) {
     // ── Scenario 2: Partial Paid ───────────────────────────────────
     if (isChargesMode) {
       scenario            = '2A';
       airlineDeducted     = acc;
       totalCharges        = round(acc + totalSupplierTook);
-      supplierWillReturn  = round(paidAmount - acc - totalSupplierTook);
+      supplierWillReturn  = round(paidAmount - acc);
       refundCommittedToClient = round(paidAmount - (totalCharges + currentMargin));
     } else {
       scenario            = '2B';
       airlineDeducted     = round(paidAmount - ara);
       totalCharges        = round(airlineDeducted + totalSupplierTook);
-      supplierWillReturn  = round(paidAmount - airlineDeducted - totalSupplierTook);
+      supplierWillReturn  = round(paidAmount - ara);
       refundCommittedToClient = round(paidAmount - (totalCharges + currentMargin));
     }
     refundableAmount = refundCommittedToClient;
