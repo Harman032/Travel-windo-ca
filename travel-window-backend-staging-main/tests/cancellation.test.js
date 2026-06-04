@@ -225,18 +225,18 @@ runScenario('5A — Partial Paid Client Card, Charges, Not Updated', {
 }, {
   scenario: '5A', ourMargin: 190, currentMargin: 190,
   totalSupplierTook: 40, totalCharges: 140,
-  supplierWillReturn: 460,
+  supplierWillReturn: 500,
   upfrontNeeded: 190,
-  refundCommittedToClient: 460
+  refundCommittedToClient: 500
 });
 
 runScenario('5A — Partial Paid Client Card, Charges, Updated', {
   ...BASE, isChargesMode: true, isPartialPaid: true, isClientCard: true, paidAmount: 600, supplierUpdationCharge: 20
 }, {
   scenario: '5A', totalSupplierTook: 60,
-  totalCharges: 160, supplierWillReturn: 440,
+  totalCharges: 160, supplierWillReturn: 500,
   upfrontNeeded: 190,
-  refundCommittedToClient: 440
+  refundCommittedToClient: 500
 });
 
 // ── SCENARIO 5B: Partial Paid Client Card + Refund ─────────────────
@@ -245,9 +245,9 @@ runScenario('5B — Partial Paid Client Card, Refund, Not Updated', {
 }, {
   scenario: '5B', ourMargin: 190, currentMargin: 190,
   totalSupplierTook: 40, airlineDeducted: 100,
-  totalCharges: 140, supplierWillReturn: 460,
+  totalCharges: 140, supplierWillReturn: 100,
   upfrontNeeded: 190,
-  refundCommittedToClient: 460
+  refundCommittedToClient: 100
 });
 
 runScenario('5B — Partial Paid Client Card, Refund, Updated', {
@@ -255,9 +255,9 @@ runScenario('5B — Partial Paid Client Card, Refund, Updated', {
 }, {
   scenario: '5B', totalSupplierTook: 60,
   airlineDeducted: 100, totalCharges: 160,
-  supplierWillReturn: 440,
+  supplierWillReturn: 100,
   upfrontNeeded: 190,
-  refundCommittedToClient: 440
+  refundCommittedToClient: 100
 });
 
 // ── MACHINE CHARGE → treated as Scenario 1 ─────────────────────────
