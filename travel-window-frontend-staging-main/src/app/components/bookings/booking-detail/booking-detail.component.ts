@@ -2006,7 +2006,7 @@ export class BookingDetailComponent implements OnInit {
         result.scenario = '5B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
-        result.supplierWillReturn = round(paidAmount - ara);
+        result.supplierWillReturn = round(ara);
         result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       }
