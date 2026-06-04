@@ -1536,6 +1536,9 @@ function recalculateCancellationValues(booking) {
   } else if (type === 'partialPaidCancellationCharges') {
     const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
     const totalCharges = Math.round((ourMargin + supplierCharges + scc + occ) * 100) / 100;
+    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
+    c.supplierWillReturn = Math.round((paidAmount - scc - totalSupplierTook) * 100) / 100;
+    c.totalSupplierTook = totalSupplierTook;
     c.totalCharges = totalCharges;
     c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
     c.refundableAmount = c.refundCommittedToClient;
@@ -1543,6 +1546,11 @@ function recalculateCancellationValues(booking) {
     const sra = scc; // in this mode scc is used for refund amount
     const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
     const totalCharges = Math.round((ourMargin + (paidAmount - sra)) * 100) / 100;
+    const airlineDeducted = Math.round((paidAmount - sra) * 100) / 100;
+    const totalSupplierTook = Math.round((supplierCharges + airlineDeducted) * 100) / 100;
+    c.supplierWillReturn = Math.round((paidAmount - airlineDeducted - totalSupplierTook) * 100) / 100;
+    c.totalSupplierTook = totalSupplierTook;
+    c.airlineDeducted = airlineDeducted;
     c.totalCharges = totalCharges;
     c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
     c.refundableAmount = c.refundCommittedToClient;
@@ -1553,6 +1561,11 @@ function recalculateCancellationValues(booking) {
     const totalCharges = isRefundMode ? 
       Math.round((paidAmount - (scc - occ)) * 100) / 100 :
       Math.round((ourMargin + supplierCharges + scc + occ) * 100) / 100;
+    const airlineDeducted = isRefundMode ? Math.round((ourCost - scc) * 100) / 100 : scc;
+    const totalSupplierTook = Math.round((supplierCharges + airlineDeducted) * 100) / 100;
+    c.supplierWillReturn = Math.round((ourCost - airlineDeducted - totalSupplierTook) * 100) / 100;
+    c.airlineDeducted = airlineDeducted;
+    c.totalSupplierTook = totalSupplierTook;
     c.totalCharges = totalCharges;
     c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
     c.refundableAmount = c.refundCommittedToClient;
