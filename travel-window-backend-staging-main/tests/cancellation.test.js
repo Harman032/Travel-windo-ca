@@ -86,7 +86,7 @@ runScenario('1B — Regular Fully Paid, Refund, Not Updated', {
 }, {
   scenario: '1B', ourMargin: 190, currentMargin: 190,
   totalSupplierTook: 40, airlineDeducted: 100,
-  totalCharges: 140, supplierWillReturn: 100,
+  totalCharges: 140, supplierWillReturn: 900,
   refundCommittedToClient: 870
 });
 
@@ -94,7 +94,7 @@ runScenario('1B — Regular Fully Paid, Refund, Updated', {
   ...BASE, isChargesMode: false, supplierUpdationCharge: 20
 }, {
   scenario: '1B', totalSupplierTook: 60,
-  totalCharges: 160, supplierWillReturn: 100,
+  totalCharges: 160, supplierWillReturn: 900,
   refundCommittedToClient: 850
 });
 
@@ -122,7 +122,7 @@ runScenario('2B — Partial Paid, Refund, Not Updated', {
 }, {
   scenario: '2B', ourMargin: 190, currentMargin: 190,
   totalSupplierTook: 40, airlineDeducted: 100,
-  totalCharges: 140, supplierWillReturn: 100,
+  totalCharges: 140, supplierWillReturn: 500,
   refundCommittedToClient: 270
 });
 
@@ -130,7 +130,7 @@ runScenario('2B — Partial Paid, Refund, Updated', {
   ...BASE, isChargesMode: false, isPartialPaid: true, paidAmount: 600, airlineRefundAmount: 500, supplierUpdationCharge: 20
 }, {
   scenario: '2B', totalSupplierTook: 60,
-  totalCharges: 160, supplierWillReturn: 100,
+  totalCharges: 160, supplierWillReturn: 500,
   refundCommittedToClient: 250
 });
 
