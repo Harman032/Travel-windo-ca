@@ -597,6 +597,29 @@ import { ToastrService } from 'ngx-toastr';
           </div>
           
           <form [formGroup]="cancelForm" (ngSubmit)="onCancel()">
+            <!-- Supplier Charges Breakdown -->
+            <div class="col-span-full p-3 bg-white border border-gray-200 shadow-sm rounded mb-4">
+              <p class="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Supplier Charges Breakdown (Auto)</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <p class="text-xs text-gray-500">Supplier Booking Charge</p>
+                  <p class="font-semibold text-gray-800">CAD {{ (booking.supplierBookingCharge ?? 0) | number:'1.2-2' }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500">Supplier Updation Charge</p>
+                  <p class="font-semibold text-gray-800">CAD {{ (booking.supplierUpdationCharge ?? 0) | number:'1.2-2' }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500">Supplier Cancellation Charge</p>
+                  <p class="font-semibold text-gray-800">CAD {{ autoSupplierCancellationCharge | number:'1.2-2' }}</p>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center bg-gray-50 p-2 rounded">
+                <span class="text-sm font-medium text-gray-700">Total Supplier Took</span>
+                <span class="text-sm font-bold text-red-600">CAD {{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
             <!-- Mode Toggle -->
             <div class="flex gap-6 mb-4 p-3 bg-white border border-gray-200 rounded">
               <label class="flex items-center gap-2 cursor-pointer">
@@ -612,8 +635,8 @@ import { ToastrService } from 'ngx-toastr';
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded border border-gray-200 mb-4">
-              <div><label class="block text-xs text-gray-500">Our Margin</label><p class="font-semibold">{{ cancellationResult.ourMargin | number:'1.2-2' }}</p></div>
-              <div><label class="block text-xs text-gray-500">Supplier Charges</label><p class="font-semibold">{{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</p></div>
+              <div><label class="block text-xs text-gray-500">Our Margin</label><p class="font-semibold">CAD {{ cancellationResult.ourMargin | number:'1.2-2' }}</p></div>
+              <div><label class="block text-xs text-gray-500">Current Margin</label><p class="font-bold text-green-700">CAD {{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
               
               <div *ngIf="cancellationMode === 'charges'">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Airline Cancellation Charges <span class="text-red-500">*</span></label>
@@ -630,25 +653,25 @@ import { ToastrService } from 'ngx-toastr';
               </div>
 
               <!-- Computed values row 1 -->
-              <div><label class="block text-xs text-gray-500">Current Margin</label><p class="font-bold text-green-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
-              <div *ngIf="cancellationMode === 'refundAmount'"><label class="block text-xs text-gray-500">Airline Deducted</label><p class="font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p></div>
-              <div *ngIf="cancellationResult.scenario === '3A' || cancellationResult.scenario === '3B' || cancellationResult.scenario === '4A' || cancellationResult.scenario === '4B' || cancellationResult.scenario === '5A' || cancellationResult.scenario === '5B'">
-                <label class="block text-xs text-gray-500">Total Supplier Took</label><p class="font-bold text-orange-700">{{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</p>
-              </div>
+              <div><label class="block text-xs text-gray-500">Total Charges</label><p class="font-bold text-red-700">CAD {{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
+              <div *ngIf="cancellationMode === 'refundAmount'"><label class="block text-xs text-gray-500">Airline Deducted (Auto-Calculated)</label><p class="font-bold text-orange-600">CAD {{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p></div>
+              <div *ngIf="cancellationMode === 'charges'"></div>
 
               <!-- Computed values row 2 -->
-              <div><label class="block text-xs text-gray-500">Total Charges</label><p class="font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
-              <div><label class="block text-xs text-gray-500">Supplier Will Return</label><p class="font-bold text-blue-700">{{ cancellationResult.supplierWillReturn | number:'1.2-2' }}</p></div>
+              <div><label class="block text-xs text-gray-500">Supplier Will Return</label><p class="font-bold text-blue-700">CAD {{ cancellationResult.supplierWillReturn | number:'1.2-2' }}</p></div>
 
               <!-- Computed values row 3 -->
               <div *ngIf="cancellationResult.scenario === '3A' || cancellationResult.scenario === '3B' || cancellationResult.scenario === '5A' || cancellationResult.scenario === '5B'">
-                <label class="block text-xs text-gray-500">Upfront Needed</label><p class="font-bold text-red-800">{{ cancellationResult.upfrontNeeded | number:'1.2-2' }}</p>
+                <label class="block text-xs text-gray-500">Upfront Needed</label><p class="font-bold text-red-800">CAD {{ cancellationResult.upfrontNeeded | number:'1.2-2' }}</p>
               </div>
-              <div class="col-span-full mt-2 p-3 bg-green-50 border border-green-200 rounded">
+              <div *ngIf="!(cancellationResult.scenario === '3A' || cancellationResult.scenario === '3B' || cancellationResult.scenario === '5A' || cancellationResult.scenario === '5B')"></div>
+
+              <div class="col-span-full mt-2 p-3 bg-green-50 border border-green-200 rounded flex justify-between items-center">
                 <label class="block text-xs font-medium text-gray-500 mb-1">{{ cancellationResult.scenario === '2A' || cancellationResult.scenario === '2B' ? 'Refund to Client' : 'Refund Committed to Client' }}</label>
                 <p class="text-xl font-bold text-green-700">CAD {{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p>
               </div>
-              <div *ngIf="cancellationResult.scenario === '3A' || cancellationResult.scenario === '3B'" class="col-span-full p-2 bg-blue-50 border border-blue-200 rounded">
+              
+              <div *ngIf="cancellationResult.scenario === '3A' || cancellationResult.scenario === '3B'" class="col-span-full p-2 bg-blue-50 border border-blue-200 rounded flex justify-between items-center">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Refundable Amount To Client</label>
                 <p class="text-lg font-bold text-blue-700">CAD {{ cancellationResult.refundableAmount | number:'1.2-2' }}</p>
               </div>
@@ -879,29 +902,10 @@ export class BookingDetailComponent implements OnInit {
 
     this.cancelForm = this.fb.group({
       paymentModeWas: ['', Validators.required],
-      refundableAmount: [0],
-      committedToClient: [null],
-      chargeFromClient: [null],
-      cancellationType: ['supplierCancellationCharges'],
-      supplierCancellationCharges: [0],
-      ourCancellationCharges: [0],
       airlineCancellationCharges: [0],
       airlineRefundAmount: [0],
+      newMargin: [0],
       remarks: ['', Validators.required]
-    });
-
-    // Watch payment mode changes to update validators
-    this.cancelForm.get('paymentModeWas')?.valueChanges.subscribe(mode => {
-      const isCardFlow = this.isClientOrCompanyCard || this.isPartialPaidCard;
-      if (mode === 'Machine Charge' && !isCardFlow) {
-        this.cancelForm.get('chargeFromClient')?.setValidators([Validators.required]);
-        this.cancelForm.get('committedToClient')?.clearValidators();
-      } else {
-        this.cancelForm.get('committedToClient')?.clearValidators();
-        this.cancelForm.get('chargeFromClient')?.clearValidators();
-      }
-      this.cancelForm.get('chargeFromClient')?.updateValueAndValidity();
-      this.cancelForm.get('committedToClient')?.updateValueAndValidity();
     });
   }
 
@@ -1255,41 +1259,27 @@ export class BookingDetailComponent implements OnInit {
   openCancelFormOnly() {
     this.cancellationMode = 'charges';
     
-    // Determine cancellation type based on booking
-    let cancellationType = 'supplierCancellationCharges'; // default
-
-    if (this.isMachineChargeOnly) {
-      cancellationType = 'supplierCancellationCharges';
-    } else if (this.isPartialPaidCard) {
-      cancellationType = this.booking?.cardType === 'Client Card'
-        ? 'partialPaidClientCard'
-        : 'partialPaidCompanyCard';
-    } else if (this.isClientCardPartialPayment) {
-      cancellationType = 'clientCardPartialPayment';
-    } else if (this.isClientOrCompanyCard) {
-      cancellationType = this.booking?.cardType === 'Client Card'
-        ? 'clientCard'
-        : 'companyCard';
-    } else if (this.isPartialPaid) {
-      cancellationType = 'partialPaidCancellationCharges';
-    }
-
-    this.cancelForm.patchValue({ cancellationType: cancellationType });
-    this.onCancellationModeChange();
+    // Reset form
+    this.cancelForm.patchValue({
+      airlineCancellationCharges: 0,
+      airlineRefundAmount: 0,
+      newMargin: 0
+    });
 
     if (this.showCancelForm) {
       this.showCancelForm = false;
       return;
     }
+    
     this.showCancelForm = true;
     this.showDateChangeForm = false;
     this.showFlightChangeForm = false;
+    
     if (this.booking) {
       const paymentModeWas = this.getPrimaryPaymentMode();
       this.cancelForm.patchValue({ paymentModeWas: paymentModeWas || '' });
       this.cancelForm.get('paymentModeWas')?.disable();
 
-      // Fetch supplier cancellation charge to pre-fill form
       const supplierId = this.booking?.supplier?._id ?? this.booking?.supplier;
       if (supplierId) {
         this.supplierService.getSuppliers().subscribe({
@@ -1297,9 +1287,6 @@ export class BookingDetailComponent implements OnInit {
             const supplier = suppliers.find(s => s._id === supplierId);
             const scc = supplier?.cancellationCharge ?? 0;
             this.autoSupplierCancellationCharge = scc;
-            this.cancelForm.patchValue({
-              supplierCancellationCharges: scc
-            });
           }
         });
       }
@@ -1594,56 +1581,44 @@ export class BookingDetailComponent implements OnInit {
       return;
     }
 
-    const formValue = this.cancelForm.getRawValue();
-    const result = this.cancellationResult;
+    if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
+      return;
+    }
 
-    // Detect actual payment mode from booking payments
-    const lastPayment = this.booking?.payments?.[(this.booking.payments?.length ?? 1) - 1];
-    const actualPaymentMode = lastPayment?.paymentMode ?? formValue.paymentModeWas ?? 'Cash';
+    const mode = this.cancellationMode; // 'charges' or 'refundAmount'
+    const acc = Number(this.cancelForm.get('airlineCancellationCharges')?.value || 0);
+    const ara = Number(this.cancelForm.get('airlineRefundAmount')?.value || 0);
+    const nm = Number(this.cancelForm.get('newMargin')?.value || 0);
+    
+    let cancellationType = '';
+    
+    const isPartialPaid = this.booking?.billingStatus === 'Partial Paid';
+    const isClientCard = this.booking?.cardType === 'Client Card';
+    const isCompanyCard = this.booking?.cardType === 'Company Card';
+    const isMachineCharge = this.cancelForm.get('paymentModeWas')?.value === 'Machine Charge';
 
-    // Determine cancellation type
-    let cancellationType = formValue.cancellationType;
-    if (this.isMachineChargeOnly) {
+    if (isMachineCharge) {
       cancellationType = 'machineCharge';
-    } else if (this.isPartialPaidCard) {
-      cancellationType = this.booking?.cardType === 'Client Card'
-        ? 'partialPaidClientCard' : 'partialPaidCompanyCard';
-    } else if (this.isClientCardPartialPayment) {
-      cancellationType = 'clientCardPartialPayment';
-    } else if (this.isClientOrCompanyCard) {
-      cancellationType = this.booking?.cardType === 'Client Card'
-        ? 'clientCard' : 'companyCard';
+    } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
+      cancellationType = mode === 'charges' ? 'partialPaidCancellationCharges' : 'partialPaidRefundAmount';
+    } else if (isClientCard && !isPartialPaid) {
+      cancellationType = mode === 'charges' ? 'clientCard' : 'clientCardRefundAmount';
+    } else if (isCompanyCard && !isPartialPaid) {
+      cancellationType = mode === 'charges' ? 'companyCard' : 'companyCardRefundAmount';
+    } else if (isClientCard && isPartialPaid) {
+      cancellationType = mode === 'charges' ? 'partialPaidClientCard' : 'partialPaidClientCardRefundAmount';
+    } else {
+      cancellationType = mode === 'charges' ? 'supplierCancellationCharges' : 'supplierRefundAmount';
     }
 
     const payload = {
-      paymentModeWas: actualPaymentMode,
+      remarks: this.cancelForm.get('remarks')?.value,
       cancellationType: cancellationType,
-      cancellationMode: this.cancellationMode,
-
-      // Airline inputs
-      airlineCancellationCharges: this.cancellationMode === 'charges'
-        ? Number(formValue.airlineCancellationCharges ?? 0) : 0,
-      airlineRefundAmount: this.cancellationMode === 'refundAmount'
-        ? Number(formValue.airlineRefundAmount ?? 0) : 0,
-
-      // User inputs
-      ourCancellationCharges: Number(formValue.ourCancellationCharges ?? 0),
-      chargeFromClient: Number(formValue.chargeFromClient ?? 0),
-      remarks: formValue.remarks,
-
-      // ALL calculated values from cancellationResult
-      totalSupplierTook: result.totalSupplierTook ?? 0,
-      ourMargin: result.ourMargin ?? 0,
-      newMargin: Number(formValue.ourCancellationCharges ?? 0),
-      // newMargin = user-entered ourCancellationCharges (New Margin input)
-      currentMargin: result.currentMargin ?? 0,
-      totalCharges: result.totalCharges ?? 0,
-      supplierWillReturn: result.supplierWillReturn ?? 0,
-      upfrontNeeded: result.upfrontNeeded ?? 0,
-      refundCommittedToClient: result.refundCommittedToClient ?? 0,
-      clientReceives: result.clientReceives ?? 0,
-      airlineDeducted: result.airlineDeducted ?? 0,
-      refundableAmount: result.refundCommittedToClient ?? 0,
+      supplierCancellationCharges: mode === 'charges' ? acc : ara, // engine expects this legacy field unfortunately
+      ourCancellationCharges: nm, // engine expects this legacy field unfortunately
+      airlineCancellationCharges: acc,
+      airlineRefundAmount: ara,
+      newMargin: nm
     };
 
     console.log('Cancellation payload:', payload); // debug log
@@ -1916,9 +1891,7 @@ export class BookingDetailComponent implements OnInit {
 
   get cancellationResult(): any {
     if (!this.booking) return {};
-
     const round = (val: number) => Math.round(val * 100) / 100;
-
     const salePrice = this.booking.salePrice || 0;
     const ourCost = this.booking.ourCost || 0;
     const totalPaidAmount = this.booking.totalPaidAmount || 0;
@@ -1926,35 +1899,18 @@ export class BookingDetailComponent implements OnInit {
     const supplierUpdationCharge = this.booking.supplierUpdationCharge || 0;
     const autoSCC = this.autoSupplierCancellationCharge || 0;
 
-    const cancellationType = this.cancelForm?.get('cancellationType')?.value || '';
-    const mode = this.cancellationMode; // 'charges' | 'refundAmount'
-
-    // Read form values
     const acc = Number(this.cancelForm?.get('airlineCancellationCharges')?.value || 0);
     const ara = Number(this.cancelForm?.get('airlineRefundAmount')?.value || 0);
-    const nm = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
+    const nm = Number(this.cancelForm?.get('newMargin')?.value || 0);
 
-    // Strip addons to get base values
     const baseSalePrice = Math.max(0, salePrice - this.dateChangeSaleAddon - this.flightChangeSaleAddon);
     const baseOurCost = Math.max(0, ourCost - this.dateChangeOurAddon - this.flightChangeOurAddon);
 
-    // Determine mode based on cancellation type
-    let isChargesMode: boolean;
-    if (cancellationType === 'supplierCancellationCharges' || cancellationType === 'partialPaidCancellationCharges') {
-      isChargesMode = true;
-    } else if (cancellationType === 'supplierRefundAmount' || cancellationType === 'partialPaidRefundAmount') {
-      isChargesMode = false;
-    } else {
-      isChargesMode = mode === 'charges';
-    }
-
-    // Scenario detection flags
     const isPartialPaid = this.booking.billingStatus === 'Partial Paid';
     const isClientCard = this.booking.cardType === 'Client Card';
     const isCompanyCard = this.booking.cardType === 'Company Card';
-    const isMachineCharge = cancellationType === 'machineCharge';
+    const isMachineCharge = this.cancelForm?.get('paymentModeWas')?.value === 'Machine Charge';
 
-    // Core derived values
     const totalSupplierTook = round(supplierBookingCharge + supplierUpdationCharge + autoSCC);
     const ourMargin = round(baseSalePrice - (baseOurCost + supplierBookingCharge));
     const currentMargin = round(ourMargin + nm);
@@ -1963,99 +1919,97 @@ export class BookingDetailComponent implements OnInit {
     let result: any = {
       ourMargin,
       currentMargin,
-      newMargin: currentMargin,
+      newMargin: nm,
       totalSupplierTook,
-      cancellationType,
       supplierWillReturn: 0,
       refundCommittedToClient: 0,
-      clientReceives: 0,
       totalCharges: 0,
       upfrontNeeded: 0,
       airlineDeducted: 0,
-      refundableAmount: 0
+      refundableAmount: 0,
+      scenario: '',
+      clientReceives: 0
     };
 
-    // ── Scenario 1: Regular Fully Paid (+ Machine Charge) ──────
+    const isChargesMode = this.cancellationMode === 'charges';
+
     if (isMachineCharge || (!isPartialPaid && !isClientCard && !isCompanyCard)) {
       if (isChargesMode) {
-        result.airlineDeducted = acc;
+        result.scenario = '1A';
         result.totalCharges = round(acc + totalSupplierTook);
         result.supplierWillReturn = round(baseOurCost - acc - totalSupplierTook);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       } else {
+        result.scenario = '1B';
         result.airlineDeducted = round(baseOurCost - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
         result.supplierWillReturn = round(baseOurCost - result.airlineDeducted - totalSupplierTook);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
-      result.refundableAmount = result.refundCommittedToClient;
-
-    // ── Scenario 2: Partial Paid ───────────────────────────────
+      result.clientReceives = result.refundCommittedToClient;
     } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
       if (isChargesMode) {
-        result.airlineDeducted = acc;
+        result.scenario = '2A';
         result.totalCharges = round(acc + totalSupplierTook);
-        result.supplierWillReturn = round(paidAmount - acc - totalSupplierTook);
+        result.supplierWillReturn = round(paidAmount - totalSupplierTook - acc);
         result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       } else {
+        result.scenario = '2B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
-        result.supplierWillReturn = round(paidAmount - result.airlineDeducted - totalSupplierTook);
+        result.supplierWillReturn = round(paidAmount - totalSupplierTook - result.airlineDeducted);
         result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       }
-      result.refundableAmount = result.refundCommittedToClient;
-
-    // ── Scenario 3: Client Card Fully Paid ─────────────────────
-    } else if (!isPartialPaid && isClientCard) {
+      result.clientReceives = result.refundCommittedToClient;
+    } else if (isClientCard && !isPartialPaid) {
       if (isChargesMode) {
-        result.airlineDeducted = acc;
+        result.scenario = '3A';
         result.totalCharges = round(totalSupplierTook + acc);
         result.supplierWillReturn = round(baseSalePrice - acc);
         result.upfrontNeeded = round(currentMargin + totalSupplierTook);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundableAmount = result.supplierWillReturn;
       } else {
+        result.scenario = '3B';
         result.airlineDeducted = round(baseSalePrice - ara);
         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
         result.supplierWillReturn = round(baseSalePrice - result.airlineDeducted);
         result.upfrontNeeded = round(currentMargin + totalSupplierTook);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundableAmount = result.supplierWillReturn;
       }
-      result.refundableAmount = result.supplierWillReturn;
-
-    // ── Scenario 4: Company Card ───────────────────────────────
-    } else if (!isPartialPaid && isCompanyCard) {
+      result.clientReceives = result.refundCommittedToClient;
+    } else if (isCompanyCard && !isPartialPaid) {
       if (isChargesMode) {
-        result.airlineDeducted = acc;
+        result.scenario = '4A';
         result.totalCharges = round(totalSupplierTook + acc);
         result.supplierWillReturn = round(baseOurCost - totalSupplierTook - acc);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       } else {
+        result.scenario = '4B';
         result.airlineDeducted = round(baseOurCost - ara);
         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
         result.supplierWillReturn = round(baseOurCost - totalSupplierTook - result.airlineDeducted);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
-      result.refundableAmount = result.refundCommittedToClient;
-
-    // ── Scenario 5: Partial Paid Client Card ───────────────────
-    } else if (isPartialPaid && isClientCard) {
+      result.clientReceives = result.refundCommittedToClient;
+    } else if (isClientCard && isPartialPaid) {
       if (isChargesMode) {
-        result.airlineDeducted = acc;
+        result.scenario = '5A';
         result.totalCharges = round(totalSupplierTook + acc);
         result.supplierWillReturn = round(paidAmount - result.totalCharges);
-        result.upfrontNeeded = currentMargin;
+        result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       } else {
+        result.scenario = '5B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
         result.supplierWillReturn = round(paidAmount - result.totalCharges);
-        result.upfrontNeeded = currentMargin;
+        result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       }
-      result.refundableAmount = result.refundCommittedToClient;
+      result.clientReceives = result.refundCommittedToClient;
     }
-
-    result.clientReceives = result.refundCommittedToClient;
 
     return result;
   }
