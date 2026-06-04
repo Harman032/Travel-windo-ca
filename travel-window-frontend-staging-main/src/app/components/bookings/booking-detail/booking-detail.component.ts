@@ -1959,7 +1959,7 @@ export class BookingDetailComponent implements OnInit {
         result.scenario = '1B';
         result.airlineDeducted = round(baseOurCost - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
-        result.supplierWillReturn = round(baseOurCost - ara);
+        result.supplierWillReturn = round(baseOurCost - result.airlineDeducted);
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
       result.clientReceives = result.refundCommittedToClient;
@@ -1973,7 +1973,7 @@ export class BookingDetailComponent implements OnInit {
         result.scenario = '2B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
-        result.supplierWillReturn = round(paidAmount - ara);
+        result.supplierWillReturn = round(paidAmount - result.airlineDeducted);
         result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       }
       result.clientReceives = result.refundCommittedToClient;
