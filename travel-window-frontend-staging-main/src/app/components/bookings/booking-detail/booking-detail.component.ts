@@ -1999,14 +1999,14 @@ export class BookingDetailComponent implements OnInit {
       if (isChargesMode) {
         result.scenario = '5A';
         result.totalCharges = round(totalSupplierTook + acc);
-        result.supplierWillReturn = round(paidAmount - result.totalCharges);
+        result.supplierWillReturn = round(paidAmount - acc);
         result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       } else {
         result.scenario = '5B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
-        result.supplierWillReturn = round(paidAmount - result.totalCharges);
+        result.supplierWillReturn = round(paidAmount - ara);
         result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       }
