@@ -912,9 +912,9 @@ import { ToastrService } from 'ngx-toastr';
                   </div>
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ partialPaidCardTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ partialPaidCardNewMargin | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidCardTotalCharges | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
                       <div *ngIf="cancellationMode === 'refundAmount'">
                         <label class="block text-sm text-gray-600">Airline Deducted</label>
                         <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
@@ -922,7 +922,7 @@ import { ToastrService } from 'ngx-toastr';
                       <div>
                         <label class="block text-sm text-gray-600">Supplier Will Return</label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ (booking.cardType === 'Client Card' ? clientCardPartialSupplierWillReturn : partialPaidCardClientReceives) | number:'1.2-2' }}
+                          {{ cancellationResult.supplierWillReturn | number:'1.2-2' }}
                         </p>
                       </div>
                       <div class="col-span-full mt-2">
@@ -996,8 +996,9 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
                 <div class="col-span-full border-t border-red-200 pt-4">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label class="block text-sm text-gray-600">Supplier Deducted</label><p class="text-lg font-bold text-red-700">{{ partialPaidSupplierDeducted | number:'1.2-2' }}</p></div>
-                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClientSRA | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ cancellationResult.supplierWillReturn | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p></div>
                   </div>
                 </div>
               </div>
@@ -1058,19 +1059,19 @@ import { ToastrService } from 'ngx-toastr';
 
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ clientCardPartialTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ clientCardPartialNewMargin | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ clientCardPartialTotalCharges | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
                       <div *ngIf="cancellationMode === 'refundAmount'">
                         <label class="block text-sm text-gray-600">Airline Deducted</label>
                         <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
                       </div>
                       <div>
                         <label class="block text-sm text-gray-600">
-                          {{ clientCardPartialRemainingAmount < clientCardPartialTotalCharges ? 'Refund Committed to Client Full Card Payment' : 'Refund Committed to Client' }}
+                          {{ cancellationResult.remainingAmount < cancellationResult.totalCharges ? 'Refund Committed to Client Full Card Payment' : 'Refund Committed to Client' }}
                         </label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ clientCardPartialClientReceives | number:'1.2-2' }}
+                          {{ cancellationResult.clientReceives | number:'1.2-2' }}
                         </p>
                       </div>
                     </div>
@@ -1142,9 +1143,9 @@ import { ToastrService } from 'ngx-toastr';
 
                   <div class="col-span-full border-t border-red-200 pt-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancelTotalSupplierTook | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancelClientCardCurrentMargin | number:'1.2-2' }}</p></div>
-                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancelTotalCharges | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Supplier Took</label><p class="text-lg font-bold text-orange-700">{{ cancellationResult.totalSupplierTook | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Current Margin</label><p class="text-lg font-bold text-green-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
+                      <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
                       <div *ngIf="cancellationMode === 'refundAmount'">
                         <label class="block text-sm text-gray-600">Airline Deducted</label>
                         <p class="text-lg font-bold text-orange-600">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
@@ -1154,7 +1155,7 @@ import { ToastrService } from 'ngx-toastr';
                           Supplier Will Return
                         </label>
                         <p class="text-lg font-bold text-blue-700">
-                          {{ (booking.cardType === 'Client Card' ? cancelClientCardSupplierWillReturn : cancelCompanyCardSupplierWillReturn) | number:'1.2-2' }}
+                          {{ cancellationResult.supplierWillReturn | number:'1.2-2' }}
                         </p>
                       </div>
                       <div class="col-span-full mt-2">
@@ -1316,13 +1317,13 @@ import { ToastrService } from 'ngx-toastr';
                 <div class="mt-2 space-y-2">
                   <ng-container *ngIf="booking.cancellation?.cancellationType !== 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.airlineCancellationCharges ?? booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn ?? 0) | number:'1.2-2' }}
                     </p>
                   </ng-container>
 
                   <ng-container *ngIf="booking.cancellation?.cancellationType === 'machineCharge'">
                     <p class="text-sm font-semibold text-orange-800">
-                      Supplier Will Return: CAD {{ ((booking.ourCost ?? 0) - (booking.cancellation?.airlineCancellationCharges ?? booking.cancellation?.supplierCancellationCharges ?? 0)) | number:'1.2-2' }}
+                      Supplier Will Return: CAD {{ (booking.cancellation?.supplierWillReturn ?? 0) | number:'1.2-2' }}
                     </p>
                     <p class="text-sm font-semibold text-orange-800">
                       Current Margin: CAD {{ (booking.cancellation?.currentMargin ?? 0) | number:'1.2-2' }}
@@ -2694,6 +2695,7 @@ export class BookingDetailComponent implements OnInit {
 
       case 'clientCardPartialPayment': {
         const remainingAmount = round(salePrice - paymentFromCard);
+        result.remainingAmount = remainingAmount;
         result.totalCharges = round(totalSupplierTook + cardCharge);
         result.supplierWillReturn = round(totalPaidAmount - cardCharge);
         result.upfrontNeeded = newMargin;
