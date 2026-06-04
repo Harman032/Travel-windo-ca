@@ -1935,7 +1935,7 @@ export class BookingDetailComponent implements OnInit {
 
     const isChargesMode = this.cancellationMode === 'charges';
 
-    if (isMachineCharge || (!isPartialPaid && !isClientCard && !isCompanyCard)) {
+    if (isMachineCharge) {
       if (isChargesMode) {
         result.scenario = '1A';
         result.totalCharges = round(acc + totalSupplierTook);
@@ -1949,17 +1949,31 @@ export class BookingDetailComponent implements OnInit {
         result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
       result.clientReceives = result.refundCommittedToClient;
+    } else if (!isPartialPaid && !isClientCard && !isCompanyCard) {
+      if (isChargesMode) {
+        result.scenario = '1A';
+        result.totalCharges = round(acc + totalSupplierTook);
+        result.supplierWillReturn = round(baseOurCost - acc);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+      } else {
+        result.scenario = '1B';
+        result.airlineDeducted = round(baseOurCost - ara);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
+        result.supplierWillReturn = round(baseOurCost - ara);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+      }
+      result.clientReceives = result.refundCommittedToClient;
     } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
       if (isChargesMode) {
         result.scenario = '2A';
         result.totalCharges = round(acc + totalSupplierTook);
-        result.supplierWillReturn = round(paidAmount - totalSupplierTook - acc);
+        result.supplierWillReturn = round(paidAmount - acc);
         result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       } else {
         result.scenario = '2B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
-        result.supplierWillReturn = round(paidAmount - totalSupplierTook - result.airlineDeducted);
+        result.supplierWillReturn = round(paidAmount - ara);
         result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       }
       result.clientReceives = result.refundCommittedToClient;
