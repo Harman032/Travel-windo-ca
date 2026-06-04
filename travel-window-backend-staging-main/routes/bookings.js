@@ -1081,6 +1081,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       return res.status(400).json({ message: 'Payment mode and remarks are required' });
     }
 
+    // Strip date/flight change addons to get base values
     const dateChangeSaleAddon = (booking.dateChanges || []).reduce((sum, d) => sum + (Number(d?.salePriceAddon) || 0), 0);
     const flightChangeSaleAddon = (booking.flightChanges || []).reduce((sum, d) => sum + (Number(d?.salePriceAddon) || 0), 0);
     const dateChangeOurAddon = (booking.dateChanges || []).reduce((sum, d) => sum + (Number(d?.ourCostAddon) || 0), 0);
@@ -1089,6 +1090,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     const baseSalePrice = Math.max(0, (Number(booking.salePrice) || 0) - dateChangeSaleAddon - flightChangeSaleAddon);
     const baseOurCost = Math.max(0, (Number(booking.ourCost) || 0) - dateChangeOurAddon - flightChangeOurAddon);
     
+    // Fetch auto supplier cancellation charge
     const Supplier = require('../models/Supplier');
     let sccAuto = 0;
     if (booking.supplier) {
@@ -1098,153 +1100,45 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       }
     }
     
-    booking.supplierCancellationCharge = sccAuto;
-    // Accumulate total supplier charges
-    const supplierCharges = Math.round((
+    // Update supplier charges on booking
+    booking.supplierCharges = Math.round((
       (booking.supplierBookingCharge || 0) +
       (booking.supplierUpdationCharge || 0) +
       sccAuto
     ) * 100) / 100;
-    booking.supplierCharges = supplierCharges;
     
-    const ourMargin = Math.round((baseSalePrice - (baseOurCost + (booking.supplierBookingCharge || 0))) * 100) / 100;
-    
+    const isChargesMode = cancellationMode === 'charges';
     const acc = Number(airlineCancellationCharges) || 0;
     const ara = Number(airlineRefundAmount) || 0;
     const nm = Number(newMargin) || 0;
-    
-    // totalSupplierTook = booking + updation + cancellation = 40
-    const totalSupplierTook = Math.round((
-      (booking.supplierBookingCharge || 0) +
-      (booking.supplierUpdationCharge || 0) +
-      sccAuto
-    ) * 100) / 100;
-    
-    const currentMargin = Math.round((ourMargin + nm) * 100) / 100;
-    // totalCharges uses totalSupplierTook (not supplierCharges)
-    const totalCharges = Math.round((acc + totalSupplierTook) * 100) / 100;
-    
     const paidAmount = Number(booking.totalPaidAmount) || 0;
-    const isChargesMode = cancellationMode === 'charges';
     
-    let refundToClient = 0;
-    let supplierWillReturn = 0;
-    let airlineDeducted = 0;
-    let upfrontNeeded = 0;
-    let scenarioTotalCharges = totalCharges; // track per-scenario totalCharges for refund modes
-    
+    // Detect scenario flags
     const isMachineCharge = !booking.cardType && booking.payments?.some(p => p.paymentMode === 'Machine Charge');
     const isPartialPaid = booking.paymentType === 'Partial';
     const isClientCard = booking.cardType === 'Client Card';
     const isCompanyCard = booking.cardType === 'Company Card';
     
-    let cfc = 0;
-    let oldMarginRow2 = 0;
-    let refundCommittedToClientVal = 0;
-
-    if (isMachineCharge) {
-      // Treat as Scenario 1A — Regular Fully Paid
-      if (isChargesMode) {
-        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-      }
-
-    } else if (!isPartialPaid && !isClientCard && !isCompanyCard) {
-      // Scenario 1: Regular fully paid (cash/bank)
-      if (isChargesMode) {
-        // 1A: supplierWillReturn = ourCost - acc - sccAuto = 1000 - 100 - 30 = 870
-        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        // 1B: airlineDeducted = ourCost - ara = 1000 - 900 = 100
-        airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-      }
-    // Scenario 2: Partial paid (cash/bank)
-    } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
-      if (isChargesMode) {
-        // 2A
-        refundToClient = Math.round((paidAmount - (totalCharges + currentMargin)) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - acc - totalSupplierTook) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        // 2B
-        airlineDeducted = Math.round((paidAmount - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - airlineDeducted - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((paidAmount - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-      }
-    // Scenario 3: Client Card fully paid
-    } else if (!isPartialPaid && isClientCard) {
-      if (isChargesMode) {
-        // 3A: supplierWillReturn = salePrice - acc = 1200 - 100 = 1100
-        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        supplierWillReturn = Math.round((baseSalePrice - acc) * 100) / 100;
-        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        // 3B: airlineDeducted = salePrice - ara = 1200 - 900 = 300
-        airlineDeducted = Math.round((baseSalePrice - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseSalePrice - airlineDeducted) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
-      }
-    // Scenario 4: Company Card fully paid
-    } else if (!isPartialPaid && isCompanyCard) {
-      if (isChargesMode) {
-        // 4A: supplierWillReturn = ourCost - acc - sccAuto = 1000 - 100 - 30 = 870
-        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        // 4B
-        airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-      }
-    // Scenario 5: Partial paid Client Card
-    } else if (isPartialPaid && isClientCard) {
-      if (isChargesMode) {
-        // 5A
-        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - totalCharges) * 100) / 100;
-        refundToClient = Math.round((paidAmount - (currentMargin + totalCharges)) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        // 5B
-        airlineDeducted = Math.round((paidAmount - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((paidAmount - scenarioTotalCharges) * 100) / 100;
-        refundToClient = Math.round((paidAmount - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-        upfrontNeeded = Math.round((currentMargin + totalSupplierTook) * 100) / 100;
-      }
-    } else {
-      // Default fallback to Scenario 1
-      if (isChargesMode) {
-        supplierWillReturn = Math.round((baseOurCost - acc - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + totalCharges)) * 100) / 100;
-        airlineDeducted = acc;
-      } else {
-        airlineDeducted = Math.round((baseOurCost - ara) * 100) / 100;
-        scenarioTotalCharges = Math.round((airlineDeducted + totalSupplierTook) * 100) / 100;
-        supplierWillReturn = Math.round((baseOurCost - airlineDeducted - totalSupplierTook) * 100) / 100;
-        refundToClient = Math.round((baseSalePrice - (currentMargin + scenarioTotalCharges)) * 100) / 100;
-      }
-    }
-
-    refundCommittedToClientVal = refundToClient;
-
+    // Single engine call
+    const { calculateCancellationScenario } = require('../utils/cancellation-engine');
+    const result = calculateCancellationScenario({
+      baseSalePrice,
+      baseOurCost,
+      paidAmount,
+      supplierBookingCharge: booking.supplierBookingCharge || 0,
+      supplierUpdationCharge: booking.supplierUpdationCharge || 0,
+      autoSupplierCancellationCharge: sccAuto,
+      isChargesMode,
+      airlineCancellationCharges: acc,
+      airlineRefundAmount: ara,
+      newMarginInput: nm,
+      isPartialPaid,
+      isClientCard,
+      isCompanyCard,
+      isMachineCharge
+    });
+    
+    // Save cancellation — store engine results directly
     booking.cancellation = {
       isCancelled: true,
       paymentModeWas,
@@ -1252,19 +1146,19 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       cancellationType: cancellationType || '',
       airlineCancellationCharges: isChargesMode ? acc : 0,
       airlineRefundAmount: isChargesMode ? 0 : ara,
-      oldMargin: ourMargin,
-      newMargin: nm,                    // user-entered New Margin
-      currentMargin: currentMargin,
-      totalSupplierTook,
-      totalCharges: scenarioTotalCharges,
-      supplierWillReturn,
-      refundCommittedToClient: refundToClient,
-      refundableAmount: refundToClient,
-      clientReceives: refundToClient,
-      upfrontNeeded,
-      totalAmountPaid: Number(booking.totalPaidAmount) || 0,
-      chargeFromClient: cfc,
-      airlineDeducted,
+      oldMargin: result.ourMargin,
+      newMargin: nm,
+      currentMargin: result.currentMargin,
+      totalSupplierTook: result.totalSupplierTook,
+      totalCharges: result.totalCharges,
+      supplierWillReturn: result.supplierWillReturn,
+      refundCommittedToClient: result.refundCommittedToClient,
+      refundableAmount: result.refundableAmount,
+      clientReceives: result.refundCommittedToClient,
+      upfrontNeeded: result.upfrontNeeded,
+      airlineDeducted: result.airlineDeducted,
+      totalAmountPaid: paidAmount,
+      chargeFromClient: 0,
       refundProcessed: false,
       remarks,
       cancelledBy: req.user._id,
@@ -1272,6 +1166,8 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
       refundReceivedFromSupplier: { date: null, remarks: '' },
       refundPaidToClient: { date: null, remarks: '' }
     };
+    
+    booking.status = 'Cancelled';
     
     if (typeof addProgressHistory === 'function') {
       addProgressHistory(booking, 'Cancellation', req.user, booking.cancellation, remarks);
@@ -1432,144 +1328,66 @@ router.post('/:id/recalculate-cancellation', auth, authorize('ADMIN'), async (re
   }
 });
 
-/** Helper to recalculate cancellation values based on type */
+/** Helper to recalculate cancellation values using the single engine */
 function recalculateCancellationValues(booking) {
   const c = booking.cancellation;
-  const type = c.cancellationType;
-  const salePrice = Number(booking.salePrice) || 0;
-  const ourCost = Number(booking.ourCost) || 0;
-  const supplierCharges = Number(booking.supplierCharges) || 0;
-  const paidAmount = Number(booking.totalPaidAmount) || 0;
-  const scc = Number(c.supplierCancellationCharges) || 0;
-  const occ = Number(c.ourCancellationCharges) || 0;
-
-  if (type === 'partialPaidClientCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const supplierWillReturn = Math.round((booking.paymentFromCard - totalSupplierTook) * 100) / 100;
-    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
-    
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.supplierWillReturn = supplierWillReturn;
-    c.clientReceives = supplierWillReturn;
-    c.refundableAmount = supplierWillReturn;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-  } else if (type === 'partialPaidCompanyCard') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((supplierCharges + scc + newMargin) * 100) / 100;
-    const clientReceives = Math.round((paidAmount - totalCharges) * 100) / 100;
-    const supplierWillReturn = Math.round((paidAmount - scc) * 100) / 100;
-
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.clientReceives = clientReceives;
-    c.supplierWillReturn = supplierWillReturn;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-  } else if (type === 'clientCardPartialPayment') {
-    const paymentFromCard = Number(booking.paymentFromCard) || 0;
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
-    const remainingAmount = Math.round((salePrice - paymentFromCard) * 100) / 100;
-    const supplierWillReturn = Math.round((paymentFromCard - scc) * 100) / 100;
-
-    let upfrontNeeded = 0;
-    let clientReceives = 0;
-
-    if (remainingAmount < totalCharges) {
-      upfrontNeeded = Math.round((totalCharges - remainingAmount) * 100) / 100;
-      clientReceives = paymentFromCard;
-    } else {
-      upfrontNeeded = 0;
-      clientReceives = Math.round((paymentFromCard + (remainingAmount - totalCharges)) * 100) / 100;
-    }
-
-    c.newMargin = newMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.remainingAmount = remainingAmount;
-    c.supplierWillReturn = supplierWillReturn;
-    c.upfrontNeeded = upfrontNeeded;
-    c.clientReceives = clientReceives;
-    c.refundableAmount = clientReceives;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-  } else if (type === 'clientCard') {
-    const isCardEqualToSalePrice = booking.paymentFromCard === salePrice;
-    const ourMarginVal = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const effectiveMargin = isCardEqualToSalePrice ? 0 : ourMarginVal;
-    const newMargin = Math.round((effectiveMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
-
-    c.oldMargin = effectiveMargin;
-    c.totalSupplierTook = totalSupplierTook;
-    c.newMargin = newMargin;
-    c.totalCharges = totalCharges;
-    c.supplierWillReturn = Math.round((paidAmount - totalSupplierTook) * 100) / 100;
-    c.upfrontNeeded = occ;
-    c.clientReceives = Math.round((paidAmount - totalCharges) * 100) / 100;
-    c.refundableAmount = c.clientReceives;
-    c.refundCommittedToClient = c.clientReceives;
-  } else if (type === 'companyCard') {
-    const isCardEqualToSalePrice = booking.paymentFromCard === booking.salePrice;
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const newMargin = Math.round((ourMargin + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    const totalCharges = Math.round((totalSupplierTook + newMargin) * 100) / 100;
-
-    c.totalSupplierTook = totalSupplierTook;
-    c.newMargin = newMargin;
-    c.totalCharges = totalCharges;
-    c.supplierWillReturn = isCardEqualToSalePrice
-      ? Math.round((salePrice - totalSupplierTook) * 100) / 100
-      : Math.round((ourCost - totalSupplierTook) * 100) / 100;
-    c.clientReceives = Math.round((salePrice - totalCharges) * 100) / 100;
-    c.refundableAmount = c.clientReceives;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-  } else if (type === 'partialPaidCancellationCharges') {
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const totalCharges = Math.round((ourMargin + supplierCharges + scc + occ) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + scc) * 100) / 100;
-    c.supplierWillReturn = Math.round((paidAmount - scc - totalSupplierTook) * 100) / 100;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-    c.refundableAmount = c.refundCommittedToClient;
-  } else if (type === 'partialPaidRefundAmount') {
-    const sra = scc; // in this mode scc is used for refund amount
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const totalCharges = Math.round((ourMargin + (paidAmount - sra)) * 100) / 100;
-    const airlineDeducted = Math.round((paidAmount - sra) * 100) / 100;
-    const totalSupplierTook = Math.round((supplierCharges + airlineDeducted) * 100) / 100;
-    c.supplierWillReturn = Math.round((paidAmount - airlineDeducted - totalSupplierTook) * 100) / 100;
-    c.totalSupplierTook = totalSupplierTook;
-    c.airlineDeducted = airlineDeducted;
-    c.totalCharges = totalCharges;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-    c.refundableAmount = c.refundCommittedToClient;
-  } else if (type === 'supplierCancellationCharges' || type === 'supplierRefundAmount') {
-    // Regular fully paid
-    const isRefundMode = type === 'supplierRefundAmount';
-    const ourMargin = Math.round((salePrice - ourCost - supplierCharges) * 100) / 100;
-    const totalCharges = isRefundMode ? 
-      Math.round((paidAmount - (scc - occ)) * 100) / 100 :
-      Math.round((ourMargin + supplierCharges + scc + occ) * 100) / 100;
-    const airlineDeducted = isRefundMode ? Math.round((ourCost - scc) * 100) / 100 : scc;
-    const totalSupplierTook = Math.round((supplierCharges + airlineDeducted) * 100) / 100;
-    c.supplierWillReturn = Math.round((ourCost - airlineDeducted - totalSupplierTook) * 100) / 100;
-    c.airlineDeducted = airlineDeducted;
-    c.totalSupplierTook = totalSupplierTook;
-    c.totalCharges = totalCharges;
-    c.refundCommittedToClient = Math.round((paidAmount - totalCharges) * 100) / 100;
-    c.refundableAmount = c.refundCommittedToClient;
-  }
+  if (!c || !c.isCancelled) return;
+  
+  const { calculateCancellationScenario } = require('../utils/cancellation-engine');
+  
+  const dateChangeSaleAddon = (booking.dateChanges || []).reduce((s, d) => s + (Number(d?.salePriceAddon) || 0), 0);
+  const flightChangeSaleAddon = (booking.flightChanges || []).reduce((s, d) => s + (Number(d?.salePriceAddon) || 0), 0);
+  const dateChangeOurAddon = (booking.dateChanges || []).reduce((s, d) => s + (Number(d?.ourCostAddon) || 0), 0);
+  const flightChangeOurAddon = (booking.flightChanges || []).reduce((s, d) => s + (Number(d?.ourCostAddon) || 0), 0);
+  
+  const baseSalePrice = Math.max(0, (Number(booking.salePrice) || 0) - dateChangeSaleAddon - flightChangeSaleAddon);
+  const baseOurCost = Math.max(0, (Number(booking.ourCost) || 0) - dateChangeOurAddon - flightChangeOurAddon);
+  
+  const isChargesMode = c.cancellationMode === 'charges';
+  const acc = isChargesMode ? (Number(c.airlineCancellationCharges) || 0) : 0;
+  const ara = isChargesMode ? 0 : (Number(c.airlineRefundAmount) || 0);
+  const nm = Number(c.newMargin) || 0;
+  
+  // Derive auto cancellation charge from stored supplier charges
+  const autoSCC = Math.max(0,
+    (Number(booking.supplierCharges) || 0) -
+    (Number(booking.supplierBookingCharge) || 0) -
+    (Number(booking.supplierUpdationCharge) || 0)
+  );
+  
+  const isPartialPaid = booking.paymentType === 'Partial';
+  const isClientCard = booking.cardType === 'Client Card';
+  const isCompanyCard = booking.cardType === 'Company Card';
+  const isMachineCharge = !booking.cardType && booking.payments?.some(p => p.paymentMode === 'Machine Charge');
+  
+  const result = calculateCancellationScenario({
+    baseSalePrice,
+    baseOurCost,
+    paidAmount: Number(booking.totalPaidAmount) || 0,
+    supplierBookingCharge: Number(booking.supplierBookingCharge) || 0,
+    supplierUpdationCharge: Number(booking.supplierUpdationCharge) || 0,
+    autoSupplierCancellationCharge: autoSCC,
+    isChargesMode,
+    airlineCancellationCharges: acc,
+    airlineRefundAmount: ara,
+    newMarginInput: nm,
+    isPartialPaid,
+    isClientCard,
+    isCompanyCard,
+    isMachineCharge
+  });
+  
+  // Write results back to cancellation object
+  c.oldMargin = result.ourMargin;
+  c.currentMargin = result.currentMargin;
+  c.totalSupplierTook = result.totalSupplierTook;
+  c.airlineDeducted = result.airlineDeducted;
+  c.totalCharges = result.totalCharges;
+  c.supplierWillReturn = result.supplierWillReturn;
+  c.refundCommittedToClient = result.refundCommittedToClient;
+  c.refundableAmount = result.refundableAmount;
+  c.clientReceives = result.refundCommittedToClient;
+  c.upfrontNeeded = result.upfrontNeeded;
 }
 
 // MIGRATION COMPLETED - kept for reference only

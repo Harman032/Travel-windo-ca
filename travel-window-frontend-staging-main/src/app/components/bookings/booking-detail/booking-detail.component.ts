@@ -81,7 +81,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
-              <p class="text-gray-900 font-medium text-green-600">CAD {{ ((booking?.salePrice || 0) - (booking?.ourCost || 0) - (booking?.supplierCharges || 0)) | number:'1.2-2' }}</p>
+              <p class="text-gray-900 font-medium text-green-600">CAD {{ ((booking?.salePrice || 0) - (booking?.ourCost || 0) - (booking?.supplierBookingCharge || 0)) | number:'1.2-2' }}</p>
             </div>
             <div *ngIf="booking.status === 'Cancelled' && booking.cancellation && booking.cancellation.newMargin !== undefined">
               <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
@@ -299,57 +299,7 @@ import { ToastrService } from 'ngx-toastr';
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancellation Details</h3>
           
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <ng-container *ngIf="booking.cancellation.cancellationType === 'machineCharge'; else defaultCancellationDetails">
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode Was</label>
-                <p class="text-gray-900">{{ booking.cancellation.paymentModeWas }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Base Sale Price</label>
-                <p class="text-gray-900">{{ booking.salePrice | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Old Margin</label>
-                <p class="text-gray-900">{{ booking.cancellation.oldMargin | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Cancellation Charges</label>
-                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierCancellationCharges | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Charge From Client</label>
-                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.chargeFromClient | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount to Client</label>
-                <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.refundableAmount | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.chargeFromClient != null ? booking.cancellation.chargeFromClient : 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.newMargin > 0">
-                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-blue-700">CAD {{ (booking.cancellation.refundCommittedToClient != null ? booking.cancellation.refundCommittedToClient : booking.cancellation.committedToClient) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Processed</label>
-                <span class="badge" [ngClass]="booking.cancellation.refundProcessed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
-                  {{ booking.cancellation.refundProcessed ? 'Yes' : 'No' }}
-                </span>
-              </div>
-              <div class="col-span-full mt-4">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
-                <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
-              </div>
-            </ng-container>
-
-            <ng-template #defaultCancellationDetails>
-              <div>
+            <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode Was</label>
               <p class="text-gray-900">{{ booking.cancellation.paymentModeWas }}</p>
             </div>
@@ -358,24 +308,48 @@ import { ToastrService } from 'ngx-toastr';
               <p class="text-gray-900">{{ booking.cancellation.totalAmountPaid | number:'1.2-2' }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
-              <p class="text-gray-900">{{ booking.cancellation.refundableAmount | number:'1.2-2' }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Old Margin</label>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
               <p class="text-gray-900">{{ booking.cancellation.oldMargin | number:'1.2-2' }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
+              <label class="block text-sm font-medium text-gray-500 mb-1">New Margin (User Input)</label>
               <p class="text-gray-900">{{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
             </div>
-            <div *ngIf="booking.cancellation.paymentModeWas !== 'Credit Card'">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
-              <p class="text-gray-900">{{ booking.cancellation.committedToClient | number:'1.2-2' }}</p>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
+              <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.currentMargin | number:'1.2-2' }}</p>
             </div>
-            <div *ngIf="booking.cancellation.paymentModeWas === 'Credit Card'">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Charge from Client</label>
-              <p class="text-gray-900">{{ booking.cancellation.chargeFromClient | number:'1.2-2' }}</p>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
+              <p class="text-gray-900 font-medium text-orange-600">CAD {{ booking.cancellation.totalSupplierTook | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.cancellationMode === 'charges'">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Airline Cancellation Charges</label>
+              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.airlineCancellationCharges | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.cancellationMode === 'refundAmount'">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Airline Refund Amount</label>
+              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.airlineRefundAmount | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.airlineDeducted">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Airline Deducted</label>
+              <p class="text-gray-900 font-medium text-orange-600">CAD {{ booking.cancellation.airlineDeducted | number:'1.2-2' }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
+              <p class="text-gray-900 font-bold text-red-700">CAD {{ booking.cancellation.totalCharges | number:'1.2-2' }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Will Return</label>
+              <p class="text-gray-900 font-bold text-blue-700">CAD {{ booking.cancellation.supplierWillReturn | number:'1.2-2' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.upfrontNeeded">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed</label>
+              <p class="text-gray-900 font-bold text-red-600">CAD {{ booking.cancellation.upfrontNeeded | number:'1.2-2' }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
+              <p class="text-gray-900 font-bold text-green-600">CAD {{ booking.cancellation.refundCommittedToClient | number:'1.2-2' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Refund Processed</label>
@@ -383,151 +357,10 @@ import { ToastrService } from 'ngx-toastr';
                 {{ booking.cancellation.refundProcessed ? 'Yes' : 'No' }}
               </span>
             </div>
-            <!-- Conditional Supplier Cancellation Fields -->
-            <div *ngIf="booking.cancellation.cancellationType === 'supplierCancellationCharges'">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Cancellation Charges</label>
-              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierCancellationCharges | number:'1.2-2' }}</p>
+            <div class="col-span-full mt-4">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
+              <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
             </div>
-            <div *ngIf="booking.cancellation.cancellationType === 'supplierRefundAmount'">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Refund Amount</label>
-              <p class="text-gray-900 font-medium">CAD {{ booking.cancellation.supplierRefundAmount | number:'1.2-2' }}</p>
-            </div>
-            <div *ngIf="booking.cancellation.cancellationType === 'supplierRefundAmount'">
-              <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Deducted</label>
-              <p class="text-gray-900 font-medium">CAD {{ (booking.cancellation.supplierDeducted || 0) | number:'1.2-2' }}</p>
-            </div>
-            
-            <!-- Card Cancellation Fields -->
-            <ng-container *ngIf="booking.cancellation.cancellationType === 'clientCard' || booking.cancellation.cancellationType === 'companyCard'">
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
-                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-                <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.ourCancellationCharges || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'clientCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'companyCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient || 0) | number:'1.2-2' }}</p>
-              </div>
-            </ng-container>
-
-            <!-- Partial Paid Cancellation Fields -->
-            <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidCancellationCharges' || booking.cancellation.cancellationType === 'partialPaidRefundAmount'">
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCancellationCharges'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidRefundAmount'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Refund Amount</label>
-                <p class="text-gray-900 font-medium">CAD {{ (booking.cancellation.supplierRefundAmount || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidRefundAmount'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Deducted</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.supplierDeducted || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">New Margin</label>
-                <p class="text-gray-900 font-medium text-red-600">CAD {{ (booking.cancellation.ourCancellationCharges || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCancellationCharges'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Supplier Cancellation Charges</label>
-                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.supplierCancellationCharges || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundToClient || 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.newMargin">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin After Cancellation</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin || 0) | number:'1.2-2' }}</p>
-              </div>
-            </ng-container>
-
-            <!-- Partial Paid Card Cancellation Fields -->
-            <ng-container *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard' || booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refundable Amount</label>
-                <p class="text-gray-900 font-bold">CAD {{ (booking.cancellation.refundableAmount ?? booking.cancellation.refundableAmountToClient ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Committed to Client</label>
-                <p class="text-gray-900 font-bold text-orange-700">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
-                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin After Cancellation</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed from Client</label>
-                <p class="text-gray-900 font-bold text-red-600">CAD {{ (booking.cancellation.upfrontNeeded ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidClientCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="booking.cancellation.cancellationType === 'partialPaidCompanyCard'">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
-              </div>
-            </ng-container>
-            <!-- Client Card Partial Payment Cancellation Fields -->
-            <ng-container *ngIf="booking.cancellation.cancellationType === 'clientCardPartialPayment'">
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">
-                  Supplier Cancellation Charges
-                </label>
-                <p class="text-gray-900 font-medium text-red-600">
-                  CAD {{ (booking.cancellation.supplierCancellationCharges ?? 0) | number:'1.2-2' }}
-                </p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
-                <p class="text-gray-900 font-medium text-orange-600">CAD {{ (booking.cancellation.totalSupplierTook ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
-                <p class="text-gray-900 font-bold text-green-700">CAD {{ (booking.cancellation.newMargin ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Total Charges</label>
-                <p class="text-gray-900 font-bold text-red-700">CAD {{ (booking.cancellation.totalCharges ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Non-Card Payment</label>
-                <p class="text-gray-900 font-medium text-gray-700">CAD {{ (booking.cancellation.remainingAmount ?? 0) | number:'1.2-2' }}</p>
-              </div>
-              <div *ngIf="(booking.cancellation.upfrontNeeded || 0) > 0">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed</label>
-                <p class="text-gray-900 font-bold text-red-600">CAD {{ booking.cancellation.upfrontNeeded | number:'1.2-2' }}</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Refund Committed to Client</label>
-                <p class="text-gray-900 font-bold text-green-600">CAD {{ (booking.cancellation.refundCommittedToClient ?? 0) | number:'1.2-2' }}</p>
-              </div>
-            </ng-container>
-              <div class="col-span-full mt-4">
-                <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
-                <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
-              </div>
-            </ng-template>
             <div *ngIf="isAdmin()" class="col-span-full mt-4 pt-4 border-t border-red-200 flex space-x-2">
               <button type="button" (click)="revertCancellation()" class="btn btn-primary">
                 Revert to active (admin)
@@ -893,7 +726,7 @@ import { ToastrService } from 'ngx-toastr';
                   <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancellationResult.ourMargin | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
                   <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
 
@@ -959,7 +792,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancellationResult.ourMargin | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
                 <div>
@@ -972,9 +805,9 @@ import { ToastrService } from 'ngx-toastr';
                 </div>
                 <div class="col-span-full border-t border-red-200 pt-4">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ partialPaidSupplierWillReturn | number:'1.2-2' }}</p></div>
-                    <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ partialPaidTotalCharges | number:'1.2-2' }}</p></div>
-                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ partialPaidRefundToClient | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Amount Supplier Will Return</label><p class="text-lg font-bold text-orange-700">{{ cancellationResult.supplierWillReturn | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Total Charges</label><p class="text-lg font-bold text-red-700">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p></div>
+                    <div><label class="block text-sm text-gray-600">Refund to Client</label><p class="text-lg font-bold text-green-700">{{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p></div>
                   </div>
                 </div>
               </div>
@@ -983,7 +816,7 @@ import { ToastrService } from 'ngx-toastr';
                 <div><label class="block text-sm text-gray-600">Our Cost</label><p class="font-semibold">{{ booking.ourCost | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Sale Price</label><p class="font-semibold">{{ booking.salePrice | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Supplier Charges</label><p class="font-semibold">{{ (booking.supplierCharges || 0) | number:'1.2-2' }}</p></div>
-                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ partialPaidOurMargin | number:'1.2-2' }}</p></div>
+                <div><label class="block text-sm text-gray-600">Our Margin</label><p class="font-semibold">{{ cancellationResult.ourMargin | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Paid Amount</label><p class="font-semibold">{{ booking.totalPaidAmount | number:'1.2-2' }}</p></div>
                 <div><label class="block text-sm text-gray-600">Balance Amount</label><p class="font-semibold">{{ (booking.balanceAmount || 0) | number:'1.2-2' }}</p></div>
                 <div>
@@ -1201,8 +1034,8 @@ import { ToastrService } from 'ngx-toastr';
                     <label class="block text-sm font-medium text-gray-700 mb-1">Any Charges From Client <span class="text-red-500">*</span></label>
                     <input type="number" formControlName="chargeFromClient" class="input" step="0.01" min="0" />
                   </div>
-                  <div><label class="block text-sm text-gray-600">Current Margin</label><p class="font-semibold">{{ newMargin | number:'1.2-2' }}</p></div>
-                  <div><label class="block text-sm text-gray-600">Refund Committed To Client</label><p class="font-semibold">{{ cancelRefundCommittedToClient | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Current Margin</label><p class="font-semibold">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p></div>
+                  <div><label class="block text-sm text-gray-600">Refund Committed To Client</label><p class="font-semibold">{{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p></div>
                 </div>
               </div>
 
@@ -1237,18 +1070,18 @@ import { ToastrService } from 'ngx-toastr';
                   <!-- Row 3 -->
                   <div>
                     <label class="block text-sm text-gray-600">Total Cancellation Charges</label>
-                    <p class="font-semibold">{{ cancelTotalCancellationCharges | number:'1.2-2' }}</p>
+                    <p class="font-semibold">{{ cancellationResult.totalCharges | number:'1.2-2' }}</p>
                   </div>
                   <div>
                     <label class="block text-sm text-gray-600">Refund Committed To Client</label>
-                    <p class="font-semibold text-green-700">{{ refundCommittedToClientNonCC | number:'1.2-2' }}</p>
+                    <p class="font-semibold text-green-700">{{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p>
                     <p class="text-xs text-gray-400 mt-1">Base Sale Price &minus; Total Cancellation Charges</p>
                   </div>
 
                   <!-- Row 4 -->
                   <div>
                     <label class="block text-sm text-gray-600">Current Margin</label>
-                    <p class="font-semibold text-blue-700">{{ cancelNewMarginSCC | number:'1.2-2' }}</p>
+                    <p class="font-semibold text-blue-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p>
                   </div>
 
                 </div>
@@ -1272,18 +1105,18 @@ import { ToastrService } from 'ngx-toastr';
                   <!-- Row 3 -->
                   <div>
                     <label class="block text-sm text-gray-600">Supplier Deducted</label>
-                    <p class="font-semibold text-red-700">{{ supplierDeductedRefundMode | number:'1.2-2' }}</p>
+                    <p class="font-semibold text-red-700">{{ cancellationResult.airlineDeducted | number:'1.2-2' }}</p>
                   </div>
                   <div>
                     <label class="block text-sm text-gray-600">Refund Committed To Client</label>
-                    <p class="font-semibold text-green-700">{{ refundCommittedToClientRefundMode | number:'1.2-2' }}</p>
+                    <p class="font-semibold text-green-700">{{ cancellationResult.refundCommittedToClient | number:'1.2-2' }}</p>
                     <p class="text-xs text-gray-400 mt-1">Supplier Refund Amount &minus; Our Cancellation Charges</p>
                   </div>
                   
                   <!-- Row 4 -->
                   <div>
                     <label class="block text-sm text-gray-600">Current Margin</label>
-                    <p class="font-semibold text-blue-700">{{ cancelNewMarginSRA | number:'1.2-2' }}</p>
+                    <p class="font-semibold text-blue-700">{{ cancellationResult.currentMargin | number:'1.2-2' }}</p>
                   </div>
 
                 </div>
@@ -2559,34 +2392,49 @@ export class BookingDetailComponent implements OnInit {
 
     const salePrice = this.booking.salePrice || 0;
     const ourCost = this.booking.ourCost || 0;
-    const supplierCharges = this.booking.supplierCharges || 0;
     const totalPaidAmount = this.booking.totalPaidAmount || 0;
-    const paymentFromCard = this.booking.paymentFromCard || 0;
     const supplierBookingCharge = this.booking.supplierBookingCharge || 0;
     const supplierUpdationCharge = this.booking.supplierUpdationCharge || 0;
-    const autoSupplierCancellationCharge = this.autoSupplierCancellationCharge || 0;
-
-    // Card-mode inputs (airline charges or refund amount)
-    const acc = Number(this.cancelForm?.get('airlineCancellationCharges')?.value || 0);
-    const ara = Number(this.cancelForm?.get('airlineRefundAmount')?.value || 0);
-    const mode = this.cancellationMode; // 'charges' | 'refundAmount'
-
-    // Non-card inputs — scc reads airlineCancellationCharges (the user-entered airline charge)
-    const scc = Number(this.cancelForm?.get('airlineCancellationCharges')?.value || 0);
-    const occ = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
-    const chargeFromClient = Number(this.cancelForm?.get('chargeFromClient')?.value || 0);
+    const autoSCC = this.autoSupplierCancellationCharge || 0;
 
     const cancellationType = this.cancelForm?.get('cancellationType')?.value || '';
+    const mode = this.cancellationMode; // 'charges' | 'refundAmount'
 
-    const totalSupplierTook = round(supplierBookingCharge + supplierUpdationCharge + autoSupplierCancellationCharge);
-    // ourMargin uses only supplierBookingCharge (not full supplierCharges which is already accumulated)
-    const ourMargin = round(salePrice - ourCost - supplierBookingCharge);
-    const newMargin = round(ourMargin + occ); // currentMargin
+    // Read form values
+    const acc = Number(this.cancelForm?.get('airlineCancellationCharges')?.value || 0);
+    const ara = Number(this.cancelForm?.get('airlineRefundAmount')?.value || 0);
+    const nm = Number(this.cancelForm?.get('ourCancellationCharges')?.value || 0);
+
+    // Strip addons to get base values
+    const baseSalePrice = Math.max(0, salePrice - this.dateChangeSaleAddon - this.flightChangeSaleAddon);
+    const baseOurCost = Math.max(0, ourCost - this.dateChangeOurAddon - this.flightChangeOurAddon);
+
+    // Determine mode based on cancellation type
+    let isChargesMode: boolean;
+    if (cancellationType === 'supplierCancellationCharges' || cancellationType === 'partialPaidCancellationCharges') {
+      isChargesMode = true;
+    } else if (cancellationType === 'supplierRefundAmount' || cancellationType === 'partialPaidRefundAmount') {
+      isChargesMode = false;
+    } else {
+      isChargesMode = mode === 'charges';
+    }
+
+    // Scenario detection flags
+    const isPartialPaid = this.booking.billingStatus === 'Partial Paid';
+    const isClientCard = this.booking.cardType === 'Client Card';
+    const isCompanyCard = this.booking.cardType === 'Company Card';
+    const isMachineCharge = cancellationType === 'machineCharge';
+
+    // Core derived values
+    const totalSupplierTook = round(supplierBookingCharge + supplierUpdationCharge + autoSCC);
+    const ourMargin = round(baseSalePrice - (baseOurCost + supplierBookingCharge));
+    const currentMargin = round(ourMargin + nm);
+    const paidAmount = totalPaidAmount;
 
     let result: any = {
       ourMargin,
-      currentMargin: newMargin,
-      newMargin,
+      currentMargin,
+      newMargin: currentMargin,
       totalSupplierTook,
       cancellationType,
       supplierWillReturn: 0,
@@ -2594,233 +2442,106 @@ export class BookingDetailComponent implements OnInit {
       clientReceives: 0,
       totalCharges: 0,
       upfrontNeeded: 0,
-      airlineDeducted: 0
+      airlineDeducted: 0,
+      refundableAmount: 0
     };
 
-    // Determine if this is a card-mode cancellation type
-    const isCardCancellationType = cancellationType === 'clientCard' ||
-                                   cancellationType === 'companyCard' ||
-                                   cancellationType === 'partialPaidClientCard' ||
-                                   cancellationType === 'partialPaidCompanyCard' ||
-                                   cancellationType === 'clientCardPartialPayment';
-
-    // For card cancellations, resolve the effective airline charge from the toggled mode
-    const cardCharge = isCardCancellationType ? (mode === 'charges' ? acc : ara) : 0;
-
-    // Non-card refund amount modes: use ara (airline refund amount) not scc
-    const isRefundAmountMode = cancellationType === 'supplierRefundAmount' || cancellationType === 'partialPaidRefundAmount';
-    const airlineDeductedFromSale = isRefundAmountMode ? round(salePrice - ara) : 0;
-    const airlineDeductedFromPaid = isRefundAmountMode ? round(totalPaidAmount - ara) : 0;
-    const airlineDeducted_nonCard = isRefundAmountMode ? round(ourCost - ara) : 0;
-
-    switch (cancellationType) {
-      case 'supplierCancellationCharges':
-        result.totalCharges = round(totalSupplierTook + scc);
-        result.supplierWillReturn = round(ourCost - scc - totalSupplierTook);
-        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
-        break;
-
-      case 'supplierRefundAmount':
-        result.totalCharges = round(totalSupplierTook + airlineDeducted_nonCard);
-        result.supplierWillReturn = round(ourCost - airlineDeducted_nonCard - totalSupplierTook);
-        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
-        result.airlineDeducted = airlineDeducted_nonCard;
-        break;
-
-      case 'partialPaidCancellationCharges':
-        result.totalCharges = round(totalSupplierTook + scc);
-        result.supplierWillReturn = round(totalPaidAmount - scc - totalSupplierTook);
-        result.refundCommittedToClient = round(totalPaidAmount - (result.totalCharges + newMargin));
-        break;
-
-      case 'partialPaidRefundAmount':
-        result.totalCharges = round(totalSupplierTook + airlineDeductedFromPaid);
-        result.supplierWillReturn = round(totalPaidAmount - airlineDeductedFromPaid - totalSupplierTook);
-        result.refundCommittedToClient = round(totalPaidAmount - (result.totalCharges + newMargin));
-        break;
-
-      case 'clientCard': {
-        // Total Charges = Total Supplier Took + Airline Cancellation Charges
-        result.totalCharges = round(totalSupplierTook + cardCharge);
-        // Supplier Will Return = Sale Price - Airline Charge
-        result.supplierWillReturn = round(salePrice - cardCharge);
-        // Upfront Needed = Current Margin + Total Supplier Took
-        result.upfrontNeeded = round(newMargin + totalSupplierTook);
-        // Refund Committed = Sale Price - (Current Margin + Total Charges)
-        result.refundCommittedToClient = round(salePrice - (newMargin + result.totalCharges));
-        result.clientReceives = result.refundCommittedToClient;
-        if (mode === 'refundAmount') {
-          result.airlineDeducted = round(salePrice - cardCharge);
-        }
-        break;
+    // ── Scenario 1: Regular Fully Paid (+ Machine Charge) ──────
+    if (isMachineCharge || (!isPartialPaid && !isClientCard && !isCompanyCard)) {
+      if (isChargesMode) {
+        result.airlineDeducted = acc;
+        result.totalCharges = round(acc + totalSupplierTook);
+        result.supplierWillReturn = round(baseOurCost - acc - totalSupplierTook);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+      } else {
+        result.airlineDeducted = round(baseOurCost - ara);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
+        result.supplierWillReturn = round(baseOurCost - result.airlineDeducted - totalSupplierTook);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
+      result.refundableAmount = result.refundCommittedToClient;
 
-      case 'companyCard': {
-        const isCardEqualToSalePrice = paymentFromCard === salePrice;
-        result.totalCharges = round(totalSupplierTook + cardCharge);
-        if (mode === 'refundAmount') {
-          result.airlineDeducted = round(ourCost - cardCharge);
-          result.supplierWillReturn = isCardEqualToSalePrice
-            ? round(salePrice - totalSupplierTook)
-            : round(ourCost - result.airlineDeducted - totalSupplierTook);
-        } else {
-          result.supplierWillReturn = isCardEqualToSalePrice
-            ? round(salePrice - totalSupplierTook)
-            : round(ourCost - cardCharge - totalSupplierTook);
-        }
-        result.clientReceives = round(salePrice - (newMargin + result.totalCharges));
-        result.refundCommittedToClient = result.clientReceives;
-        break;
+    // ── Scenario 2: Partial Paid ───────────────────────────────
+    } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
+      if (isChargesMode) {
+        result.airlineDeducted = acc;
+        result.totalCharges = round(acc + totalSupplierTook);
+        result.supplierWillReturn = round(paidAmount - acc - totalSupplierTook);
+        result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
+      } else {
+        result.airlineDeducted = round(paidAmount - ara);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
+        result.supplierWillReturn = round(paidAmount - result.airlineDeducted - totalSupplierTook);
+        result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
       }
+      result.refundableAmount = result.refundCommittedToClient;
 
-      case 'partialPaidClientCard': {
-        result.totalCharges = round(totalSupplierTook + cardCharge);
-        result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
-        result.upfrontNeeded = round(newMargin + totalSupplierTook);
-        result.refundCommittedToClient = round(totalPaidAmount - (newMargin + result.totalCharges));
-        result.clientReceives = result.refundCommittedToClient;
-        if (mode === 'refundAmount') {
-          result.airlineDeducted = round(totalPaidAmount - cardCharge);
-        }
-        break;
+    // ── Scenario 3: Client Card Fully Paid ─────────────────────
+    } else if (!isPartialPaid && isClientCard) {
+      if (isChargesMode) {
+        result.airlineDeducted = acc;
+        result.totalCharges = round(totalSupplierTook + acc);
+        result.supplierWillReturn = round(baseSalePrice - acc);
+        result.upfrontNeeded = round(currentMargin + totalSupplierTook);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+      } else {
+        result.airlineDeducted = round(baseSalePrice - ara);
+        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.supplierWillReturn = round(baseSalePrice - result.airlineDeducted);
+        result.upfrontNeeded = round(currentMargin + totalSupplierTook);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
+      result.refundableAmount = result.supplierWillReturn;
 
-      case 'partialPaidCompanyCard': {
-        result.totalCharges = round(totalSupplierTook + cardCharge);
-        result.supplierWillReturn = round(totalPaidAmount - result.totalCharges);
-        result.refundCommittedToClient = round(totalPaidAmount - (newMargin + result.totalCharges));
-        result.clientReceives = result.refundCommittedToClient;
-        break;
+    // ── Scenario 4: Company Card ───────────────────────────────
+    } else if (!isPartialPaid && isCompanyCard) {
+      if (isChargesMode) {
+        result.airlineDeducted = acc;
+        result.totalCharges = round(totalSupplierTook + acc);
+        result.supplierWillReturn = round(baseOurCost - totalSupplierTook - acc);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+      } else {
+        result.airlineDeducted = round(baseOurCost - ara);
+        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.supplierWillReturn = round(baseOurCost - totalSupplierTook - result.airlineDeducted);
+        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
       }
+      result.refundableAmount = result.refundCommittedToClient;
 
-      case 'clientCardPartialPayment': {
-        const remainingAmount = round(salePrice - paymentFromCard);
-        result.remainingAmount = remainingAmount;
-        result.totalCharges = round(totalSupplierTook + cardCharge);
-        result.supplierWillReturn = round(totalPaidAmount - cardCharge);
-        result.upfrontNeeded = newMargin;
-        result.clientReceives = result.supplierWillReturn;
-        result.refundCommittedToClient = round(totalPaidAmount - result.totalCharges);
-
-        if (remainingAmount < result.totalCharges) {
-          result.upfrontNeeded = round(result.totalCharges - remainingAmount);
-          result.clientReceives = paymentFromCard;
-        } else {
-          result.upfrontNeeded = 0;
-          result.clientReceives = round(paymentFromCard + (remainingAmount - result.totalCharges));
-        }
-        break;
+    // ── Scenario 5: Partial Paid Client Card ───────────────────
+    } else if (isPartialPaid && isClientCard) {
+      if (isChargesMode) {
+        result.airlineDeducted = acc;
+        result.totalCharges = round(totalSupplierTook + acc);
+        result.supplierWillReturn = round(paidAmount - result.totalCharges);
+        result.upfrontNeeded = currentMargin;
+        result.refundCommittedToClient = result.supplierWillReturn;
+      } else {
+        result.airlineDeducted = round(paidAmount - ara);
+        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.supplierWillReturn = round(paidAmount - result.totalCharges);
+        result.upfrontNeeded = currentMargin;
+        result.refundCommittedToClient = result.supplierWillReturn;
       }
-
-      case 'machineCharge': {
-        const oldMargin_mc = round(salePrice - ourCost - supplierCharges);
-        const refundableToClient_mc = round(salePrice - scc);
-        const chargeFromClient_mc = occ;
-        const newMargin_mc = round(Math.max(0, chargeFromClient_mc - oldMargin_mc));
-        const refundCommitted_mc = round(refundableToClient_mc - chargeFromClient_mc);
-
-        result.newMargin = newMargin_mc;
-        result.refundCommittedToClient = refundCommitted_mc;
-        break;
-      }
+      result.refundableAmount = result.refundCommittedToClient;
     }
+
+    result.clientReceives = result.refundCommittedToClient;
 
     return result;
   }
 
-  get cancelTotalSupplierTook(): number {
-    return this.cancellationResult.totalSupplierTook ?? 0;
-  }
-
-
-  get cancelTotalCharges(): number {
-    return this.cancellationResult.totalCharges ?? 0;
-  }
-
-  get cancelCompanyCardClientReceives(): number {
-    return this.cancellationResult.clientReceives ?? 0;
-  }
-
-  get cancelCompanyCardSupplierWillReturn(): number {
-    return this.cancellationResult.supplierWillReturn ?? 0;
-  }
-
-  get cancelClientCardSupplierWillReturn(): number {
-    return this.cancellationResult.supplierWillReturn ?? 0;
-  }
-
-  get cancelClientCardOurMargin(): number {
-    return this.cancellationResult.ourMargin ?? 0;
-  }
-
-  get cancelClientCardCurrentMargin(): number {
-    return this.cancellationResult.newMargin ?? 0;
-  }
-
-  get cancelClientCardUpfrontNeeded(): number {
-    return this.cancellationResult.upfrontNeeded ?? 0;
-  }
-
-  get cancelClientCardClientReceives(): number {
-    return this.cancellationResult.clientReceives ?? 0;
-  }
-
-  // --- Partial Paid Cancellation Logic ---
+  // --- Flow Control Getters (used in templates/onCancel) ---
 
   get isPartialPaid(): boolean {
     return this.booking?.billingStatus === 'Partial Paid';
   }
-
-  get partialPaidOurMargin(): number {
-    return this.cancellationResult.ourMargin ?? 0;
-  }
-
-  get partialPaidTotalCharges(): number {
-    return this.cancellationResult.totalCharges ?? 0;
-  }
-
-  get partialPaidRefundToClient(): number {
-    return this.cancellationResult.refundCommittedToClient ?? 0;
-  }
-
-  get partialPaidSupplierDeducted(): number {
-    if (!this.booking) return 0;
-    const paidAmount = this.booking.totalPaidAmount || 0;
-    const sra = this.cancelForm?.get('supplierCancellationCharges')?.value || 0; // using scc field for refund amount in this mode
-    return Math.round((paidAmount - sra) * 100) / 100;
-  }
-
-  get partialPaidRefundToClientSRA(): number {
-    return this.cancellationResult.refundCommittedToClient ?? 0;
-  }
-
-  get partialPaidSupplierWillReturn(): number {
-    return this.cancellationResult.supplierWillReturn ?? 0;
-  }
-
-  // --- Partial Paid Card Cancellation Logic ---
 
   get isPartialPaidCard(): boolean {
     return !!this.booking &&
            this.booking.billingStatus === 'Partial Paid' &&
            (this.booking.cardType === 'Client Card' ||
             this.booking.cardType === 'Company Card');
-  }
-
-  get partialPaidCardTotalSupplierTook(): number {
-    return this.cancellationResult.totalSupplierTook ?? 0;
-  }
-
-  get partialPaidCardNewMargin(): number {
-    return this.cancellationResult.newMargin ?? 0;
-  }
-
-  get partialPaidCardTotalCharges(): number {
-    return this.cancellationResult.totalCharges ?? 0;
-  }
-
-  get partialPaidCardClientReceives(): number {
-    return this.cancellationResult.clientReceives ?? 0;
   }
 
   get isCardCancellation(): boolean {
@@ -2838,31 +2559,6 @@ export class BookingDetailComponent implements OnInit {
   get isCompanyCardCancellation(): boolean {
     const type = this.booking?.cancellation?.cancellationType;
     return type === 'companyCard' || type === 'partialPaidCompanyCard';
-  }
-
-  get refundCommittedToClientDisplay(): number {
-    const paidAmount = this.booking?.totalPaidAmount ?? 0;
-    const totalCharges = this.getCurrentTotalCharges();
-    return Math.round((paidAmount - totalCharges) * 100) / 100;
-  }
-
-  private getCurrentTotalCharges(): number {
-    if (!this.booking) return 0;
-    
-    // 1. Card scenarios (including partial)
-    if (this.isPartialPaidCard || this.isClientOrCompanyCard || this.isClientCardPartialPayment) {
-      if (this.isClientCardPartialPayment) return this.clientCardPartialTotalCharges;
-      if (this.isPartialPaidCard) return this.partialPaidCardTotalCharges;
-      return this.cancelTotalCharges;
-    }
-    
-    // 2. Regular Partial Paid
-    if (this.isPartialPaid) {
-      return this.partialPaidTotalCharges;
-    }
-    
-    // 3. Regular Fully Paid
-    return this.cancelTotalCancellationCharges;
   }
 
   // -----------------------------------
