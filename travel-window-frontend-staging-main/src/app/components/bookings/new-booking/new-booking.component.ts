@@ -345,10 +345,9 @@ import { ToastrService } from 'ngx-toastr';
                       <select formControlName="paymentMode" class="input" [class.border-red-500]="payment.get('paymentMode')?.invalid && payment.get('paymentMode')?.touched">
                         <option value="Cash">Cash</option>
                         <option value="Machine Charge">Machine Charge</option>
-                        <option value="UPI">UPI</option>
                         <option value="E-Transfer">E-Transfer</option>
                         <option value="Kotak Bank">Kotak Bank</option>
-                        <option value="Kotak Bank UPI">Kotak Bank UPI</option>
+                        <option value="SkyLight">SkyLight</option>
                         <option value="Travobirds">Travobirds</option>
                         <option value="Credit Card">Credit Card</option>
                       </select>
