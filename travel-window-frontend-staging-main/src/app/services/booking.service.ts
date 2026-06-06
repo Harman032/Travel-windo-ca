@@ -145,6 +145,10 @@ export class BookingService {
     return this.http.post<Booking>(`${this.apiUrl}/bookings/${bookingId}/recalculate-cancellation`, {});
   }
 
+  updateUpfrontCollection(id: string, data: any): Observable<Booking> {
+    return this.http.put<Booking>(`${this.apiUrl}/bookings/${id}/upfront-collection`, data);
+  }
+
   verifyCancellation(id: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/bookings/${id}/verify-cancellation`, {});
   }

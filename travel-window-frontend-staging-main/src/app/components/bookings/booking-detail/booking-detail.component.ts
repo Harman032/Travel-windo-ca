@@ -357,6 +357,17 @@ import { ToastrService } from 'ngx-toastr';
                 {{ booking.cancellation.refundProcessed ? 'Yes' : 'No' }}
               </span>
             </div>
+            <div *ngIf="booking.cancellation.upfrontNeeded && booking.cancellation.upfrontNeeded > 0">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Status</label>
+              <div class="flex items-center space-x-1">
+                <span class="text-lg" [ngClass]="upfrontStatus === 'Collected' ? 'text-green-600' : 'text-yellow-600'">
+                  {{ upfrontStatus === 'Collected' ? '✓' : '⚠' }}
+                </span>
+                <span class="font-medium" [ngClass]="upfrontStatus === 'Collected' ? 'text-green-700' : 'text-yellow-700'">
+                  Upfront {{ upfrontStatus }}
+                </span>
+              </div>
+            </div>
             <div class="col-span-full mt-4">
               <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
               <p class="text-gray-900">{{ booking.cancellation.remarks }}</p>
@@ -394,6 +405,53 @@ import { ToastrService } from 'ngx-toastr';
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Upfront Collection Tracking (Scenarios 5A and 5B) -->
+        <div *ngIf="booking.cancellation && booking.cancellation.isCancelled && booking.cancellation.upfrontNeeded && booking.cancellation.upfrontNeeded > 0" class="card bg-yellow-50 mt-4 border border-yellow-200">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-yellow-800">Upfront Collection</h3>
+            <span class="badge" [ngClass]="upfrontStatus === 'Collected' ? 'bg-green-100 text-green-800' : (upfrontStatus === 'Partially Collected' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800')">
+              {{ upfrontStatus }}
+            </span>
+          </div>
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Upfront Needed</label>
+              <p class="text-gray-900 font-bold text-red-600">CAD {{ booking.cancellation.upfrontNeeded | number:'1.2-2' }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Amount Collected</label>
+              <p class="text-gray-900 font-bold" [ngClass]="(booking.cancellation.upfrontCollection?.amountCollected || 0) > 0 ? 'text-green-600' : 'text-gray-600'">
+                CAD {{ (booking.cancellation.upfrontCollection?.amountCollected || 0) | number:'1.2-2' }}
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Remaining Amount</label>
+              <p class="text-gray-900 font-bold" [ngClass]="upfrontRemaining > 0 ? 'text-red-600' : 'text-green-600'">
+                CAD {{ upfrontRemaining | number:'1.2-2' }}
+              </p>
+            </div>
+            <div *ngIf="booking.cancellation.upfrontCollection?.collectionDate">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Collection Date</label>
+              <p class="text-gray-900">{{ booking.cancellation.upfrontCollection?.collectionDate | date:'dd-MM-yyyy' }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.upfrontCollection?.paymentMode">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode</label>
+              <p class="text-gray-900">{{ booking.cancellation.upfrontCollection?.paymentMode }}</p>
+            </div>
+            <div *ngIf="booking.cancellation.upfrontCollection?.remarks" class="col-span-2 md:col-span-3">
+              <label class="block text-sm font-medium text-gray-500 mb-1">Remarks</label>
+              <p class="text-gray-900">{{ booking.cancellation.upfrontCollection?.remarks }}</p>
+            </div>
+          </div>
+          
+          <div class="border-t border-yellow-200 pt-4 mt-2 flex gap-2">
+            <button *ngIf="(isAdmin() || isAccount())" (click)="openUpfrontCollectionModal()" class="btn btn-primary">
+              {{ (booking.cancellation.upfrontCollection?.amountCollected || 0) > 0 ? 'Edit Upfront Collection' : 'Record Upfront Collection' }}
+            </button>
           </div>
         </div>
 
@@ -836,6 +894,63 @@ import { ToastrService } from 'ngx-toastr';
           </div>
         </div>
       </div>
+      <!-- Upfront Collection Modal -->
+      <div *ngIf="showUpfrontCollectionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Record Upfront Collection</h3>
+            <p class="text-sm text-gray-500 mt-1">Total Upfront Needed: <span class="font-bold text-red-600">CAD {{ booking?.cancellation?.upfrontNeeded | number:'1.2-2' }}</span></p>
+          </div>
+          
+          <form [formGroup]="upfrontCollectionForm" (ngSubmit)="saveUpfrontCollection()">
+            <div class="px-6 py-4 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount Collected <span class="text-red-500">*</span></label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="text-gray-500 sm:text-sm">CAD</span>
+                  </div>
+                  <input type="number" formControlName="amountCollected" step="0.01" class="input pl-12 w-full"
+                         [class.border-red-500]="upfrontCollectionForm.get('amountCollected')?.invalid && upfrontCollectionForm.get('amountCollected')?.touched">
+                </div>
+                <p *ngIf="upfrontCollectionForm.get('amountCollected')?.invalid && upfrontCollectionForm.get('amountCollected')?.touched" class="text-red-500 text-xs mt-1">Valid amount is required</p>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Collection Date <span class="text-red-500">*</span></label>
+                <input type="date" formControlName="collectionDate" class="input w-full"
+                       [class.border-red-500]="upfrontCollectionForm.get('collectionDate')?.invalid && upfrontCollectionForm.get('collectionDate')?.touched">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode <span class="text-red-500">*</span></label>
+                <select formControlName="paymentMode" class="input w-full"
+                        [class.border-red-500]="upfrontCollectionForm.get('paymentMode')?.invalid && upfrontCollectionForm.get('paymentMode')?.touched">
+                  <option value="">Select mode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Machine Charge">Machine Charge</option>
+                  <option value="E-Transfer">E-Transfer</option>
+                  <option value="Kotak Bank">Kotak Bank</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Travobirds">Travobirds</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                <textarea formControlName="remarks" rows="2" class="input w-full" placeholder="Optional details..."></textarea>
+              </div>
+            </div>
+            
+            <div class="px-6 py-4 bg-gray-50 text-right flex justify-end space-x-3 rounded-b-lg border-t border-gray-200">
+              <button type="button" (click)="closeUpfrontCollectionModal()" class="btn btn-secondary bg-white">Cancel</button>
+              <button type="submit" [disabled]="savingUpfrontCollection" class="btn btn-primary min-w-[100px]">
+                {{ savingUpfrontCollection ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   `
 })
@@ -850,6 +965,9 @@ export class BookingDetailComponent implements OnInit {
   dateChangeForm: FormGroup;
   flightChangeForm: FormGroup;
   cancelForm: FormGroup;
+  upfrontCollectionForm: FormGroup;
+  showUpfrontCollectionModal = false;
+  savingUpfrontCollection = false;
   assignableUsers: User[] = [];
   assignToUserId = '';
   assignComment = '';
@@ -886,6 +1004,13 @@ export class BookingDetailComponent implements OnInit {
       newSalePrice: [null],
       payments: this.fb.array([]),
       remarks: ['', Validators.required]
+    });
+
+    this.upfrontCollectionForm = this.fb.group({
+      amountCollected: [0, [Validators.required, Validators.min(0)]],
+      collectionDate: ['', Validators.required],
+      paymentMode: ['', Validators.required],
+      remarks: ['']
     });
 
     this.flightChangeForm = this.fb.group({
@@ -2085,5 +2210,54 @@ export class BookingDetailComponent implements OnInit {
       'Fully Paid': 'bg-green-100 text-green-800'
     };
     return statusMap[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  get upfrontStatus(): string {
+    const needed = this.booking?.cancellation?.upfrontNeeded || 0;
+    const collected = this.booking?.cancellation?.upfrontCollection?.amountCollected || 0;
+    if (collected <= 0) return 'Pending';
+    if (collected > 0 && collected < needed) return 'Partially Collected';
+    return 'Collected';
+  }
+
+  get upfrontRemaining(): number {
+    const needed = this.booking?.cancellation?.upfrontNeeded || 0;
+    const collected = this.booking?.cancellation?.upfrontCollection?.amountCollected || 0;
+    return Math.max(0, needed - collected);
+  }
+
+  openUpfrontCollectionModal() {
+    const uc = this.booking?.cancellation?.upfrontCollection;
+    this.upfrontCollectionForm.patchValue({
+      amountCollected: uc?.amountCollected || 0,
+      collectionDate: uc?.collectionDate ? new Date(uc.collectionDate).toISOString().split('T')[0] : '',
+      paymentMode: uc?.paymentMode || '',
+      remarks: uc?.remarks || ''
+    });
+    this.showUpfrontCollectionModal = true;
+  }
+
+  closeUpfrontCollectionModal() {
+    this.showUpfrontCollectionModal = false;
+  }
+
+  saveUpfrontCollection() {
+    if (this.upfrontCollectionForm.invalid || !this.booking?._id) {
+      this.upfrontCollectionForm.markAllAsTouched();
+      return;
+    }
+    this.savingUpfrontCollection = true;
+    this.bookingService.updateUpfrontCollection(this.booking._id, this.upfrontCollectionForm.value).subscribe({
+      next: (updatedBooking) => {
+        this.booking = updatedBooking;
+        this.toastr.success('Upfront collection updated successfully');
+        this.savingUpfrontCollection = false;
+        this.showUpfrontCollectionModal = false;
+      },
+      error: (err) => {
+        this.toastr.error(err.error?.message || 'Failed to update upfront collection');
+        this.savingUpfrontCollection = false;
+      }
+    });
   }
 }
