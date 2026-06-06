@@ -629,8 +629,8 @@ import { ToastrService } from 'ngx-toastr';
       <div *ngIf="selectedReportType === 'agent-booking-list'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Date Wise Booking List</h3>
         <form [formGroup]="agentBookingListForm" (ngSubmit)="loadAgentBookingList()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" [max]="today" /></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" [max]="today" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date From</label><input type="date" formControlName="dateFrom" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Date To</label><input type="date" formControlName="dateTo" class="input" /></div>
           <div *ngIf="isAdmin() || isAccount()"><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
             <select formControlName="employee" class="input"><option value="">All</option><option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option></select>
           </div>
