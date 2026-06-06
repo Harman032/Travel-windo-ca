@@ -1260,6 +1260,37 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
   }
 });
 
+// Update upfront collection tracking (Scenarios 5A and 5B)
+router.put('/:id/upfront-collection', auth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!booking.cancellation || !booking.cancellation.isCancelled) {
+      return res.status(400).json({ message: 'Booking is not cancelled' });
+    }
+
+    const { amountCollected, collectionDate, paymentMode, remarks } = req.body;
+
+    booking.cancellation.upfrontCollection = {
+      amountCollected: Number(amountCollected) || 0,
+      collectionDate: collectionDate ? new Date(collectionDate) : null,
+      paymentMode: paymentMode || '',
+      remarks: remarks || '',
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    };
+
+    booking.markModified('cancellation.upfrontCollection');
+    addProgressHistory(booking, 'Upfront Collection Updated', req.user, booking.cancellation.upfrontCollection, '');
+
+    await booking.save();
+    res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
+  } catch (error) {
+    console.error('Update upfront collection error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Verify cancellation (Admin and Account only)
 router.post('/:id/verify-cancellation', auth, authorize('ADMIN', 'ACCOUNT'), async (req, res) => {
   try {

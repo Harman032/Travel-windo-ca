@@ -390,6 +390,21 @@ const bookingSchema = new mongoose.Schema({
     refundPaidToClient: {
       date: { type: Date },
       remarks: { type: String, default: '' }
+    },
+    upfrontCollection: {
+      amountCollected: { type: Number, default: 0 },
+      collectionDate: { type: Date, default: null },
+      paymentMode: { type: String, default: '' },
+      remarks: { type: String, default: '' },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+      },
+      updatedAt: {
+        type: Date,
+        default: null
+      }
     }
   }
 }, {
