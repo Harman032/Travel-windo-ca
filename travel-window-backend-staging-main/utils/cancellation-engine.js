@@ -94,13 +94,13 @@ function calculateCancellationScenario(p) {
       scenario            = '1A';
       airlineDeducted     = acc;
       totalCharges        = round(airlineDeducted + totalSupplierTook + currentMargin);
-      supplierWillReturn  = round(baseOurCost - acc);
+      supplierWillReturn  = round(baseOurCost - (airlineDeducted + autoSupplierCancCharge));
       refundCommittedToClient = round(baseSalePrice - totalCharges);
     } else {
       scenario            = '1B';
       airlineDeducted     = round(baseOurCost - ara);
       totalCharges        = round(airlineDeducted + totalSupplierTook + currentMargin);
-      supplierWillReturn  = round(baseOurCost - airlineDeducted);
+      supplierWillReturn  = round(baseOurCost - (airlineDeducted + autoSupplierCancCharge));
       refundCommittedToClient = round(baseSalePrice - totalCharges);
     }
     refundableAmount = refundCommittedToClient;
@@ -111,13 +111,13 @@ function calculateCancellationScenario(p) {
       scenario            = '2A';
       airlineDeducted     = acc;
       totalCharges        = round(airlineDeducted + totalSupplierTook + currentMargin);
-      supplierWillReturn  = round(paidAmount - acc);
+      supplierWillReturn  = round(paidAmount - (airlineDeducted + autoSupplierCancCharge));
       refundCommittedToClient = round(paidAmount - totalCharges);
     } else {
       scenario            = '2B';
       airlineDeducted     = round(paidAmount - ara);
       totalCharges        = round(airlineDeducted + totalSupplierTook + currentMargin);
-      supplierWillReturn  = round(paidAmount - airlineDeducted);
+      supplierWillReturn  = round(paidAmount - (airlineDeducted + autoSupplierCancCharge));
       refundCommittedToClient = round(paidAmount - totalCharges);
     }
     refundableAmount = refundCommittedToClient;
