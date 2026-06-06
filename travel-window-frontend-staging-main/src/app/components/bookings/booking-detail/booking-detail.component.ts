@@ -1953,13 +1953,13 @@ export class BookingDetailComponent implements OnInit {
       if (isChargesMode) {
         result.scenario = '1A';
         result.totalCharges = round(acc + totalSupplierTook + currentMargin);
-        result.supplierWillReturn = round(baseOurCost - acc);
+        result.supplierWillReturn = round(baseOurCost - (acc + autoSCC));
         result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       } else {
         result.scenario = '1B';
         result.airlineDeducted = round(baseOurCost - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
-        result.supplierWillReturn = round(baseOurCost - result.airlineDeducted);
+        result.supplierWillReturn = round(baseOurCost - (result.airlineDeducted + autoSCC));
         result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       }
       result.clientReceives = result.refundCommittedToClient;
@@ -1967,13 +1967,13 @@ export class BookingDetailComponent implements OnInit {
       if (isChargesMode) {
         result.scenario = '2A';
         result.totalCharges = round(acc + totalSupplierTook + currentMargin);
-        result.supplierWillReturn = round(paidAmount - acc);
+        result.supplierWillReturn = round(paidAmount - (acc + autoSCC));
         result.refundCommittedToClient = round(paidAmount - result.totalCharges);
       } else {
         result.scenario = '2B';
         result.airlineDeducted = round(paidAmount - ara);
         result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
-        result.supplierWillReturn = round(paidAmount - result.airlineDeducted);
+        result.supplierWillReturn = round(paidAmount - (result.airlineDeducted + autoSCC));
         result.refundCommittedToClient = round(paidAmount - result.totalCharges);
       }
       result.clientReceives = result.refundCommittedToClient;
