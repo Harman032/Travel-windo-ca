@@ -153,7 +153,7 @@ import { ToastrService } from 'ngx-toastr';
                     <div class="flex justify-between"><span class="text-gray-600">Base (booking)</span><span>{{ baseOurCost | number:'1.2-2' }}</span></div>
                     <div *ngIf="dateChangeOurAddon > 0" class="flex justify-between text-blue-700"><span>Date Change charges</span><span>{{ dateChangeOurAddon | number:'1.2-2' }}</span></div>
                     <div *ngIf="flightChangeOurAddon > 0" class="flex justify-between text-indigo-700"><span>Flight Change charges</span><span>{{ flightChangeOurAddon | number:'1.2-2' }}</span></div>
-                    <div class="flex justify-between font-semibold pt-1 border-t border-gray-200"><span>Total Our Cost</span><span>{{ booking.ourCost | number:'1.2-2' }}</span></div>
+                    <div class="flex justify-between font-semibold pt-1 border-t border-gray-200"><span>Total Our Cost</span><span>{{ ((booking?.ourCost || 0) + (booking?.supplierCharges || 0)) | number:'1.2-2' }}</span></div>
                   </div>
                 </div>
                 <div class="space-y-2">
