@@ -1952,61 +1952,61 @@ export class BookingDetailComponent implements OnInit {
     } else if (!isPartialPaid && !isClientCard && !isCompanyCard) {
       if (isChargesMode) {
         result.scenario = '1A';
-        result.totalCharges = round(acc + totalSupplierTook);
+        result.totalCharges = round(acc + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseOurCost - acc);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       } else {
         result.scenario = '1B';
         result.airlineDeducted = round(baseOurCost - ara);
-        result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseOurCost - result.airlineDeducted);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       }
       result.clientReceives = result.refundCommittedToClient;
     } else if (isPartialPaid && !isClientCard && !isCompanyCard) {
       if (isChargesMode) {
         result.scenario = '2A';
-        result.totalCharges = round(acc + totalSupplierTook);
+        result.totalCharges = round(acc + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(paidAmount - acc);
-        result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
+        result.refundCommittedToClient = round(paidAmount - result.totalCharges);
       } else {
         result.scenario = '2B';
         result.airlineDeducted = round(paidAmount - ara);
-        result.totalCharges = round(result.airlineDeducted + totalSupplierTook);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(paidAmount - result.airlineDeducted);
-        result.refundCommittedToClient = round(paidAmount - (result.totalCharges + currentMargin));
+        result.refundCommittedToClient = round(paidAmount - result.totalCharges);
       }
       result.clientReceives = result.refundCommittedToClient;
     } else if (isClientCard && !isPartialPaid) {
       if (isChargesMode) {
         result.scenario = '3A';
-        result.totalCharges = round(totalSupplierTook + acc);
+        result.totalCharges = round(acc + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseSalePrice - acc);
         result.upfrontNeeded = round(currentMargin + totalSupplierTook);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
         result.refundableAmount = result.supplierWillReturn;
       } else {
         result.scenario = '3B';
         result.airlineDeducted = round(baseSalePrice - ara);
-        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseSalePrice - result.airlineDeducted);
         result.upfrontNeeded = round(currentMargin + totalSupplierTook);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
         result.refundableAmount = result.supplierWillReturn;
       }
       result.clientReceives = result.refundCommittedToClient;
     } else if (isCompanyCard && !isPartialPaid) {
       if (isChargesMode) {
         result.scenario = '4A';
-        result.totalCharges = round(totalSupplierTook + acc);
+        result.totalCharges = round(acc + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseOurCost - totalSupplierTook - acc);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       } else {
         result.scenario = '4B';
         result.airlineDeducted = round(baseOurCost - ara);
-        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.totalCharges = round(result.airlineDeducted + totalSupplierTook + currentMargin);
         result.supplierWillReturn = round(baseOurCost - totalSupplierTook - result.airlineDeducted);
-        result.refundCommittedToClient = round(baseSalePrice - (currentMargin + result.totalCharges));
+        result.refundCommittedToClient = round(baseSalePrice - result.totalCharges);
       }
       result.clientReceives = result.refundCommittedToClient;
     } else if (isClientCard && isPartialPaid) {
