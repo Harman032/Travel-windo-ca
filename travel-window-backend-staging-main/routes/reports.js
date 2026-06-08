@@ -268,13 +268,25 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // Report B: Unverified Payments
 router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { paymentType } = req.query;
+    const { paymentType, verificationType = 'original' } = req.query;
     
     const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({
-      adminVerified: { $ne: true },
-      accountVerified: { $ne: true }
-    }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
+    
+    let query = {};
+    if (verificationType === 'cancellation') {
+      query = {
+        status: 'Cancelled',
+        cancellationVerified: { $ne: true }
+      };
+    } else {
+      query = {
+        status: { $ne: 'Cancelled' },
+        adminVerified: { $ne: true },
+        accountVerified: { $ne: true }
+      };
+    }
+
+    const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
     const unverifiedPayments = [];
     
     bookings.forEach(b => {
@@ -501,15 +513,20 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
 
 router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { dateFrom, dateTo, agent, cancellationVerified } = req.query;
+    const { dateFrom, dateTo, agent, verificationType = 'original' } = req.query;
 
     const matchQuery = {};
 
-    // Use correct verified fields — check both admin and account verification
-    matchQuery.$or = [
-      { adminVerified: true },
-      { accountVerified: true }
-    ];
+    if (verificationType === 'cancellation') {
+      matchQuery.status = 'Cancelled';
+      matchQuery.cancellationVerified = true;
+    } else {
+      matchQuery.status = { $ne: 'Cancelled' };
+      matchQuery.$or = [
+        { adminVerified: true },
+        { accountVerified: true }
+      ];
+    }
 
     if (dateFrom || dateTo) {
       matchQuery.dateOfSubmission = {};
@@ -527,10 +544,6 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       } catch (e) {
         return res.status(400).json({ message: 'Invalid agent ID' });
       }
-    }
-
-    if (cancellationVerified === 'true') {
-      matchQuery.cancellationVerified = true;
     }
 
     const bookings = await Booking.find(matchQuery)
