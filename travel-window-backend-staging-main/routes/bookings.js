@@ -1090,8 +1090,6 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     const baseSalePrice = Math.max(0, (Number(booking.salePrice) || 0) - dateChangeSaleAddon - flightChangeSaleAddon);
     const baseOurCost = Math.max(0, (Number(booking.ourCost) || 0) - dateChangeOurAddon - flightChangeOurAddon);
     
-    // Fetch auto supplier cancellation charge
-    const Supplier = require('../models/Supplier');
     let sccAuto = 0;
     if (booking.supplier) {
       const supplierDoc = await Supplier.findById(booking.supplier);
@@ -1421,78 +1419,4 @@ function recalculateCancellationValues(booking) {
   c.upfrontNeeded = result.upfrontNeeded;
 }
 
-// MIGRATION COMPLETED - kept for reference only
-// POST /migrate-cheque-to-etransfer — run on 2026-05-19
-/*
-router.post('/migrate-cheque-to-etransfer', auth, authorize('ADMIN'), async (req, res) => {
-  try {
-    const result1 = await Booking.updateMany(
-      { 'payments.paymentMode': 'Cheque' },
-      { $set: { 'payments.$[elem].paymentMode': 'E-Transfer' } },
-      { arrayFilters: [{ 'elem.paymentMode': 'Cheque' }] }
-    );
-
-    const result2 = await Booking.updateMany(
-      { 'cancellation.paymentModeWas': 'Cheque' },
-      { $set: { 'cancellation.paymentModeWas': 'E-Transfer' } }
-    );
-
-    res.json({ 
-      message: 'Migration completed successfully', 
-      paymentsUpdated: result1.modifiedCount,
-      cancellationsUpdated: result2.modifiedCount
-    });
-  } catch (error) {
-    console.error('Migration error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-*/
-
-// POST /migrate-swap-paymentmode-credit-machine — run on 2026-05-19
-/*
-router.post('/migrate-swap-paymentmode-credit-machine', auth, authorize('ADMIN'), async (req, res) => {
-  try {
-    // Step 1: Credit Card → TEMP
-    await Booking.updateMany(
-      { 'payments.paymentMode': 'Credit Card' },
-      { $set: { 'payments.$[elem].paymentMode': 'TEMP_CREDIT' } },
-      { arrayFilters: [{ 'elem.paymentMode': 'Credit Card' }] }
-    );
-    await Booking.updateMany(
-      { 'cancellation.paymentModeWas': 'Credit Card' },
-      { $set: { 'cancellation.paymentModeWas': 'TEMP_CREDIT' } }
-    );
-
-    // Step 2: Machine Charge → Credit Card
-    await Booking.updateMany(
-      { 'payments.paymentMode': 'Machine Charge' },
-      { $set: { 'payments.$[elem].paymentMode': 'Credit Card' } },
-      { arrayFilters: [{ 'elem.paymentMode': 'Machine Charge' }] }
-    );
-    await Booking.updateMany(
-      { 'cancellation.paymentModeWas': 'Machine Charge' },
-      { $set: { 'cancellation.paymentModeWas': 'Credit Card' } }
-    );
-
-    // Step 3: TEMP → Machine Charge
-    await Booking.updateMany(
-      { 'payments.paymentMode': 'TEMP_CREDIT' },
-      { $set: { 'payments.$[elem].paymentMode': 'Machine Charge' } },
-      { arrayFilters: [{ 'elem.paymentMode': 'TEMP_CREDIT' }] }
-    );
-    await Booking.updateMany(
-      { 'cancellation.paymentModeWas': 'TEMP_CREDIT' },
-      { $set: { 'cancellation.paymentModeWas': 'Machine Charge' } }
-    );
-
-    res.json({ message: 'Payment mode swap completed successfully' });
-  } catch (error) {
-    console.error('Migration error:', error);
-    res.status(500).json({ message: 'Migration failed', error: error.message });
-  }
-});
-*/
-
 module.exports = router;
-
