@@ -1115,7 +1115,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     // Detect scenario flags
     const isMachineCharge = !booking.cardType && booking.payments?.some(p => p.paymentMode === 'Machine Charge');
-    const isPartialPaid = booking.paymentType === 'Partial';
+    const isPartialPaid = booking.billingStatus === 'Partial Paid';
     const isClientCard = booking.cardType === 'Client Card';
     const isCompanyCard = booking.cardType === 'Company Card';
     
