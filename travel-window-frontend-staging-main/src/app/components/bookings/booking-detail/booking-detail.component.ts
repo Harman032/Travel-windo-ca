@@ -1577,12 +1577,6 @@ export class BookingDetailComponent implements OnInit {
     return !this.booking.cancellation || !this.booking.cancellation.isCancelled;
   }
 
-  canProcessRefund(): boolean {
-    if (!this.booking || !this.booking.cancellation || !this.booking.cancellation.isCancelled) return false;
-    const user = this.authService.getCurrentUserValue();
-    return user?.role === 'ACCOUNT' || user?.role === 'ADMIN';
-  }
-
   verifyBooking() {
     if (!this.booking) return;
     const user = this.authService.getCurrentUserValue();
@@ -1736,9 +1730,6 @@ export class BookingDetailComponent implements OnInit {
       airlineRefundAmount: ara,
       newMargin: nm
     };
-
-    console.log('Cancellation payload:', payload); // debug log
-
     this.bookingService.cancelBooking(this.booking!._id!, payload).subscribe({
       next: () => {
         this.showCancelForm = false;
@@ -1746,16 +1737,6 @@ export class BookingDetailComponent implements OnInit {
       },
       error: (err) => this.toastr.error(err?.error?.message || 'Cancellation failed', 'Error')
     });
-  }
-
-  processRefund() {
-    if (this.booking) {
-      this.bookingService.processRefund(this.booking._id!).subscribe({
-        next: () => {
-          this.loadBooking(this.booking!._id!);
-        }
-      });
-    }
   }
 
   saveRefundReceived() {
