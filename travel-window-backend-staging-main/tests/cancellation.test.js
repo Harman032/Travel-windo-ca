@@ -265,7 +265,7 @@ runScenario('Machine Charge — Charges, Not Updated', {
   ...BASE, isChargesMode: true, isMachineCharge: true
 }, {
   scenario: '1A', totalSupplierTook: 40,
-  totalCharges: 140, supplierWillReturn: 860,
+  totalCharges: 330, supplierWillReturn: 870,
   refundCommittedToClient: 870
 });
 
@@ -273,8 +273,8 @@ runScenario('Machine Charge — Refund, Not Updated', {
   ...BASE, isChargesMode: false, isMachineCharge: true
 }, {
   scenario: '1B', totalSupplierTook: 40,
-  airlineDeducted: 100, totalCharges: 140,
-  supplierWillReturn: 860,
+  airlineDeducted: 100, totalCharges: 330,
+  supplierWillReturn: 870,
   refundCommittedToClient: 870
 });
 
@@ -282,7 +282,7 @@ runScenario('Machine Charge — Charges, Updated', {
   ...BASE, isChargesMode: true, isMachineCharge: true, supplierUpdationCharge: 20
 }, {
   scenario: '1A', totalSupplierTook: 60,
-  totalCharges: 160, supplierWillReturn: 840,
+  totalCharges: 350, supplierWillReturn: 870,
   refundCommittedToClient: 850
 });
 
