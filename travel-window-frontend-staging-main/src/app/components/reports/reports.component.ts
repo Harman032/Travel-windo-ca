@@ -407,20 +407,40 @@ import { ToastrService } from 'ngx-toastr';
       <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-xl font-semibold text-gray-700">Unverified Payments</h3>
-          <div class="flex items-center space-x-4">
+          <div class="flex flex-wrap items-center gap-4">
             <div class="flex items-center space-x-2">
               <label class="text-sm font-medium text-gray-600">Verification Type:</label>
-              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
+              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
                 <option value="original">Original Booking</option>
                 <option value="cancellation">Cancellation</option>
               </select>
             </div>
             <div class="flex items-center space-x-2">
               <label class="text-sm font-medium text-gray-600">Payment Type:</label>
-              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
+              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
                 <option value="all">All Payments</option>
                 <option value="card">Card Payments</option>
                 <option value="other">Other Payments</option>
+              </select>
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm font-medium text-gray-600">Supplier:</label>
+              <select [(ngModel)]="unverifiedSupplierId" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+                <option value="all">All Suppliers</option>
+                <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
+              </select>
+            </div>
+            <div class="flex items-center space-x-2" *ngIf="unverifiedVerificationType === 'original'">
+              <label class="text-sm font-medium text-gray-600">Ticket Status:</label>
+              <select [(ngModel)]="unverifiedTicketStatus" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+                <option value="all">All Statuses</option>
+                <option value="Pending Verification">Pending Verification</option>
+                <option value="Account Verified">Account Verified</option>
+                <option value="Admin Verified">Admin Verified</option>
+                <option value="Billed">Billed</option>
+                <option value="Paid">Paid</option>
+                <option value="Unticketed">Unticketed</option>
+                <option value="Ticketed">Ticketed</option>
               </select>
             </div>
           </div>
@@ -756,6 +776,8 @@ export class ReportsComponent implements OnInit {
   users: User[] = [];
   unverifiedPaymentType: string = 'all';
   unverifiedVerificationType: string = 'original';
+  unverifiedSupplierId: string = 'all';
+  unverifiedTicketStatus: string = 'all';
   today = new Date().toISOString().split('T')[0];
 
   dateWiseForm: FormGroup;
@@ -947,7 +969,12 @@ export class ReportsComponent implements OnInit {
 
   loadUnverifiedPaymentsReport() {
     this.loading = true;
-    this.reportService.getUnverifiedPaymentsReport(this.unverifiedPaymentType, this.unverifiedVerificationType).subscribe({
+    this.reportService.getUnverifiedPaymentsReport(
+      this.unverifiedPaymentType, 
+      this.unverifiedVerificationType,
+      this.unverifiedSupplierId,
+      this.unverifiedTicketStatus
+    ).subscribe({
       next: (data) => {
         this.unverifiedPaymentsData = data;
         this.loading = false;
