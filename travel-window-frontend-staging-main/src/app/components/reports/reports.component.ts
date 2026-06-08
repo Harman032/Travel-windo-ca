@@ -22,21 +22,21 @@ import { ToastrService } from 'ngx-toastr';
       <!-- Report Type Selection -->
       <div class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Select Report Type</h3>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 auto-rows-fr">
           <ng-container *ngIf="isAdmin() || isAccount()">
-            <button (click)="selectReportType('date-wise')" class="btn" [ngClass]="selectedReportType === 'date-wise' ? 'btn-primary' : 'btn-secondary'">Date-wise</button>
-            <button (click)="selectReportType('supplier-wise')" class="btn" [ngClass]="selectedReportType === 'supplier-wise' ? 'btn-primary' : 'btn-secondary'">Supplier-wise</button>
-            <button (click)="selectReportType('employee-wise')" class="btn" [ngClass]="selectedReportType === 'employee-wise' ? 'btn-primary' : 'btn-secondary'">Employee-wise</button>
-            <button (click)="selectReportType('pending-verification')" class="btn" [ngClass]="selectedReportType === 'pending-verification' ? 'btn-primary' : 'btn-secondary'">Pending Verification</button>
-            <button (click)="selectReportType('outstanding-balance')" class="btn" [ngClass]="selectedReportType === 'outstanding-balance' ? 'btn-primary' : 'btn-secondary'">Outstanding Balance</button>
-            <button (click)="selectReportType('payment-supplier')" class="btn" [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'">Payment to Supplier</button>
-            <button (click)="selectReportType('unverified-payments')" class="btn" [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'">Unverified Payments</button>
-            <button (click)="selectReportType('agent-margin')" class="btn" [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'">Agent Margin</button>
-            <button (click)="selectReportType('financial-summary')" class="btn" [ngClass]="selectedReportType === 'financial-summary' ? 'btn-primary' : 'btn-secondary'">Financial Summary</button>
-            <button (click)="selectReportType('verified-payments')" class="btn" [ngClass]="selectedReportType === 'verified-payments' ? 'btn-primary' : 'btn-secondary'">Verified Payments</button>
+            <button (click)="selectReportType('date-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'date-wise' ? 'btn-primary' : 'btn-secondary'">Date-wise</button>
+            <button (click)="selectReportType('supplier-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'supplier-wise' ? 'btn-primary' : 'btn-secondary'">Supplier-wise</button>
+            <button (click)="selectReportType('employee-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'employee-wise' ? 'btn-primary' : 'btn-secondary'">Employee-wise</button>
+            <button (click)="selectReportType('pending-verification')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'pending-verification' ? 'btn-primary' : 'btn-secondary'">Pending Verification</button>
+            <button (click)="selectReportType('outstanding-balance')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'outstanding-balance' ? 'btn-primary' : 'btn-secondary'">Outstanding Balance</button>
+            <button (click)="selectReportType('payment-supplier')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'">Payment to Supplier</button>
+            <button (click)="selectReportType('unverified-payments')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'">Unverified Payments</button>
+            <button (click)="selectReportType('agent-margin')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'">Agent Margin</button>
+            <button (click)="selectReportType('financial-summary')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'financial-summary' ? 'btn-primary' : 'btn-secondary'">Financial Summary</button>
+            <button (click)="selectReportType('verified-payments')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'verified-payments' ? 'btn-primary' : 'btn-secondary'">Verified Payments</button>
           </ng-container>
-          <button (click)="selectReportType('agent-booking-list')" class="btn" [ngClass]="selectedReportType === 'agent-booking-list' ? 'btn-primary' : 'btn-secondary'">Date Wise Booking List</button>
-          <button (click)="selectReportType('agent-margin-report')" class="btn" [ngClass]="selectedReportType === 'agent-margin-report' ? 'btn-primary' : 'btn-secondary'">Date Wise Margin Report</button>
+          <button (click)="selectReportType('agent-booking-list')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'agent-booking-list' ? 'btn-primary' : 'btn-secondary'">Date Wise Booking List</button>
+          <button (click)="selectReportType('agent-margin-report')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'agent-margin-report' ? 'btn-primary' : 'btn-secondary'">Date Wise Margin Report</button>
         </div>
       </div>
 
