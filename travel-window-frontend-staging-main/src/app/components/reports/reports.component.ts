@@ -405,40 +405,38 @@ import { ToastrService } from 'ngx-toastr';
 
       <!-- Unverified Payments Results -->
       <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-semibold text-gray-700">Unverified Payments</h3>
-          <div class="flex flex-wrap items-center gap-4">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
+          <h3 class="text-xl font-semibold text-gray-700 whitespace-nowrap">Unverified Payments</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-wrap items-center gap-4 w-full xl:w-auto">
             <div class="flex items-center space-x-2">
-              <label class="text-sm font-medium text-gray-600">Verification Type:</label>
-              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+              <label class="text-sm font-medium text-gray-600 whitespace-nowrap">Verification Type:</label>
+              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-full sm:w-40 bg-white">
                 <option value="original">Original Booking</option>
                 <option value="cancellation">Cancellation</option>
               </select>
             </div>
             <div class="flex items-center space-x-2">
-              <label class="text-sm font-medium text-gray-600">Payment Type:</label>
-              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+              <label class="text-sm font-medium text-gray-600 whitespace-nowrap">Payment Type:</label>
+              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-full sm:w-40 bg-white">
                 <option value="all">All Payments</option>
                 <option value="card">Card Payments</option>
                 <option value="other">Other Payments</option>
               </select>
             </div>
             <div class="flex items-center space-x-2">
-              <label class="text-sm font-medium text-gray-600">Supplier:</label>
-              <select [(ngModel)]="unverifiedSupplierId" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+              <label class="text-sm font-medium text-gray-600 whitespace-nowrap">Supplier:</label>
+              <select [(ngModel)]="unverifiedSupplierId" (change)="loadUnverifiedPaymentsReport()" class="input w-full sm:w-40 bg-white">
                 <option value="all">All Suppliers</option>
                 <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
               </select>
             </div>
             <div class="flex items-center space-x-2" *ngIf="unverifiedVerificationType === 'original'">
-              <label class="text-sm font-medium text-gray-600">Ticket Status:</label>
-              <select [(ngModel)]="unverifiedTicketStatus" (change)="loadUnverifiedPaymentsReport()" class="input w-40 bg-white">
+              <label class="text-sm font-medium text-gray-600 whitespace-nowrap">Ticket Status:</label>
+              <select [(ngModel)]="unverifiedTicketStatus" (change)="loadUnverifiedPaymentsReport()" class="input w-full sm:w-40 bg-white">
                 <option value="all">All Statuses</option>
                 <option value="Pending Verification">Pending Verification</option>
                 <option value="Account Verified">Account Verified</option>
                 <option value="Admin Verified">Admin Verified</option>
-                <option value="Billed">Billed</option>
-                <option value="Paid">Paid</option>
                 <option value="Unticketed">Unticketed</option>
                 <option value="Ticketed">Ticketed</option>
               </select>
