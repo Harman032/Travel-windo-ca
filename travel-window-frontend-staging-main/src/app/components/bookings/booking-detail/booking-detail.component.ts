@@ -286,18 +286,7 @@ import { ToastrService } from 'ngx-toastr';
           <h3 class="text-xl font-semibold mb-4 text-red-700">Cancellation Details</h3>
           
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode Was</label>
-              <p class="text-gray-900">{{ booking.cancellation.paymentModeWas }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Total Amount Paid</label>
-              <p class="text-gray-900">{{ booking.cancellation.totalAmountPaid | number:'1.2-2' }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Our Margin</label>
-              <p class="text-gray-900">{{ booking.cancellation.oldMargin | number:'1.2-2' }}</p>
-            </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">New Margin (User Input)</label>
               <p class="text-gray-900">{{ booking.cancellation.newMargin | number:'1.2-2' }}</p>
