@@ -407,13 +407,22 @@ import { ToastrService } from 'ngx-toastr';
       <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-xl font-semibold text-gray-700">Unverified Payments</h3>
-          <div class="flex items-center space-x-2">
-            <label class="text-sm font-medium text-gray-600">Payment Type:</label>
-            <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
-              <option value="all">All Payments</option>
-              <option value="card">Card Payments</option>
-              <option value="other">Other Payments</option>
-            </select>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+              <label class="text-sm font-medium text-gray-600">Verification Type:</label>
+              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
+                <option value="original">Original Booking</option>
+                <option value="cancellation">Cancellation</option>
+              </select>
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm font-medium text-gray-600">Payment Type:</label>
+              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-48 bg-white">
+                <option value="all">All Payments</option>
+                <option value="card">Card Payments</option>
+                <option value="other">Other Payments</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="overflow-x-auto -mx-3 sm:mx-0">
@@ -524,10 +533,10 @@ import { ToastrService } from 'ngx-toastr';
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Verified</label>
-            <select formControlName="cancellationVerified" class="input">
-              <option value="">All</option>
-              <option value="true">Only Cancellation Verified</option>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Verification Type</label>
+            <select formControlName="verificationType" class="input">
+              <option value="original">Original Booking</option>
+              <option value="cancellation">Cancellation</option>
             </select>
           </div>
           <div class="flex items-end md:col-span-1">
@@ -746,6 +755,7 @@ export class ReportsComponent implements OnInit {
   suppliers: Supplier[] = [];
   users: User[] = [];
   unverifiedPaymentType: string = 'all';
+  unverifiedVerificationType: string = 'original';
   today = new Date().toISOString().split('T')[0];
 
   dateWiseForm: FormGroup;
@@ -788,7 +798,7 @@ export class ReportsComponent implements OnInit {
     this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
-    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], cancellationVerified: [''] });
+    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['original'] });
   }
 
   isAgent(): boolean {
@@ -937,7 +947,7 @@ export class ReportsComponent implements OnInit {
 
   loadUnverifiedPaymentsReport() {
     this.loading = true;
-    this.reportService.getUnverifiedPaymentsReport(this.unverifiedPaymentType).subscribe({
+    this.reportService.getUnverifiedPaymentsReport(this.unverifiedPaymentType, this.unverifiedVerificationType).subscribe({
       next: (data) => {
         this.unverifiedPaymentsData = data;
         this.loading = false;

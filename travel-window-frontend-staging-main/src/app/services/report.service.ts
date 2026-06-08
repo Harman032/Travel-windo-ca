@@ -50,11 +50,12 @@ export class ReportService {
     return this.http.get(`${this.apiUrl}/reports/payment-to-supplier`, { params });
   }
 
-  getUnverifiedPaymentsReport(paymentType: string = 'all'): Observable<any> {
+  getUnverifiedPaymentsReport(paymentType: string = 'all', verificationType: string = 'original'): Observable<any> {
     let params = new HttpParams();
     if (paymentType !== 'all') {
       params = params.set('paymentType', paymentType);
     }
+    params = params.set('verificationType', verificationType);
     return this.http.get(`${this.apiUrl}/reports/unverified-payments`, { params });
   }
 
@@ -97,7 +98,7 @@ export class ReportService {
     if (params.dateFrom) httpParams = httpParams.set('dateFrom', params.dateFrom);
     if (params.dateTo) httpParams = httpParams.set('dateTo', params.dateTo);
     if (params.agent) httpParams = httpParams.set('agent', params.agent);
-    if (params.cancellationVerified) httpParams = httpParams.set('cancellationVerified', params.cancellationVerified);
+    if (params.verificationType) httpParams = httpParams.set('verificationType', params.verificationType);
     return this.http.get(`${this.apiUrl}/reports/verified-payments`, { params: httpParams });
   }
 }
