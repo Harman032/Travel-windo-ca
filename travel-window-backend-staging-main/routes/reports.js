@@ -268,7 +268,7 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // Report B: Unverified Payments
 router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { paymentType, verificationType = 'original' } = req.query;
+    const { paymentType, verificationType = 'original', supplierId, ticketStatus } = req.query;
     
     const { skip, limit } = getPaginationParams(req);
     
@@ -284,6 +284,14 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
         adminVerified: { $ne: true },
         accountVerified: { $ne: true }
       };
+      
+      if (ticketStatus && ticketStatus !== 'all') {
+        query.status = ticketStatus;
+      }
+    }
+
+    if (supplierId && supplierId !== 'all') {
+      query.supplier = supplierId;
     }
 
     const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
