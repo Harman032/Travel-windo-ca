@@ -1290,8 +1290,7 @@ export class BookingDetailComponent implements OnInit {
       return !best || amount > (typeof best.paidAmount === 'number' ? best.paidAmount : Number(best.paidAmount) || 0) ? p : best;
     }, payments[0]);
     const mode = (primary?.paymentMode || '').trim();
-    if (mode === 'Machine Charge' || mode === 'Cheque') return mode;
-    return 'Cash';
+    return mode || 'Cash';
   }
 
   isVerified(): boolean {
