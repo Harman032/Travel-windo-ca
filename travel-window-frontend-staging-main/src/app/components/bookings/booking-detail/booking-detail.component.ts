@@ -128,20 +128,7 @@ import { ToastrService } from 'ngx-toastr';
               <p class="text-gray-900">{{ booking.airline }}</p>
             </div>
 
-            <!-- Admin: Change Status Section -->
-            <div *ngIf="isAdmin() || isAccount()" class="col-span-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Change Status</label>
-              <div class="flex flex-wrap items-center gap-2">
-                <select [(ngModel)]="selectedStatus" [ngModelOptions]="{standalone: true}" class="input max-w-xs h-9 text-sm py-1">
-                  <option value="Pending Verification">Pending Verification</option>
-                  <option value="Ticketed">Ticketed</option>
-                  <option value="Unticketed">Unticketed</option>
-                </select>
-                <button type="button" (click)="updateStatus()" class="btn btn-primary py-1 px-4 h-9">
-                  Update Status
-                </button>
-              </div>
-            </div>
+
             <!-- Cost breakdown: Base + Date Change + Flight Change charges (refund not applicable on add-on charges) -->
             <div class="col-span-full mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 class="text-sm font-semibold text-gray-700 mb-3">Cost Breakdown</h4>
@@ -982,7 +969,7 @@ export class BookingDetailComponent implements OnInit {
   savingRefundPaid = false;
   adminVerifiedStatus = false;
   accountVerifiedStatus = false;
-  selectedStatus = '';
+
   autoSupplierCancellationCharge = 0;
 
   constructor(
@@ -1137,7 +1124,7 @@ export class BookingDetailComponent implements OnInit {
       next: (booking) => {
         this.booking = booking;
         this.loading = false;
-        this.selectedStatus = booking.status || 'Unticketed';
+
         this.initializeForms();
         if (this.canAssign()) {
           this.userService.getAssignableUsers().subscribe({
@@ -1205,18 +1192,6 @@ export class BookingDetailComponent implements OnInit {
   canShowAdminVerified(): boolean {
     const user = this.authService.getCurrentUserValue();
     return user?.role === 'ADMIN';
-  }
-
-  updateStatus() {
-    if (!this.booking || !this.selectedStatus) return;
-    
-    this.bookingService.updateBooking(this.booking._id!, { status: this.selectedStatus }).subscribe({
-      next: () => {
-        this.toastr.success(`Status updated to ${this.selectedStatus}`);
-        this.loadBooking(this.booking!._id!);
-      },
-      error: (err) => this.toastr.error(err?.error?.message || 'Update failed')
-    });
   }
 
   getDisplayStatus(): string {
