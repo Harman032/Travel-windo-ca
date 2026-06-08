@@ -304,15 +304,9 @@ import { ToastrService } from 'ngx-toastr';
             >
               Cancel Booking
             </button>
-            <button 
-              *ngIf="canProcessRefund()" 
-              (click)="processRefund()" 
-              class="btn btn-primary"
-            >
-              Process Refund
-            </button>
           </div>
         </div>
+
 
 
         <!-- Assign (Account → Agent1/Agent2; Agent2 → Agent1; Admin → Agent1/Agent2/Account) -->
@@ -351,9 +345,26 @@ import { ToastrService } from 'ngx-toastr';
               <label class="block text-sm font-medium text-gray-500 mb-1">Current Margin</label>
               <p class="text-gray-900 font-bold text-green-700">CAD {{ booking.cancellation.currentMargin | number:'1.2-2' }}</p>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-500 mb-1">Total Supplier Took</label>
-              <p class="text-gray-900 font-medium text-orange-600">CAD {{ booking.cancellation.totalSupplierTook | number:'1.2-2' }}</p>
+            <div class="col-span-full md:col-span-2 lg:col-span-1 bg-white p-4 rounded-lg border border-orange-200 shadow-sm">
+              <label class="block text-sm font-semibold text-gray-700 mb-3 border-b border-gray-100 pb-2">Supplier Charges Breakdown</label>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">Supplier Booking Charge:</span>
+                  <span class="font-medium text-gray-800">{{ (booking.supplierBookingCharge || 0) | number:'1.2-2' }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">Supplier Updation Charge:</span>
+                  <span class="font-medium text-gray-800">{{ (booking.supplierUpdationCharge || 0) | number:'1.2-2' }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">Supplier Cancellation Charge:</span>
+                  <span class="font-medium text-gray-800">{{ (booking.cancellation.supplierCancellationCharge || 0) | number:'1.2-2' }}</span>
+                </div>
+                <div class="flex justify-between items-center font-bold text-orange-700 pt-2 mt-2 border-t border-orange-100">
+                  <span>Total Supplier Took:</span>
+                  <span>{{ booking.cancellation.totalSupplierTook | number:'1.2-2' }}</span>
+                </div>
+              </div>
             </div>
             <div *ngIf="booking.cancellation.cancellationMode === 'charges'">
               <label class="block text-sm font-medium text-gray-500 mb-1">Airline Cancellation Charges</label>
@@ -725,7 +736,16 @@ import { ToastrService } from 'ngx-toastr';
           </form>
         </div>
         <div *ngIf="booking.cancellation?.isCancelled" class="card bg-orange-50 border border-orange-200">
-          <h3 class="text-xl font-semibold mb-4 text-orange-700">Refund Status</h3>
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-orange-700">Refund Status</h3>
+            <button 
+              *ngIf="canProcessRefund()" 
+              (click)="processRefund()" 
+              class="btn btn-primary shadow-sm"
+            >
+              Process Refund
+            </button>
+          </div>
           <div class="space-y-6">
 
             <!-- 1. Refund Awaited from Supplier -->
