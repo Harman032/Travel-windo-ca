@@ -736,16 +736,7 @@ import { ToastrService } from 'ngx-toastr';
           </form>
         </div>
         <div *ngIf="booking.cancellation?.isCancelled" class="card bg-orange-50 border border-orange-200">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-semibold text-orange-700">Refund Status</h3>
-            <button 
-              *ngIf="canProcessRefund()" 
-              (click)="processRefund()" 
-              class="btn btn-primary shadow-sm"
-            >
-              Process Refund
-            </button>
-          </div>
+          <h3 class="text-xl font-semibold mb-4 text-orange-700">Refund Status</h3>
           <div class="space-y-6">
 
             <!-- 1. Refund Awaited from Supplier -->
