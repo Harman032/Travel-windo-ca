@@ -432,16 +432,15 @@ import { ToastrService } from 'ngx-toastr';
         </div>
 
         <!-- Action Buttons -->
-        <div class="card" *ngIf="!booking.cancellation || !booking.cancellation.isCancelled">
+        <div class="card">
           <h3 class="text-xl font-semibold mb-4 text-gray-700">Actions</h3>
           <div class="flex flex-wrap gap-2">
             <button 
-              *ngIf="isAdmin() || isAccount()" 
+              *ngIf="(isAdmin() || isAccount()) && !isVerified()" 
               (click)="verifyBooking()" 
               class="btn btn-primary"
-              [disabled]="isVerified()"
             >
-              {{ isVerified() ? 'Verified ✓' : 'Verify' }}
+              Verify Booking
             </button>
             <button 
               *ngIf="canEdit()" 
@@ -1269,6 +1268,7 @@ export class BookingDetailComponent implements OnInit {
   /** Edit: Admin/Account full; Agent1/Agent2 until verified (per spec all can add/edit) */
   canEdit(): boolean {
     if (!this.booking) return false;
+    if (this.booking.cancellation?.isCancelled) return false;
     const user = this.authService.getCurrentUserValue();
     if (!user) return false;
     const verified = this.booking.verifiedByAccount || this.booking.verifiedByAdmin;
