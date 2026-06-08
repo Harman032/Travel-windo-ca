@@ -2137,14 +2137,14 @@ export class BookingDetailComponent implements OnInit {
     } else if (isClientCard && isPartialPaid) {
       if (isChargesMode) {
         result.scenario = '5A';
-        result.totalCharges = round(totalSupplierTook + acc);
+        result.totalCharges = round(totalSupplierTook + acc + currentMargin);
         result.supplierWillReturn = round(paidAmount - acc);
         result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
       } else {
         result.scenario = '5B';
         result.airlineDeducted = round(paidAmount - ara);
-        result.totalCharges = round(totalSupplierTook + result.airlineDeducted);
+        result.totalCharges = round(totalSupplierTook + result.airlineDeducted + currentMargin);
         result.supplierWillReturn = round(ara);
         result.upfrontNeeded = round(currentMargin);
         result.refundCommittedToClient = result.supplierWillReturn;
