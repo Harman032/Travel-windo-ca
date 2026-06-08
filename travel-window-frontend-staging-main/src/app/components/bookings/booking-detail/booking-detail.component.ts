@@ -259,6 +259,62 @@ import { ToastrService } from 'ngx-toastr';
           </div>
         </div>
 
+        <!-- Action Buttons -->
+        <div class="card">
+          <h3 class="text-xl font-semibold mb-4 text-gray-700">Actions</h3>
+          <div class="flex flex-wrap gap-2">
+            <button 
+              *ngIf="(isAdmin() || isAccount()) && !isVerified()" 
+              (click)="verifyBooking()" 
+              class="btn btn-primary"
+            >
+              Verify Booking
+            </button>
+            <button 
+              *ngIf="canEdit()" 
+              [routerLink]="['/dashboard/bookings', booking._id, 'edit']" 
+              class="btn btn-secondary"
+            >
+              Edit
+            </button>
+            <button 
+              *ngIf="canDateChange()" 
+              (click)="openDateChangeOnly()" 
+              class="btn btn-secondary"
+              [class.ring-2]="showDateChangeForm"
+              [class.ring-[#0096D2]]="showDateChangeForm"
+            >
+              Date Change
+            </button>
+            <button 
+              *ngIf="canFlightChange()" 
+              (click)="openFlightChangeOnly()" 
+              class="btn btn-secondary"
+              [class.ring-2]="showFlightChangeForm"
+              [class.ring-[#0096D2]]="showFlightChangeForm"
+            >
+              Flight Change
+            </button>
+            <button 
+              *ngIf="canCancel()" 
+              (click)="openCancelFormOnly()" 
+              class="btn btn-danger"
+              [class.ring-2]="showCancelForm"
+              [class.ring-red-500]="showCancelForm"
+            >
+              Cancel Booking
+            </button>
+            <button 
+              *ngIf="canProcessRefund()" 
+              (click)="processRefund()" 
+              class="btn btn-primary"
+            >
+              Process Refund
+            </button>
+          </div>
+        </div>
+
+
         <!-- Assign (Account → Agent1/Agent2; Agent2 → Agent1; Admin → Agent1/Agent2/Account) -->
         <div *ngIf="canAssign()" class="card">
           <h3 class="text-xl font-semibold mb-4 text-gray-700">Assign</h3>
@@ -427,61 +483,6 @@ import { ToastrService } from 'ngx-toastr';
           <div class="border-t border-yellow-200 pt-4 mt-2 flex gap-2">
             <button *ngIf="(isAdmin() || isAccount())" (click)="openUpfrontCollectionModal()" class="btn btn-primary">
               {{ (booking.cancellation.upfrontCollection?.amountCollected || 0) > 0 ? 'Edit Upfront Collection' : 'Record Upfront Collection' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="card">
-          <h3 class="text-xl font-semibold mb-4 text-gray-700">Actions</h3>
-          <div class="flex flex-wrap gap-2">
-            <button 
-              *ngIf="(isAdmin() || isAccount()) && !isVerified()" 
-              (click)="verifyBooking()" 
-              class="btn btn-primary"
-            >
-              Verify Booking
-            </button>
-            <button 
-              *ngIf="canEdit()" 
-              [routerLink]="['/dashboard/bookings', booking._id, 'edit']" 
-              class="btn btn-secondary"
-            >
-              Edit
-            </button>
-            <button 
-              *ngIf="canDateChange()" 
-              (click)="openDateChangeOnly()" 
-              class="btn btn-secondary"
-              [class.ring-2]="showDateChangeForm"
-              [class.ring-[#0096D2]]="showDateChangeForm"
-            >
-              Date Change
-            </button>
-            <button 
-              *ngIf="canFlightChange()" 
-              (click)="openFlightChangeOnly()" 
-              class="btn btn-secondary"
-              [class.ring-2]="showFlightChangeForm"
-              [class.ring-[#0096D2]]="showFlightChangeForm"
-            >
-              Flight Change
-            </button>
-            <button 
-              *ngIf="canCancel()" 
-              (click)="openCancelFormOnly()" 
-              class="btn btn-danger"
-              [class.ring-2]="showCancelForm"
-              [class.ring-red-500]="showCancelForm"
-            >
-              Cancel Booking
-            </button>
-            <button 
-              *ngIf="canProcessRefund()" 
-              (click)="processRefund()" 
-              class="btn btn-primary"
-            >
-              Process Refund
             </button>
           </div>
         </div>
