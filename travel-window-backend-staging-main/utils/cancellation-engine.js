@@ -163,14 +163,14 @@ function calculateCancellationScenario(p) {
     if (isChargesMode) {
       scenario            = '5A';
       airlineDeducted     = acc;
-      totalCharges        = round(totalSupplierTook + acc);
+      totalCharges        = round(totalSupplierTook + acc + currentMargin);
       supplierWillReturn  = round(paidAmount - acc);
       upfrontNeeded       = currentMargin;
       refundCommittedToClient = supplierWillReturn;
     } else {
       scenario            = '5B';
       airlineDeducted     = round(paidAmount - ara);
-      totalCharges        = round(totalSupplierTook + airlineDeducted);
+      totalCharges        = round(totalSupplierTook + airlineDeducted + currentMargin);
       supplierWillReturn  = round(ara);
       upfrontNeeded       = currentMargin;
       refundCommittedToClient = supplierWillReturn;
