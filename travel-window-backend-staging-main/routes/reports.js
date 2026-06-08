@@ -16,7 +16,16 @@ function getCRDR(booking) {
   const supplierCharges = Number(booking.supplierCharges ?? 0);
   const paymentFromCard = Number(booking.paymentFromCard ?? 0);
 
-  // Universal formula:
+  if (booking.cancellation?.isCancelled) {
+    const drValue = Math.round(Number(booking.cancellation.totalSupplierTook || 0) * 100) / 100;
+    return {
+      type: 'DR',
+      value: drValue,
+      label: 'DR'
+    };
+  }
+
+  // Universal formula for active bookings:
   // Net = paymentFromCard - (Our Cost + Supplier Charges)
   // Net > 0 → CR (supplier owes us)
   // Net < 0 → DR (we owe supplier)
