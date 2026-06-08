@@ -376,7 +376,7 @@ import { ToastrService } from 'ngx-toastr';
               <div>
                 <p class="font-semibold text-green-800">Cancellation Verified</p>
                 <p class="text-sm text-green-600">
-                  <ng-container *ngIf="booking.cancellationVerifiedBy?.name">Verified by {{ booking.cancellationVerifiedBy.name }}</ng-container>
+                  <ng-container *ngIf="booking.cancellationVerifiedBy?.name">Verified by {{ booking.cancellationVerifiedBy?.name }}</ng-container>
                   <ng-container *ngIf="booking.cancellationVerifiedAt"> at {{ booking.cancellationVerifiedAt | date:'medium' }}</ng-container>
                 </p>
               </div>

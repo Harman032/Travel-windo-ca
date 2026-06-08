@@ -129,10 +129,6 @@ export class BookingService {
     return this.http.post<Booking>(`${this.apiUrl}/bookings/${id}/cancel`, data);
   }
 
-  verifyCancellation(id: string): Observable<Booking> {
-    return this.http.post<Booking>(`${this.apiUrl}/bookings/${id}/verify-cancellation`, {});
-  }
-
   processRefund(id: string): Observable<Booking> {
     return this.http.post<Booking>(`${this.apiUrl}/bookings/${id}/process-refund`, {});
   }
