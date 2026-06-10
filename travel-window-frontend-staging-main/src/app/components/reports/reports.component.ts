@@ -850,12 +850,39 @@ export class ReportsComponent implements OnInit {
 
     this.loadSuppliers();
     
-    // Only load these if user has permissions
     if (this.isAdmin() || this.isAccount()) {
       this.loadUsers();
+    }
+    
+    // Only load these if user has permissions
+    if (this.isAdmin() || this.isAccount()) {
       this.loadPendingVerificationReport();
       this.loadOutstandingBalanceReport();
       this.loadUnverifiedPaymentsReport();
+    }
+  }
+
+  handleReportError(err: any) {
+    this.loading = false;
+    let errorMessage = 'Unable to load report data.';
+    
+    if (err.status === 403 || err.status === 401) {
+      errorMessage = 'Access denied.';
+    } else if (err.name === 'HttpErrorResponse' && err.error instanceof SyntaxError) {
+      errorMessage = 'Server returned an invalid response.';
+    } else if (err.message && err.message.includes('Unexpected token')) {
+      errorMessage = 'Server returned an invalid response.';
+    } else if (err.error && typeof err.error.message === 'string') {
+      errorMessage = err.error.message;
+    }
+    
+    this.toastr.error(errorMessage, 'Error');
+    if (err.name === 'HttpErrorResponse' && err.error instanceof SyntaxError) {
+      console.error('Report API Error: Server returned an invalid response (likely HTML instead of JSON).');
+    } else if (err.message && err.message.includes('Unexpected token')) {
+      console.error('Report API Error: Server returned an invalid response (likely HTML instead of JSON).');
+    } else {
+      console.error('Report API Error:', err);
     }
   }
 
@@ -893,9 +920,7 @@ export class ReportsComponent implements OnInit {
         this.dateWiseData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -908,9 +933,7 @@ export class ReportsComponent implements OnInit {
         this.supplierWiseData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -923,9 +946,7 @@ export class ReportsComponent implements OnInit {
         this.employeeWiseData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -936,9 +957,7 @@ export class ReportsComponent implements OnInit {
         this.pendingVerificationData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -949,9 +968,7 @@ export class ReportsComponent implements OnInit {
         this.outstandingBalanceData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -963,9 +980,7 @@ export class ReportsComponent implements OnInit {
         this.paymentSupplierData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -981,9 +996,7 @@ export class ReportsComponent implements OnInit {
         this.unverifiedPaymentsData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -995,9 +1008,7 @@ export class ReportsComponent implements OnInit {
         this.agentMarginData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -1009,9 +1020,7 @@ export class ReportsComponent implements OnInit {
         this.agentBookingListData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -1023,9 +1032,7 @@ export class ReportsComponent implements OnInit {
         this.agentMarginReportData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -1038,9 +1045,7 @@ export class ReportsComponent implements OnInit {
         this.financialSummaryData = data;
         this.loading = false;
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 
@@ -1091,10 +1096,7 @@ export class ReportsComponent implements OnInit {
         this.verifiedPaymentsData = data;
         this.loading = false;
       },
-      error: (err) => {
-        console.error('Verified payments error:', err);
-        this.loading = false;
-      }
+      error: (err) => this.handleReportError(err)
     });
   }
 }
