@@ -478,7 +478,7 @@ router.put('/:id', auth, async (req, res) => {
           changes.supplier = supplierDoc.name;
         }
       }
-      const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
+      const allowedKeys = ['pnr', 'paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
         'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments'];
       Object.keys(updates).forEach(key => {
@@ -496,6 +496,8 @@ router.put('/:id', auth, async (req, res) => {
           } else if (key === 'payments') {
             booking.payments = Array.isArray(updates[key]) ? normalizePayments(updates[key]) : booking.payments;
           } else if (key === 'paxName') {
+            booking[key] = (updates[key] || '').toString().toUpperCase();
+          } else if (key === 'pnr') {
             booking[key] = (updates[key] || '').toString().toUpperCase();
           } else if (key === 'contactPerson') {
             booking[key] = (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
@@ -555,7 +557,7 @@ router.put('/:id', auth, async (req, res) => {
           changes.supplier = supplierDoc.name;
         }
       }
-      const allowedKeys = ['paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
+      const allowedKeys = ['pnr', 'paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
         'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments', 'billingStatus', 'accountVerified', 'paymentFromCard', 'cardType', 'cardLast4Digits'];
       allowedKeys.forEach(key => {
@@ -573,6 +575,8 @@ router.put('/:id', auth, async (req, res) => {
         } else if (key === 'payments') {
           booking.payments = Array.isArray(updates[key]) ? normalizePayments(updates[key]) : booking.payments;
         } else if (key === 'paxName') {
+          booking[key] = (updates[key] || '').toString().toUpperCase();
+        } else if (key === 'pnr') {
           booking[key] = (updates[key] || '').toString().toUpperCase();
         } else if (key === 'contactPerson') {
           booking[key] = (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
