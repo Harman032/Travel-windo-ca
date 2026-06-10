@@ -849,10 +849,10 @@ export class ReportsComponent implements OnInit {
     }
 
     this.loadSuppliers();
-    this.loadUsers();
     
     // Only load these if user has permissions
     if (this.isAdmin() || this.isAccount()) {
+      this.loadUsers();
       this.loadPendingVerificationReport();
       this.loadOutstandingBalanceReport();
       this.loadUnverifiedPaymentsReport();
