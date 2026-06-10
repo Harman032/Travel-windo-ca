@@ -373,9 +373,12 @@ router.get('/agent-booking-list', auth, async (req, res) => {
     const { dateFrom, dateTo, employee } = req.query;
     const query = { status: { $ne: 'Cancelled' } };
 
-    // Agents see only their own bookings
-    if (req.user.role === 'AGENT1' || req.user.role === 'AGENT2') {
-      query.submittedBy = req.user._id;
+    // Role-based visibility
+    if (req.user.role === 'AGENT1') {
+      query.$or = [
+        { submittedBy: req.user._id },
+        { assignedTo: req.user._id }
+      ];
     } else if (employee) {
       query.submittedBy = employee;
     }
@@ -421,9 +424,12 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     const { dateFrom, dateTo, employee } = req.query;
     const query = {};
 
-    // Agents see only their own bookings
-    if (req.user.role === 'AGENT1' || req.user.role === 'AGENT2') {
-      query.submittedBy = req.user._id;
+    // Role-based visibility
+    if (req.user.role === 'AGENT1') {
+      query.$or = [
+        { submittedBy: req.user._id },
+        { assignedTo: req.user._id }
+      ];
     } else if (employee) {
       query.submittedBy = employee;
     }
