@@ -11,7 +11,7 @@ const envFile = path.join(__dirname, `../src/environments/${envFileName}`);
 // Priority: NG_APP_API_URL > API_URL > default
 let apiUrl = process.env.NG_APP_API_URL || process.env.API_URL || (
   targetEnv === 'staging'
-    ? 'https://travel-window-backend-staging.vercel.app/api'
+    ? 'https://travel-windo-ca-s5b9.vercel.app/api'
     : 'https://travel-windo-ca-s5b9.vercel.app/api'
 );
 
