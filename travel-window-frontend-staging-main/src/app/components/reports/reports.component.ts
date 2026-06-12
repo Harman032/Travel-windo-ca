@@ -415,6 +415,7 @@ import { ToastrService } from 'ngx-toastr';
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Verification Type</label>
               <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="both">Both</option>
                 <option value="original">Original Booking</option>
                 <option value="cancellation">Cancellation</option>
               </select>
@@ -557,6 +558,7 @@ import { ToastrService } from 'ngx-toastr';
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Verification Type</label>
             <select formControlName="verificationType" class="input">
+              <option value="both">Both</option>
               <option value="original">Original Booking</option>
               <option value="cancellation">Cancellation</option>
             </select>
@@ -777,7 +779,7 @@ export class ReportsComponent implements OnInit {
   suppliers: Supplier[] = [];
   users: User[] = [];
   unverifiedPaymentType: string = 'all';
-  unverifiedVerificationType: string = 'original';
+  unverifiedVerificationType: string = 'both';
   unverifiedSupplierId: string = 'all';
   unverifiedTicketStatus: string = 'all';
   today = new Date().toISOString().split('T')[0];
@@ -822,7 +824,7 @@ export class ReportsComponent implements OnInit {
     this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
-    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['original'] });
+    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['both'] });
   }
 
   isAgent(): boolean {
