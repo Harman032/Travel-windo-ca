@@ -278,7 +278,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
         status: 'Cancelled',
         cancellationVerified: { $ne: true }
       };
-    } else {
+    } else if (verificationType === 'original') {
       query = {
         status: { $ne: 'Cancelled' },
         adminVerified: { $ne: true },
@@ -286,6 +286,15 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       };
       
       if (ticketStatus && ticketStatus !== 'all') {
+        query.status = ticketStatus;
+      }
+    } else {
+      query.$or = [
+        { status: 'Cancelled', cancellationVerified: { $ne: true } },
+        { status: { $ne: 'Cancelled' }, adminVerified: { $ne: true }, accountVerified: { $ne: true } }
+      ];
+      if (ticketStatus && ticketStatus !== 'all') {
+        // Only apply ticket status to the 'original' side or overall if it matches
         query.status = ticketStatus;
       }
     }
@@ -534,11 +543,17 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     if (verificationType === 'cancellation') {
       matchQuery.status = 'Cancelled';
       matchQuery.cancellationVerified = true;
-    } else {
+    } else if (verificationType === 'original') {
       matchQuery.status = { $ne: 'Cancelled' };
       matchQuery.$or = [
         { adminVerified: true },
         { accountVerified: true }
+      ];
+    } else {
+      matchQuery.$or = [
+        { status: 'Cancelled', cancellationVerified: true },
+        { status: { $ne: 'Cancelled' }, adminVerified: true },
+        { status: { $ne: 'Cancelled' }, accountVerified: true }
       ];
     }
 
