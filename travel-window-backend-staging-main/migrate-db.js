@@ -2,7 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // IMPORTANT: Replace this placeholder string with your ACTUAL MongoDB URI
-const MONGO_URI = "mongodb://twsu:A7QszMxfHcUMa3D2@ac-ojbycph-shard-00-00.ia5scqz.mongodb.net:27017,ac-ojbycph-shard-00-01.ia5scqz.mongodb.net:27017,ac-ojbycph-shard-00-02.ia5scqz.mongodb.net:27017/travel_window_staging?ssl=true&authSource=admin&replicaSet=atlas-zxy2il-shard-0&w=majority";
+const MONGO_URI = "<uri>";
 async function runMigration() {
   try {
     console.log('Connecting to Database...');
