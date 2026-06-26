@@ -411,7 +411,15 @@ import { ToastrService } from 'ngx-toastr';
         
         <!-- Filters Card -->
         <div class="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+            <div class="flex flex-col space-y-1">
+              <label class="text-sm font-semibold text-gray-700">Date From</label>
+              <input type="date" [(ngModel)]="unverifiedDateFrom" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
+            </div>
+            <div class="flex flex-col space-y-1">
+              <label class="text-sm font-semibold text-gray-700">Date To</label>
+              <input type="date" [(ngModel)]="unverifiedDateTo" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
+            </div>
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Verification Type</label>
               <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -782,6 +790,8 @@ export class ReportsComponent implements OnInit {
   unverifiedVerificationType: string = 'both';
   unverifiedSupplierId: string = 'all';
   unverifiedTicketStatus: string = 'all';
+  unverifiedDateFrom: string = '';
+  unverifiedDateTo: string = '';
   today = new Date().toISOString().split('T')[0];
 
   dateWiseForm: FormGroup;
@@ -992,7 +1002,9 @@ export class ReportsComponent implements OnInit {
       this.unverifiedPaymentType, 
       this.unverifiedVerificationType,
       this.unverifiedSupplierId,
-      this.unverifiedTicketStatus
+      this.unverifiedTicketStatus,
+      this.unverifiedDateFrom || undefined,
+      this.unverifiedDateTo || undefined
     ).subscribe({
       next: (data) => {
         this.unverifiedPaymentsData = data;

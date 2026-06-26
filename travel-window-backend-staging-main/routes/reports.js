@@ -268,7 +268,7 @@ router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // Report B: Unverified Payments
 router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { paymentType, verificationType = 'original', supplierId, ticketStatus } = req.query;
+    const { paymentType, verificationType = 'original', supplierId, ticketStatus, dateFrom, dateTo } = req.query;
     
     const { skip, limit } = getPaginationParams(req);
     
@@ -301,6 +301,21 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 
     if (supplierId && supplierId !== 'all') {
       query.supplier = supplierId;
+    }
+
+    const dateFilter = {};
+    if (dateFrom) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      dateFilter.$gte = start;
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      query.dateOfSubmission = dateFilter;
     }
 
     const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
