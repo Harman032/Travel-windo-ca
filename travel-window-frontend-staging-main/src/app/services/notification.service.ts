@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, OnDestroy } from '@angular/core';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { BookingService } from './booking.service';
+import { AuthService } from './auth.service';
 
 export interface Notification {
   id: string;
@@ -15,16 +16,49 @@ export interface Notification {
 @Injectable({
   providedIn: 'root'
 })
-export class NotificationService {
+export class NotificationService implements OnDestroy {
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
   public notifications$ = this.notificationsSubject.asObservable();
   private readonly READ_NOTIFICATIONS_KEY = 'readNotifications';
   private readonly CLEARED_NOTIFICATIONS_KEY = 'clearedNotifications';
+  private pollInterval: any;
+  private authSub: Subscription;
 
-  constructor(private bookingService: BookingService) {
-    this.loadNotifications();
-    // Poll for new notifications every 30 seconds
-    setInterval(() => this.loadNotifications(), 30000);
+  constructor(
+    private bookingService: BookingService,
+    private authService: AuthService
+  ) {
+    this.authSub = this.authService.currentUser$.subscribe(user => {
+      if (user) {
+        this.startPolling();
+      } else {
+        this.stopPolling();
+      }
+    });
+  }
+
+  private startPolling() {
+    if (!this.pollInterval) {
+      this.loadNotifications();
+      // Poll for new notifications every 60 seconds
+      this.pollInterval = setInterval(() => this.loadNotifications(), 60000);
+    }
+  }
+
+  private stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+    // Optionally clear current notifications if logged out
+    this.notificationsSubject.next([]);
+  }
+
+  ngOnDestroy() {
+    this.stopPolling();
+    if (this.authSub) {
+      this.authSub.unsubscribe();
+    }
   }
 
   private getReadNotifications(): Set<string> {

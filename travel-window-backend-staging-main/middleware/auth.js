@@ -3,6 +3,13 @@ const User = require('../models/User');
 
 const auth = async (req, res, next) => {
   try {
+    console.log({
+      path: req.originalUrl,
+      query: req.query,
+      hasAuthorizationHeader: Boolean(req.header('Authorization')),
+      userAgent: req.header('user-agent')
+    });
+    
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
