@@ -46,8 +46,15 @@ export class AuthService {
     })
       .pipe(
         tap(response => {
-          const storage = this.getStorage(rememberMe);
-          storage.setItem(TOKEN_KEY, response.token);
+          localStorage.removeItem(TOKEN_KEY);
+          sessionStorage.removeItem(TOKEN_KEY);
+          
+          if (rememberMe) {
+            localStorage.setItem(TOKEN_KEY, response.token);
+          } else {
+            sessionStorage.setItem(TOKEN_KEY, response.token);
+          }
+          
           this.currentUserSubject.next(response.user);
         })
       );

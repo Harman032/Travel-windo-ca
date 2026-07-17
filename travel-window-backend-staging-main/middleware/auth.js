@@ -19,13 +19,21 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_here');
     const user = await User.findById(decoded.userId).select('-password');
     
+    console.log({
+      decodedUserId: decoded.userId,
+      userExists: Boolean(user),
+      isUserActive: Boolean(user && user.isActive)
+    });
+    
     if (!user || !user.isActive) {
+      console.log('JWT Verification Failed: user not found or inactive');
       return res.status(401).json({ message: 'Token is not valid' });
     }
     
     req.user = user;
     next();
   } catch (error) {
+    console.log('JWT Verification Failed:', error.name, error.message);
     res.status(401).json({ message: 'Token is not valid' });
   }
 };
