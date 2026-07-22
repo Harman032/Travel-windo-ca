@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { TokenStorageService } from './token-storage.service';
 
 export interface User {
   id: string;
@@ -17,7 +18,6 @@ export interface AuthResponse {
   user: User;
 }
 
-const TOKEN_KEY = 'token';
 
 @Injectable({
   providedIn: 'root'
@@ -27,15 +27,14 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private tokenStorage: TokenStorageService
+  ) {
     const token = this.getToken();
     if (token) {
       this.getCurrentUser().subscribe();
     }
-  }
-
-  private getStorage(rememberMe: boolean): Storage {
-    return rememberMe ? localStorage : sessionStorage;
   }
 
   login(email: string, password: string, rememberMe: boolean = true, recaptchaToken?: string): Observable<AuthResponse> {
@@ -46,23 +45,14 @@ export class AuthService {
     })
       .pipe(
         tap(response => {
-          localStorage.removeItem(TOKEN_KEY);
-          sessionStorage.removeItem(TOKEN_KEY);
-          
-          if (rememberMe) {
-            localStorage.setItem(TOKEN_KEY, response.token);
-          } else {
-            sessionStorage.setItem(TOKEN_KEY, response.token);
-          }
-          
+          this.tokenStorage.saveToken(response.token, rememberMe);
           this.currentUserSubject.next(response.user);
         })
       );
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
+    this.tokenStorage.clearToken();
     this.currentUserSubject.next(null);
   }
 
@@ -78,7 +68,7 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    return this.tokenStorage.getToken();
   }
 
   isAuthenticated(): boolean {
