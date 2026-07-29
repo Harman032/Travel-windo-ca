@@ -435,6 +435,16 @@ router.get('/search/:query', auth, async (req, res) => {
 // Update booking
 router.put('/:id', auth, async (req, res) => {
   try {
+    console.log({
+      bookingId: req.params.id,
+      userRole: req.user?.role,
+      receivedCardPaymentFields: {
+        paymentFromCard: req.body.paymentFromCard,
+        cardType: req.body.cardType,
+        cardLast4Digits: req.body.cardLast4Digits
+      }
+    });
+
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -480,7 +490,8 @@ router.put('/:id', auth, async (req, res) => {
       }
       const allowedKeys = ['pnr', 'paxName', 'contactPerson', 'contactNumber', 'sectorType', 'travelDate',
         'from', 'to', 'returnDate', 'multipleSectors', 'note', 'airline',
-        'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments'];
+        'ourCost', 'salePrice', 'supplierCharges', 'additionalService', 'additionalServicePrice', 'additionalServices', 'payments',
+        'paymentFromCard', 'cardType', 'cardLast4Digits'];
       Object.keys(updates).forEach(key => {
         if (allowedKeys.includes(key)) {
           if (key === 'additionalServices') {
