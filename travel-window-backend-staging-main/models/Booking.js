@@ -261,6 +261,12 @@ const bookingSchema = new mongoose.Schema({
     changedAt: {
       type: Date,
       default: Date.now
+    },
+    marginSplit: {
+      originalUserAmount: { type: Number, default: 0 },
+      modifierUserAmount: { type: Number, default: 0 },
+      modifierId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      modifierName: { type: String, default: '' }
     }
   }],
   
@@ -277,6 +283,12 @@ const bookingSchema = new mongoose.Schema({
     changedAt: {
       type: Date,
       default: Date.now
+    },
+    marginSplit: {
+      originalUserAmount: { type: Number, default: 0 },
+      modifierUserAmount: { type: Number, default: 0 },
+      modifierId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      modifierName: { type: String, default: '' }
     }
   }],
   
@@ -296,6 +308,12 @@ const bookingSchema = new mongoose.Schema({
     changedAt: {
       type: Date,
       default: Date.now
+    },
+    marginSplit: {
+      originalUserAmount: { type: Number, default: 0 },
+      modifierUserAmount: { type: Number, default: 0 },
+      modifierId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      modifierName: { type: String, default: '' }
     }
   }],
   

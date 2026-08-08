@@ -43,6 +43,26 @@ function getCRDR(booking) {
   }
 }
 
+function getModifiersSplit(booking) {
+  const splits = {};
+  const changes = [
+    ...(booking.dateChanges || []),
+    ...(booking.flightChanges || []),
+    ...(booking.seatBookChanges || [])
+  ];
+  
+  for (const change of changes) {
+    if (change.marginSplit && change.marginSplit.modifierId && change.marginSplit.modifierUserAmount > 0) {
+      const modId = change.marginSplit.modifierId.toString();
+      if (!splits[modId]) {
+        splits[modId] = { amount: 0, name: change.marginSplit.modifierName };
+      }
+      splits[modId].amount += change.marginSplit.modifierUserAmount;
+    }
+  }
+  return splits;
+}
+
 const router = express.Router();
 
 // Date-wise report
@@ -381,8 +401,22 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
       }
       agentMap[agentName].totalBookings += 1;
       agentMap[agentName].totalSalePrice += (b.totalSalePrice || 0);
-      agentMap[agentName].totalMargin += ((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0));
       agentMap[agentName].supplierCharges += (b.supplierCharges || 0);
+      
+      const baseMargin = (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0);
+      const modifierSplits = getModifiersSplit(b);
+      let deductions = 0;
+      
+      for (const [modId, split] of Object.entries(modifierSplits)) {
+        deductions += split.amount;
+        const modName = split.name || 'Unknown';
+        if (!agentMap[modName]) {
+          agentMap[modName] = { agentName: modName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0, supplierCharges: 0 };
+        }
+        agentMap[modName].totalMargin += split.amount;
+      }
+      
+      agentMap[agentName].totalMargin += (baseMargin - deductions);
     });
     
     res.json(Object.values(agentMap));
@@ -398,22 +432,30 @@ router.get('/agent-booking-list', auth, async (req, res) => {
     const query = { status: { $ne: 'Cancelled' } };
 
     // Role-based visibility
-    if (req.user.role === 'AGENT1') {
+    const filterId = req.user.role === 'AGENT1' ? req.user._id.toString() : (employee ? employee.toString() : null);
+
+    if (filterId) {
       query.$or = [
-        { submittedBy: req.user._id },
-        { assignedTo: req.user._id }
+        { submittedBy: filterId },
+        { assignedTo: filterId },
+        { 'dateChanges.marginSplit.modifierId': filterId },
+        { 'flightChanges.marginSplit.modifierId': filterId },
+        { 'seatBookChanges.marginSplit.modifierId': filterId }
       ];
-    } else if (employee) {
-      query.submittedBy = employee;
     }
 
     if (dateFrom || dateTo) {
-      query.$or = [];
       const dateRange = {};
       if (dateFrom) dateRange.$gte = new Date(dateFrom);
       if (dateTo) dateRange.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-      query.$or.push({ travelDate: dateRange });
-      query.$or.push({ returnDate: dateRange });
+      
+      const dateOr = [{ travelDate: dateRange }, { returnDate: dateRange }];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: dateOr }];
+        delete query.$or;
+      } else {
+        query.$or = dateOr;
+      }
     }
 
     const { skip, limit } = getPaginationParams(req);
@@ -423,20 +465,56 @@ router.get('/agent-booking-list', auth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const result = bookings.map(b => ({
-      _id: b._id,
-      pnr: b.pnr,
-      paxName: b.paxName,
-      dateOfSubmission: b.dateOfSubmission,
-      travelDate: b.travelDate,
-      returnDate: b.returnDate,
-      supplierCharges: b.supplierCharges || 0,
-      ourMargin: Math.round(((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierBookingCharge || 0)) * 100) / 100,
-      submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown'),
-      crdr: getCRDR(b)
-    }));
+    const result = [];
+    bookings.forEach(b => {
+      let baseMargin = Math.round(((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierBookingCharge || 0)) * 100) / 100;
+      const modifierSplits = getModifiersSplit(b);
+      let deductions = 0;
+      
+      for (const [modId, split] of Object.entries(modifierSplits)) {
+        deductions += split.amount;
+        result.push({
+          _id: b._id + '_' + modId,
+          pnr: b.pnr + ' (Mod: ' + split.name + ')',
+          paxName: b.paxName,
+          dateOfSubmission: b.dateOfSubmission,
+          travelDate: b.travelDate,
+          returnDate: b.returnDate,
+          supplierCharges: 0,
+          ourMargin: split.amount,
+          submittedByName: split.name,
+          crdr: { type: 'NIL', value: 0, label: 'NIL' },
+          isModifierRow: true,
+          modifierId: modId
+        });
+      }
+      
+      const creatorMargin = baseMargin - deductions;
+      result.push({
+        _id: b._id,
+        pnr: b.pnr,
+        paxName: b.paxName,
+        dateOfSubmission: b.dateOfSubmission,
+        travelDate: b.travelDate,
+        returnDate: b.returnDate,
+        supplierCharges: b.supplierCharges || 0,
+        ourMargin: creatorMargin,
+        submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown'),
+        crdr: getCRDR(b),
+        creatorId: b.submittedBy ? b.submittedBy._id?.toString() : null,
+        assignedToId: b.assignedTo ? b.assignedTo?.toString() : null
+      });
+    });
 
-    res.json({ bookings: result });
+    let filteredResult = result;
+    if (filterId) {
+      filteredResult = result.filter(r => 
+        (r.isModifierRow && r.modifierId === filterId) || 
+        (!r.isModifierRow && (r.creatorId === filterId || r.assignedToId === filterId))
+      );
+    }
+
+    res.json({ bookings: filteredResult });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -449,13 +527,16 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     const query = {};
 
     // Role-based visibility
-    if (req.user.role === 'AGENT1') {
+    const filterId = req.user.role === 'AGENT1' ? req.user._id.toString() : (employee ? employee.toString() : null);
+
+    if (filterId) {
       query.$or = [
-        { submittedBy: req.user._id },
-        { assignedTo: req.user._id }
+        { submittedBy: filterId },
+        { assignedTo: filterId },
+        { 'dateChanges.marginSplit.modifierId': filterId },
+        { 'flightChanges.marginSplit.modifierId': filterId },
+        { 'seatBookChanges.marginSplit.modifierId': filterId }
       ];
-    } else if (employee) {
-      query.submittedBy = employee;
     }
 
     if (dateFrom || dateTo) {
@@ -471,25 +552,72 @@ router.get('/agent-margin-report', auth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const result = bookings.map(b => ({
-      _id: b._id,
-      pnr: b.pnr,
-      paxName: b.paxName,
-      ourCost: b.ourCost || 0,
-      salePrice: b.salePrice || 0,
-      margin: (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0),
-      supplierCharges: b.supplierCharges || 0,
-      ourMargin: (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0),
-      status: b.status,
-      currentMargin: b.cancellation?.currentMargin || ((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0)),
-      newMargin: b.cancellation?.newMargin || 0,
-      submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown'),
-      crdr: getCRDR(b)
-    }));
+    const result = [];
+    bookings.forEach(b => {
+      const baseSalePrice = b.salePrice || 0;
+      const baseOurCost = b.ourCost || 0;
+      const baseSupplierCharges = b.supplierCharges || 0;
+      let baseMargin = baseSalePrice - baseOurCost - baseSupplierCharges;
+      let currentMarginBase = b.status === 'Cancelled' ? (b.cancellation?.currentMargin || baseMargin) : baseMargin;
+      
+      const modifierSplits = getModifiersSplit(b);
+      let deductions = 0;
+      
+      for (const [modId, split] of Object.entries(modifierSplits)) {
+        deductions += split.amount;
+        result.push({
+          _id: b._id + '_' + modId,
+          pnr: b.pnr + ' (Mod: ' + split.name + ')',
+          paxName: b.paxName,
+          ourCost: 0,
+          salePrice: 0,
+          margin: split.amount,
+          supplierCharges: 0,
+          ourMargin: split.amount,
+          status: b.status,
+          currentMargin: split.amount,
+          newMargin: 0,
+          submittedByName: split.name,
+          crdr: { type: 'NIL', value: 0, label: 'NIL' },
+          isModifierRow: true,
+          modifierId: modId
+        });
+      }
+      
+      const creatorMargin = baseMargin - deductions;
+      const creatorCurrentMargin = currentMarginBase - deductions;
+      
+      result.push({
+        _id: b._id,
+        pnr: b.pnr,
+        paxName: b.paxName,
+        ourCost: baseOurCost,
+        salePrice: baseSalePrice,
+        margin: creatorMargin,
+        supplierCharges: baseSupplierCharges,
+        ourMargin: creatorMargin,
+        status: b.status,
+        currentMargin: creatorCurrentMargin,
+        newMargin: b.cancellation?.newMargin || 0,
+        submittedByName: b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown'),
+        crdr: getCRDR(b),
+        creatorId: b.submittedBy ? b.submittedBy._id?.toString() : null,
+        assignedToId: b.assignedTo ? b.assignedTo?.toString() : null
+      });
+    });
 
-    const totalMargin = result.reduce((sum, r) => sum + r.margin, 0);
+    let filteredResult = result;
+    if (filterId) {
+      filteredResult = result.filter(r => 
+        (r.isModifierRow && r.modifierId === filterId) || 
+        (!r.isModifierRow && (r.creatorId === filterId || r.assignedToId === filterId))
+      );
+    }
+    
+    // totalMargin is sum of the returned rows' margin
+    const totalMargin = filteredResult.reduce((sum, r) => sum + r.margin, 0);
 
-    res.json({ bookings: result, totalMargin });
+    res.json({ bookings: filteredResult, totalMargin });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

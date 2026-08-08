@@ -906,6 +906,23 @@ router.post('/:id/date-change', auth, async (req, res) => {
         booking.supplierCharges = (booking.supplierCharges || 0) + updationCharge;
       }
     }
+    
+    // Calculate Margin Split for Date Change
+    let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    const changeMargin = dateChange.salePriceAddon - dateChange.ourCostAddon - updationCharge;
+    
+    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+      const half = Math.round(changeMargin * 50) / 100;
+      marginSplit = {
+        originalUserAmount: changeMargin - half,
+        modifierUserAmount: half,
+        modifierId: req.user._id,
+        modifierName: req.user.name
+      };
+    } else {
+      marginSplit = { originalUserAmount: changeMargin, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    }
+    dateChange.marginSplit = marginSplit;
 
     calculateTotals(booking);
     booking.dateChanges.push(dateChange);
@@ -991,6 +1008,23 @@ router.post('/:id/flight-change', auth, async (req, res) => {
       }
     }
     
+    // Calculate Margin Split for Flight Change
+    let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    const changeMargin = flightChange.salePriceAddon - flightChange.ourCostAddon - updationCharge;
+    
+    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+      const half = Math.round(changeMargin * 50) / 100;
+      marginSplit = {
+        originalUserAmount: changeMargin - half,
+        modifierUserAmount: half,
+        modifierId: req.user._id,
+        modifierName: req.user.name
+      };
+    } else {
+      marginSplit = { originalUserAmount: changeMargin, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    }
+    flightChange.marginSplit = marginSplit;
+
     calculateTotals(booking);
     booking.flightChanges.push(flightChange);
     
@@ -1058,6 +1092,23 @@ router.post('/:id/seat-book', auth, async (req, res) => {
         booking.supplierCharges = (booking.supplierCharges || 0) + updationCharge;
       }
     }
+
+    // Calculate Margin Split for Seat Book Change
+    let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    const changeMargin = (seatBookChange.newSalePrice - seatBookChange.oldSalePrice) - (seatBookChange.newOurCost - seatBookChange.oldOurCost) - updationCharge;
+    
+    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+      const half = Math.round(changeMargin * 50) / 100;
+      marginSplit = {
+        originalUserAmount: changeMargin - half,
+        modifierUserAmount: half,
+        modifierId: req.user._id,
+        modifierName: req.user.name
+      };
+    } else {
+      marginSplit = { originalUserAmount: changeMargin, modifierUserAmount: 0, modifierId: null, modifierName: '' };
+    }
+    seatBookChange.marginSplit = marginSplit;
 
     calculateTotals(booking);
     booking.seatBookChanges.push(seatBookChange);
