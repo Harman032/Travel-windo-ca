@@ -325,7 +325,7 @@ const bookingSchema = new mongoose.Schema({
     },
     paymentModeWas: {
       type: String,
-      enum: ['Cash', 'Machine Charge', 'Credit Card', 'E-Transfer']
+      enum: ['Cash', 'Machine Charge', 'Credit Card', 'E-Transfer', 'UPI', 'Kotak Bank', 'Kotak Bank UPI', 'Travobirds']
     },
     totalAmountPaidByClient: {
       type: Number,
