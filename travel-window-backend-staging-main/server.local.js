@@ -2,9 +2,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const requestId = require('./middleware/requestId');
 require('dotenv').config();
 
 const app = express();
+
+app.use(requestId);
 
 // Middleware
 app.use(cors({

@@ -1,8 +1,11 @@
 // Vercel serverless function - Express is first-class on Vercel
 const express = require('express');
 const mongoose = require('mongoose');
+const requestId = require('../middleware/requestId');
 
 const app = express();
+
+app.use(requestId);
 
 // Consolidated CORS middleware
 app.use((req, res, next) => {

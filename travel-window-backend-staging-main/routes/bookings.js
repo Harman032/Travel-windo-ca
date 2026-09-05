@@ -4,8 +4,27 @@ const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 const Supplier = require('../models/Supplier');
 const User = require('../models/User');
+const { validateFinancialFields } = require('../utils/validate-financial');
+const { resolvePagination } = require('../utils/pagination');
+const { safeSearchTerm } = require('../utils/search-safety');
 
 const router = express.Router();
+
+// Logs a server error with enough context to diagnose (route, request ID,
+// booking ID, error name/message/stack) without leaking secrets, and returns
+// a safe requestId to the client so it can be referenced when reporting the issue.
+const logAndRespond500 = (res, req, route, error, bookingId) => {
+  console.error(JSON.stringify({
+    level: 'error',
+    route,
+    requestId: req.id,
+    bookingId: bookingId || req.params?.id,
+    errorName: error.name,
+    errorMessage: error.message,
+    stack: error.stack
+  }));
+  res.status(500).json({ message: 'Server error', requestId: req.id });
+};
 
 // Helper function to add progress history
 const addProgressHistory = (booking, action, user, changes = {}, remarks = '') => {
@@ -113,7 +132,16 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
     if (!parsedTravelDate) {
       return res.status(400).json({ message: 'Invalid travel date' });
     }
-    
+
+    const invalidField = validateFinancialFields({
+      ourCost, salePrice, additionalServicePrice, paymentFromCard,
+      ...Object.fromEntries((Array.isArray(additionalServices) ? additionalServices : []).map((x, i) => [`additionalServices[${i}].serviceCost`, x?.serviceCost])),
+      ...Object.fromEntries((Array.isArray(payments) ? payments : []).map((p, i) => [`payments[${i}].paidAmount`, p?.paidAmount]))
+    });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
+
     // Check if PNR already exists
     const existingBooking = await Booking.findOne({ pnr: pnr.toUpperCase() });
     if (existingBooking) {
@@ -194,8 +222,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
     
     res.status(201).json(populatedBooking);
   } catch (error) {
-    console.error('Create booking error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings', error);
   }
 });
 
@@ -244,19 +271,22 @@ router.get('/', auth, async (req, res) => {
     }
     
     if (supplier && supplier !== 'all') {
-      try {
-        query.supplier = new mongoose.Types.ObjectId(supplier);
-      } catch (e) {
-        // invalid ObjectId string – leave supplier filter off
+      if (!mongoose.Types.ObjectId.isValid(supplier)) {
+        return res.status(400).json({ message: 'Invalid supplier ID format' });
       }
+      query.supplier = new mongoose.Types.ObjectId(supplier);
     }
-    
+
     if (pnr) {
-      query.pnr = { $regex: pnr.toUpperCase(), $options: 'i' };
+      const safePnr = safeSearchTerm(pnr);
+      if (!safePnr) return res.status(400).json({ message: 'Invalid pnr search value' });
+      query.pnr = { $regex: safePnr.toUpperCase(), $options: 'i' };
     }
-    
+
     if (contactNumber) {
-      query.contactNumber = { $regex: contactNumber, $options: 'i' };
+      const safeContact = safeSearchTerm(contactNumber);
+      if (!safeContact) return res.status(400).json({ message: 'Invalid contactNumber search value' });
+      query.contactNumber = { $regex: safeContact, $options: 'i' };
     }
     
     if (dateFrom || dateTo) {
@@ -273,9 +303,8 @@ router.get('/', auth, async (req, res) => {
     }
     
     const sortAssignedFirst = ['AGENT1', 'AGENT2', 'ACCOUNT'].includes(req.user.role);
-    const limitNum = parseInt(limit, 10) || 50;
-    const skipNum = (Math.max(1, parseInt(page, 10)) - 1) * limitNum;
-    
+    const { page: validPage, limit: limitNum, skip: skipNum } = resolvePagination(page, limit);
+
     if (sortAssignedFirst) {
       const userId = new mongoose.Types.ObjectId(req.user._id);
       const pipeline = [
@@ -306,35 +335,30 @@ router.get('/', auth, async (req, res) => {
       return res.json({
         bookings,
         totalPages: Math.ceil(countResult / limitNum),
-        currentPage: parseInt(page, 10) || 1,
+        currentPage: validPage,
         total: countResult
       });
     }
-    
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNumFind = parseInt(limit, 10) || 50;
-    const skipNumFind = (pageNum - 1) * limitNumFind;
 
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
       .populate('assignedTo', 'name email')
       .sort({ _id: -1 })
-      .limit(limitNumFind)
-      .skip(skipNumFind);
+      .limit(limitNum)
+      .skip(skipNum);
 
     const total = await Booking.countDocuments(query);
-    const totalPagesFind = Math.ceil(total / limitNumFind) || 1;
+    const totalPagesFind = Math.ceil(total / limitNum) || 1;
 
     res.json({
       bookings,
       totalPages: totalPagesFind,
-      currentPage: pageNum,
+      currentPage: validPage,
       total
     });
   } catch (error) {
-    console.error('Get bookings error:', error);
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'GET /api/bookings', error);
   }
 });
 
@@ -372,8 +396,7 @@ router.post('/:id/assign', auth, async (req, res) => {
       .populate('verifiedByAdminUser', 'name email');
     res.json(updated);
   } catch (error) {
-    console.error('Assign booking error:', error);
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/assign', error);
   }
 });
 
@@ -400,14 +423,17 @@ router.get('/:id', auth, async (req, res) => {
     
     res.json(booking);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'GET /api/bookings/:id', error);
   }
 });
 
 // Search booking by PNR or Contact Number — any user can find by PNR/contact (no assignment filter)
 router.get('/search/:query', auth, async (req, res) => {
   try {
-    const searchTerm = req.params.query;
+    const searchTerm = safeSearchTerm(req.params.query);
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Invalid or too long search query' });
+    }
     const findQuery = {
       $or: [
         { pnr: { $regex: searchTerm.toUpperCase(), $options: 'i' } },
@@ -425,31 +451,21 @@ router.get('/search/:query', auth, async (req, res) => {
       .populate('assignedTo', 'name email')
       .sort({ dateOfSubmission: -1 })
       .limit(20);
-    
+
     res.json(bookings);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'GET /api/bookings/search/:query', error);
   }
 });
 
 // Update booking
 router.put('/:id', auth, async (req, res) => {
   try {
-    console.log({
-      bookingId: req.params.id,
-      userRole: req.user?.role,
-      receivedCardPaymentFields: {
-        paymentFromCard: req.body.paymentFromCard,
-        cardType: req.body.cardType,
-        cardLast4Digits: req.body.cardLast4Digits
-      }
-    });
-
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
-    
+
     const userRole = req.user.role;
     const isSubmitted = booking.status !== 'Draft';
     const isVerified = booking.verifiedByAccount || booking.verifiedByAdmin;
@@ -458,6 +474,18 @@ router.put('/:id', auth, async (req, res) => {
     delete updates.submittedBy;
     delete updates.submittedByName;
     delete updates.dateOfSubmission;
+
+    const invalidField = validateFinancialFields({
+      ourCost: updates.ourCost, salePrice: updates.salePrice,
+      additionalServicePrice: updates.additionalServicePrice,
+      paymentFromCard: updates.paymentFromCard,
+      supplierCharges: updates.supplierCharges,
+      ...Object.fromEntries((Array.isArray(updates.additionalServices) ? updates.additionalServices : []).map((x, i) => [`additionalServices[${i}].serviceCost`, x?.serviceCost])),
+      ...Object.fromEntries((Array.isArray(updates.payments) ? updates.payments : []).map((p, i) => [`payments[${i}].paidAmount`, p?.paidAmount]))
+    });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
 
     // Agent1 & Agent2: full edit until verified (including payments)
     if (userRole === 'AGENT1' || userRole === 'AGENT2') {
@@ -732,8 +760,7 @@ router.put('/:id', auth, async (req, res) => {
     
     res.status(403).json({ message: 'Unauthorized' });
   } catch (error) {
-    console.error('Update booking error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'PUT /api/bookings/:id', error);
   }
 });
 
@@ -759,7 +786,7 @@ router.post('/:id/submit', auth, authorize('AGENT1', 'AGENT2', 'ADMIN'), async (
     
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/submit', error);
   }
 });
 
@@ -780,12 +807,12 @@ router.post('/:id/verify-account', auth, authorize('ACCOUNT', 'ADMIN'), async (r
     }
     
     addProgressHistory(booking, 'Verified by Account', req.user);
-    
+
     await booking.save();
-    
+
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/verify-account', error);
   }
 });
 
@@ -806,12 +833,12 @@ router.post('/:id/verify-admin', auth, authorize('ADMIN'), async (req, res) => {
     }
     
     addProgressHistory(booking, 'Verified by Admin', req.user);
-    
+
     await booking.save();
-    
+
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/verify-admin', error);
   }
 });
 
@@ -837,7 +864,12 @@ router.post('/:id/date-change', auth, async (req, res) => {
     if (!remarks) {
       return res.status(400).json({ message: 'Remarks are mandatory' });
     }
-    
+
+    const invalidField = validateFinancialFields({ newOurCost, newSalePrice });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
+
     // Check if dates are in the past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -910,8 +942,12 @@ router.post('/:id/date-change', auth, async (req, res) => {
     // Calculate Margin Split for Date Change
     let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
     const changeMargin = dateChange.salePriceAddon - dateChange.ourCostAddon - updationCharge;
-    
-    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+
+    // Old bookings may lack submittedBy (predates the required constraint); without
+    // a known creator we can't tell "different user" from "same user", so fall back
+    // to the single-recipient (100/0) behavior below rather than crashing on
+    // `.toString()` of null/undefined (this was the old-booking 500 source).
+    if (changeMargin > 0 && booking.submittedBy && req.user._id.toString() !== booking.submittedBy.toString()) {
       const half = Math.round(changeMargin * 50) / 100;
       marginSplit = {
         originalUserAmount: changeMargin - half,
@@ -933,8 +969,7 @@ router.post('/:id/date-change', auth, async (req, res) => {
 
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Date change error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/date-change', error);
   }
 });
 
@@ -947,11 +982,16 @@ router.post('/:id/flight-change', auth, async (req, res) => {
     }
     
     const { newDetails, newOurCost, newSalePrice, payments: newPayments, remarks } = req.body;
-    
+
     if (!remarks) {
       return res.status(400).json({ message: 'Remarks are mandatory' });
     }
-    
+
+    const invalidField = validateFinancialFields({ newOurCost, newSalePrice });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
+
     const oldDetails = {
       airline: booking.airline,
       from: booking.from,
@@ -1011,8 +1051,9 @@ router.post('/:id/flight-change', auth, async (req, res) => {
     // Calculate Margin Split for Flight Change
     let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
     const changeMargin = flightChange.salePriceAddon - flightChange.ourCostAddon - updationCharge;
-    
-    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+
+    // See date-change handler: guard against missing submittedBy on old bookings.
+    if (changeMargin > 0 && booking.submittedBy && req.user._id.toString() !== booking.submittedBy.toString()) {
       const half = Math.round(changeMargin * 50) / 100;
       marginSplit = {
         originalUserAmount: changeMargin - half,
@@ -1034,8 +1075,7 @@ router.post('/:id/flight-change', auth, async (req, res) => {
     
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Flight change error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/flight-change', error);
   }
 });
 
@@ -1048,11 +1088,16 @@ router.post('/:id/seat-book', auth, async (req, res) => {
     }
     
     const { newOurCost, newSalePrice, newSupplier, paymentMode, remarks } = req.body;
-    
+
     if (!remarks) {
       return res.status(400).json({ message: 'Remarks are mandatory' });
     }
-    
+
+    const invalidField = validateFinancialFields({ newOurCost, newSalePrice });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
+
     const seatBookChange = {
       oldOurCost: booking.ourCost,
       newOurCost: newOurCost !== undefined ? newOurCost : booking.ourCost,
@@ -1096,8 +1141,9 @@ router.post('/:id/seat-book', auth, async (req, res) => {
     // Calculate Margin Split for Seat Book Change
     let marginSplit = { originalUserAmount: 0, modifierUserAmount: 0, modifierId: null, modifierName: '' };
     const changeMargin = (seatBookChange.newSalePrice - seatBookChange.oldSalePrice) - (seatBookChange.newOurCost - seatBookChange.oldOurCost) - updationCharge;
-    
-    if (changeMargin > 0 && req.user._id.toString() !== booking.submittedBy.toString()) {
+
+    // See date-change handler: guard against missing submittedBy on old bookings.
+    if (changeMargin > 0 && booking.submittedBy && req.user._id.toString() !== booking.submittedBy.toString()) {
       const half = Math.round(changeMargin * 50) / 100;
       marginSplit = {
         originalUserAmount: changeMargin - half,
@@ -1119,8 +1165,7 @@ router.post('/:id/seat-book', auth, async (req, res) => {
     
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Seat book error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/seat-book', error);
   }
 });
 
@@ -1145,6 +1190,11 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     if (!paymentModeWas || !remarks) {
       return res.status(400).json({ message: 'Payment mode and remarks are required' });
+    }
+
+    const invalidField = validateFinancialFields({ airlineCancellationCharges, airlineRefundAmount, newMargin, chargeFromClient });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
     }
 
     // Strip date/flight change addons to get base values
@@ -1241,8 +1291,7 @@ router.post('/:id/cancel', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN
     
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Cancel booking error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/cancel', error);
   }
 });
 
@@ -1271,8 +1320,7 @@ router.post('/:id/process-refund', auth, authorize('ACCOUNT', 'ADMIN'), async (r
     
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Process refund error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/process-refund', error);
   }
 });
 
@@ -1319,8 +1367,7 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     await booking.save();
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Update refund status error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'PUT /api/bookings/:id/refund-status', error);
   }
 });
 
@@ -1334,6 +1381,11 @@ router.put('/:id/upfront-collection', auth, async (req, res) => {
     }
 
     const { amountCollected, collectionDate, paymentMode, remarks } = req.body;
+
+    const invalidField = validateFinancialFields({ amountCollected });
+    if (invalidField) {
+      return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
+    }
 
     booking.cancellation.upfrontCollection = {
       amountCollected: Number(amountCollected) || 0,
@@ -1350,8 +1402,7 @@ router.put('/:id/upfront-collection', auth, async (req, res) => {
     await booking.save();
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Update upfront collection error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'PUT /api/bookings/:id/upfront-collection', error);
   }
 });
 
@@ -1376,8 +1427,7 @@ router.post('/:id/verify-cancellation', auth, authorize('ADMIN', 'ACCOUNT'), asy
 
     res.json(populated);
   } catch (error) {
-    console.error('Verify cancellation error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/verify-cancellation', error);
   }
 });
 
@@ -1398,8 +1448,7 @@ router.post('/recalculate-all-cancellations', auth, authorize('ADMIN'), async (r
 
     res.json({ message: `Successfully recalculated ${count} bookings` });
   } catch (error) {
-    console.error('Recalculate all cancellations error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/recalculate-all-cancellations', error);
   }
 });
 
@@ -1418,8 +1467,7 @@ router.post('/:id/recalculate-cancellation', auth, authorize('ADMIN'), async (re
 
     res.json(await Booking.findById(booking._id).populate('supplier', 'name'));
   } catch (error) {
-    console.error('Recalculate cancellation error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    logAndRespond500(res, req, 'POST /api/bookings/:id/recalculate-cancellation', error);
   }
 });
 
@@ -1450,7 +1498,10 @@ function recalculateCancellationValues(booking) {
     (Number(booking.supplierUpdationCharge) || 0)
   );
   
-  const isPartialPaid = booking.paymentType === 'Partial';
+  // Matches the flag used by the original /cancel handler above (billingStatus,
+  // not paymentType — paymentType is only ever 'Full'/'Installments', so the old
+  // `paymentType === 'Partial'` check here could never be true).
+  const isPartialPaid = booking.billingStatus === 'Partial Paid';
   const isClientCard = booking.cardType === 'Client Card';
   const isCompanyCard = booking.cardType === 'Company Card';
   const isMachineCharge = !booking.cardType && booking.payments?.some(p => p.paymentMode === 'Machine Charge');
