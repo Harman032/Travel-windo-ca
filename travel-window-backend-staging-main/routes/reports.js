@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
+const { buildRange, inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
 
 function getPaginationParams(req) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -43,25 +44,6 @@ function getCRDR(booking) {
   }
 }
 
-function getModifiersSplit(booking) {
-  const splits = {};
-  const changes = [
-    ...(booking.dateChanges || []),
-    ...(booking.flightChanges || []),
-    ...(booking.seatBookChanges || [])
-  ];
-  
-  for (const change of changes) {
-    if (change.marginSplit && change.marginSplit.modifierId && change.marginSplit.modifierUserAmount > 0) {
-      const modId = change.marginSplit.modifierId.toString();
-      if (!splits[modId]) {
-        splits[modId] = { amount: 0, name: change.marginSplit.modifierName };
-      }
-      splits[modId].amount += change.marginSplit.modifierUserAmount;
-    }
-  }
-  return splits;
-}
 
 const router = express.Router();
 
@@ -384,39 +366,39 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
   try {
     const { dateFrom, dateTo } = req.query;
     const query = { status: { $ne: 'Cancelled' } };
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    // A booking is in scope when it was submitted in range OR any modification was made in range.
+    const range = buildRange(dateFrom, dateTo);
+    if (range) {
+      query.$or = [{ dateOfSubmission: range }, ...changeRangeConditions(range)];
     }
-    
+
     const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query).populate('submittedBy', 'name').skip(skip).limit(limit);
-    
+
+    const newAgent = (agentName) => ({ agentName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0, supplierCharges: 0 });
     const agentMap = {};
     bookings.forEach(b => {
+      const split = getSplitSummary(b, range);
+      const bookingInRange = inRange(b.dateOfSubmission, range);
+      if (!bookingInRange && !split.hasInRange) return;
+
       const agentName = b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown');
-      if (!agentMap[agentName]) {
-        agentMap[agentName] = { agentName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0, supplierCharges: 0 };
+      if (!agentMap[agentName]) agentMap[agentName] = newAgent(agentName);
+
+      if (bookingInRange) {
+        agentMap[agentName].totalBookings += 1;
+        agentMap[agentName].totalSalePrice += (b.totalSalePrice || 0);
+        agentMap[agentName].supplierCharges += (b.supplierCharges || 0);
+        const baseMargin = (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0);
+        agentMap[agentName].totalMargin += baseMargin - split.netAll;
       }
-      agentMap[agentName].totalBookings += 1;
-      agentMap[agentName].totalSalePrice += (b.totalSalePrice || 0);
-      agentMap[agentName].supplierCharges += (b.supplierCharges || 0);
-      
-      const baseMargin = (b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0);
-      const modifierSplits = getModifiersSplit(b);
-      let deductions = 0;
-      
-      for (const [modId, split] of Object.entries(modifierSplits)) {
-        deductions += split.amount;
-        const modName = split.name || 'Unknown';
-        if (!agentMap[modName]) {
-          agentMap[modName] = { agentName: modName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0, supplierCharges: 0 };
-        }
-        agentMap[modName].totalMargin += split.amount;
+      agentMap[agentName].totalMargin += split.creatorInRange;
+
+      for (const { amount, name } of Object.values(split.modifiers)) {
+        const modName = name || 'Unknown';
+        if (!agentMap[modName]) agentMap[modName] = newAgent(modName);
+        agentMap[modName].totalMargin += amount;
       }
-      
-      agentMap[agentName].totalMargin += (baseMargin - deductions);
     });
     
     res.json(Object.values(agentMap));
@@ -434,29 +416,25 @@ router.get('/agent-booking-list', auth, async (req, res) => {
     // Role-based visibility
     const filterId = req.user.role === 'AGENT1' ? req.user._id.toString() : (employee ? employee.toString() : null);
 
+    const conds = [];
     if (filterId) {
-      query.$or = [
-        { submittedBy: filterId },
-        { assignedTo: filterId },
-        { 'dateChanges.marginSplit.modifierId': filterId },
-        { 'flightChanges.marginSplit.modifierId': filterId },
-        { 'seatBookChanges.marginSplit.modifierId': filterId }
-      ];
+      conds.push({
+        $or: [
+          { submittedBy: filterId },
+          { assignedTo: filterId },
+          { 'dateChanges.marginSplit.modifierId': filterId },
+          { 'flightChanges.marginSplit.modifierId': filterId },
+          { 'seatBookChanges.marginSplit.modifierId': filterId }
+        ]
+      });
     }
 
-    if (dateFrom || dateTo) {
-      const dateRange = {};
-      if (dateFrom) dateRange.$gte = new Date(dateFrom);
-      if (dateTo) dateRange.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-      
-      const dateOr = [{ travelDate: dateRange }, { returnDate: dateRange }];
-      if (query.$or) {
-        query.$and = [{ $or: query.$or }, { $or: dateOr }];
-        delete query.$or;
-      } else {
-        query.$or = dateOr;
-      }
+    // This list is by travel/return date; a booking is also in scope when a modification was made in range.
+    const range = buildRange(dateFrom, dateTo);
+    if (range) {
+      conds.push({ $or: [{ travelDate: range }, { returnDate: range }, ...changeRangeConditions(range)] });
     }
+    if (conds.length) query.$and = conds;
 
     const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
@@ -467,29 +445,30 @@ router.get('/agent-booking-list', auth, async (req, res) => {
 
     const result = [];
     bookings.forEach(b => {
-      let baseMargin = Math.round(((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierBookingCharge || 0)) * 100) / 100;
-      const modifierSplits = getModifiersSplit(b);
-      let deductions = 0;
-      
-      for (const [modId, split] of Object.entries(modifierSplits)) {
-        deductions += split.amount;
+      const split = getSplitSummary(b, range);
+      const bookingInRange = inRange(b.travelDate, range) || inRange(b.returnDate, range);
+      if (!bookingInRange && !split.hasInRange) return;
+
+      const baseMargin = Math.round(((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierBookingCharge || 0)) * 100) / 100;
+
+      for (const [modId, modSplit] of Object.entries(split.modifiers)) {
         result.push({
           _id: b._id + '_' + modId,
-          pnr: b.pnr + ' (Mod: ' + split.name + ')',
+          pnr: b.pnr + ' (Mod: ' + modSplit.name + ')',
           paxName: b.paxName,
           dateOfSubmission: b.dateOfSubmission,
           travelDate: b.travelDate,
           returnDate: b.returnDate,
           supplierCharges: 0,
-          ourMargin: split.amount,
-          submittedByName: split.name,
+          ourMargin: modSplit.amount,
+          submittedByName: modSplit.name,
           crdr: { type: 'NIL', value: 0, label: 'NIL' },
           isModifierRow: true,
           modifierId: modId
         });
       }
-      
-      const creatorMargin = baseMargin - deductions;
+
+      const creatorMargin = (bookingInRange ? baseMargin - split.netAll : 0) + split.creatorInRange;
       result.push({
         _id: b._id,
         pnr: b.pnr,
@@ -529,21 +508,25 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     // Role-based visibility
     const filterId = req.user.role === 'AGENT1' ? req.user._id.toString() : (employee ? employee.toString() : null);
 
+    const conds = [];
     if (filterId) {
-      query.$or = [
-        { submittedBy: filterId },
-        { assignedTo: filterId },
-        { 'dateChanges.marginSplit.modifierId': filterId },
-        { 'flightChanges.marginSplit.modifierId': filterId },
-        { 'seatBookChanges.marginSplit.modifierId': filterId }
-      ];
+      conds.push({
+        $or: [
+          { submittedBy: filterId },
+          { assignedTo: filterId },
+          { 'dateChanges.marginSplit.modifierId': filterId },
+          { 'flightChanges.marginSplit.modifierId': filterId },
+          { 'seatBookChanges.marginSplit.modifierId': filterId }
+        ]
+      });
     }
 
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    // A booking is in scope when it was submitted in range OR any modification was made in range.
+    const range = buildRange(dateFrom, dateTo);
+    if (range) {
+      conds.push({ $or: [{ dateOfSubmission: range }, ...changeRangeConditions(range)] });
     }
+    if (conds.length) query.$and = conds;
 
     const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
@@ -554,39 +537,45 @@ router.get('/agent-margin-report', auth, async (req, res) => {
 
     const result = [];
     bookings.forEach(b => {
+      const split = getSplitSummary(b, range);
+      const bookingInRange = inRange(b.dateOfSubmission, range);
+      if (!bookingInRange && !split.hasInRange) return;
+
       const baseSalePrice = b.salePrice || 0;
       const baseOurCost = b.ourCost || 0;
       const baseSupplierCharges = b.supplierCharges || 0;
       let baseMargin = baseSalePrice - baseOurCost - baseSupplierCharges;
       let currentMarginBase = b.status === 'Cancelled' ? (b.cancellation?.currentMargin || baseMargin) : baseMargin;
-      
-      const modifierSplits = getModifiersSplit(b);
-      let deductions = 0;
-      
-      for (const [modId, split] of Object.entries(modifierSplits)) {
-        deductions += split.amount;
+
+      let modifierTotal = 0;
+      for (const [modId, modSplit] of Object.entries(split.modifiers)) {
+        modifierTotal += modSplit.amount;
         result.push({
           _id: b._id + '_' + modId,
-          pnr: b.pnr + ' (Mod: ' + split.name + ')',
+          pnr: b.pnr + ' (Mod: ' + modSplit.name + ')',
           paxName: b.paxName,
           ourCost: 0,
           salePrice: 0,
-          margin: split.amount,
+          margin: modSplit.amount,
           supplierCharges: 0,
-          ourMargin: split.amount,
+          ourMargin: modSplit.amount,
           status: b.status,
-          currentMargin: split.amount,
+          currentMargin: modSplit.amount,
           newMargin: 0,
-          submittedByName: split.name,
+          submittedByName: modSplit.name,
           crdr: { type: 'NIL', value: 0, label: 'NIL' },
           isModifierRow: true,
           modifierId: modId
         });
       }
-      
-      const creatorMargin = baseMargin - deductions;
-      const creatorCurrentMargin = currentMarginBase - deductions;
-      
+
+      const creatorMargin = (bookingInRange ? baseMargin - split.netAll : 0) + split.creatorInRange;
+      // Cancelled bookings keep the cancellation engine's currentMargin (which already excludes
+      // add-ons) minus the modifier shares, as before; active bookings track creatorMargin.
+      const creatorCurrentMargin = b.status === 'Cancelled'
+        ? (bookingInRange ? currentMarginBase : 0) - modifierTotal
+        : creatorMargin;
+
       result.push({
         _id: b._id,
         pnr: b.pnr,
