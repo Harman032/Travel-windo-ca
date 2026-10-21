@@ -39,10 +39,35 @@ function matches(doc, q) {
 }
 
 async function startReports(routerPath, bookings) {
+  const cmp = (x, y) => {
+    const nx = x instanceof Date ? x.getTime() : x;
+    const ny = y instanceof Date ? y.getTime() : y;
+    if (typeof nx === 'number' && typeof ny === 'number') return nx - ny;
+    return String(nx).localeCompare(String(ny));
+  };
+  // Honors sort/skip/limit like Mongo does, so truncation bugs show up in tests.
   Booking.find = q => {
     const docs = bookings.filter(b => matches(b, q || {}));
-    const chain = { populate: () => chain, sort: () => chain, skip: () => chain, limit: () => chain,
-      then: (res, rej) => Promise.resolve(docs).then(res, rej) };
+    let sortSpec = null, skipN = 0, limitN = Infinity;
+    const chain = {
+      populate: () => chain, lean: () => chain, select: () => chain,
+      sort: s => { sortSpec = s; return chain; },
+      skip: n => { skipN = n; return chain; },
+      limit: n => { limitN = n; return chain; },
+      then: (res, rej) => {
+        const out = docs.slice();
+        if (sortSpec) {
+          out.sort((a, b) => {
+            for (const [k, dir] of Object.entries(sortSpec)) {
+              const c = cmp(a[k], b[k]);
+              if (c) return c * dir;
+            }
+            return 0;
+          });
+        }
+        return Promise.resolve(out.slice(skipN, skipN + limitN)).then(res, rej);
+      }
+    };
     return chain;
   };
   const admin = { _id: new mongoose.Types.ObjectId(), role: 'ADMIN', isActive: true, name: 'Admin' };

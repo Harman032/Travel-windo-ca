@@ -11,6 +11,8 @@ function getPaginationParams(req) {
   return { page, limit, skip };
 }
 
+const round2 = n => Math.round(n * 100) / 100;
+
 function getCRDR(booking) {
   const salePrice = Number(booking.salePrice ?? 0);
   const ourCost = Number(booking.ourCost ?? 0);
@@ -44,6 +46,15 @@ function getCRDR(booking) {
   }
 }
 
+
+// Slices already-built report rows. With no page/limit the full list is returned (the UI renders
+// every row and has no paging controls); an explicit page/limit pages over the same stable order.
+function paginateRows(rows, req) {
+  const total = rows.length;
+  if (req.query.page === undefined && req.query.limit === undefined) return { rows, meta: { total } };
+  const { page, limit, skip } = getPaginationParams(req);
+  return { rows: rows.slice(skip, skip + limit), meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+}
 
 const router = express.Router();
 
@@ -372,8 +383,8 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
       query.$or = [{ dateOfSubmission: range }, ...changeRangeConditions(range)];
     }
 
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find(query).populate('submittedBy', 'name').skip(skip).limit(limit);
+    // Agent totals must cover every matching booking, so this query is deliberately unpaginated.
+    const bookings = await Booking.find(query).populate('submittedBy', 'name').sort({ _id: 1 }).lean();
 
     const newAgent = (agentName) => ({ agentName, totalBookings: 0, totalSalePrice: 0, totalMargin: 0, supplierCharges: 0 });
     const agentMap = {};
@@ -436,12 +447,11 @@ router.get('/agent-booking-list', auth, async (req, res) => {
     }
     if (conds.length) query.$and = conds;
 
-    const { skip, limit } = getPaginationParams(req);
+    // Rows are built for every matching booking (stable order: travel date, then _id) and paged afterwards.
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name')
-      .sort({ travelDate: -1 })
-      .skip(skip)
-      .limit(limit);
+      .sort({ travelDate: -1, _id: -1 })
+      .lean();
 
     const result = [];
     bookings.forEach(b => {
@@ -493,7 +503,9 @@ router.get('/agent-booking-list', auth, async (req, res) => {
       );
     }
 
-    res.json({ bookings: filteredResult });
+    const totalMargin = round2(filteredResult.reduce((sum, r) => sum + r.ourMargin, 0));
+    const { rows, meta } = paginateRows(filteredResult, req);
+    res.json({ bookings: rows, totalMargin, ...meta });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -528,12 +540,11 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     }
     if (conds.length) query.$and = conds;
 
-    const { skip, limit } = getPaginationParams(req);
+    // Rows are built for every matching booking (stable order: submission date, then _id) and paged afterwards.
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name')
-      .sort({ dateOfSubmission: -1 })
-      .skip(skip)
-      .limit(limit);
+      .sort({ dateOfSubmission: -1, _id: -1 })
+      .lean();
 
     const result = [];
     bookings.forEach(b => {
@@ -603,10 +614,11 @@ router.get('/agent-margin-report', auth, async (req, res) => {
       );
     }
     
-    // totalMargin is sum of the returned rows' margin
+    // totalMargin is the sum over ALL matching rows, not just the returned page
     const totalMargin = filteredResult.reduce((sum, r) => sum + r.margin, 0);
+    const { rows, meta } = paginateRows(filteredResult, req);
 
-    res.json({ bookings: filteredResult, totalMargin });
+    res.json({ bookings: rows, totalMargin, ...meta });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
