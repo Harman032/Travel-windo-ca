@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+// Single source of truth for payment modes, used by both payments[].paymentMode and
+// cancellation.paymentModeWas so the two cannot drift apart.
+// Cheque and Bank Transfer are legacy values: ~450 stored bookings still carry them (they were
+// dropped from the schema in May without a data migration) and Mongoose re-validates every loaded
+// field on save, so rejecting them blocks every edit/cancel/verify on those bookings. They are
+// intentionally not offered in the UI dropdowns.
+const PAYMENT_MODES = [
+  'Cash', 'Machine Charge', 'UPI', 'E-Transfer', 'Kotak Bank', 'Kotak Bank UPI', 'Travobirds', 'Credit Card',
+  'Cheque', 'Bank Transfer', 'SkyLight'
+];
+
 const paymentSchema = new mongoose.Schema({
   paidAmount: {
     type: Number,
@@ -7,7 +18,7 @@ const paymentSchema = new mongoose.Schema({
   },
   paymentMode: {
     type: String,
-    enum: ['Cash', 'Machine Charge', 'UPI', 'E-Transfer', 'Kotak Bank', 'Kotak Bank UPI', 'Travobirds', 'Credit Card'],
+    enum: PAYMENT_MODES,
     required: true
   },
   paymentDate: {
@@ -325,7 +336,7 @@ const bookingSchema = new mongoose.Schema({
     },
     paymentModeWas: {
       type: String,
-      enum: ['Cash', 'Machine Charge', 'Credit Card', 'E-Transfer', 'UPI', 'Kotak Bank', 'Kotak Bank UPI', 'Travobirds']
+      enum: PAYMENT_MODES
     },
     totalAmountPaidByClient: {
       type: Number,
@@ -442,4 +453,7 @@ bookingSchema.index({ status: 1, dateOfSubmission: -1 });
 bookingSchema.index({ balanceAmount: 1, status: 1 });
 bookingSchema.index({ dateOfSubmission: 1, status: 1 });
 
-module.exports = mongoose.model('Booking', bookingSchema);
+const Booking = mongoose.model('Booking', bookingSchema);
+Booking.PAYMENT_MODES = PAYMENT_MODES;
+
+module.exports = Booking;

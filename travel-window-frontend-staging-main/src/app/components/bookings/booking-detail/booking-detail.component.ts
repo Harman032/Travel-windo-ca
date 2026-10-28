@@ -1256,7 +1256,7 @@ export class BookingDetailComponent implements OnInit {
     }
   }
 
-  /** Primary payment mode from booking (customer's payment) – largest paidAmount, else first. Maps to cancellation enum: Cash, Cheque, Credit Card. */
+  /** Primary payment mode from booking (customer's payment) – largest paidAmount, else first. Returned as-is: the backend's cancellation.paymentModeWas accepts the same modes as payments. */
   getPrimaryPaymentMode(): string {
     if (!this.booking?.payments?.length) return '';
     const payments = this.booking.payments as { paidAmount?: number; paymentMode?: string }[];

@@ -9,7 +9,8 @@
     "test:cancellation": "node tests/cancellation.test.js",
     "test:hardening": "node tests/hardening.test.js",
     "test:reports": "node tests/margin-split-reports.test.js",
-    "test:report-paging": "node tests/report-pagination.test.js"
+    "test:report-paging": "node tests/report-pagination.test.js",
+    "test:payment-modes": "node tests/payment-modes.test.js"
   },
   "dependencies": {
     "axios": "^1.16.1",
