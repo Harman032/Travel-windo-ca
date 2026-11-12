@@ -661,7 +661,16 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
 
     const matchQuery = {};
 
-    if (verificationType === 'cancellation') {
+    // 'unverified' is the other side of the same population, so this one screen owns the whole
+    // verification workflow: it lists what still needs verifying and the verify action acts here.
+    if (verificationType === 'unverified') {
+      matchQuery.status = { $ne: 'Cancelled' };
+      matchQuery.adminVerified = { $ne: true };
+      matchQuery.accountVerified = { $ne: true };
+    } else if (verificationType === 'unverified-cancellation') {
+      matchQuery.status = 'Cancelled';
+      matchQuery.cancellationVerified = { $ne: true };
+    } else if (verificationType === 'cancellation') {
       matchQuery.status = 'Cancelled';
       matchQuery.cancellationVerified = true;
     } else if (verificationType === 'original') {

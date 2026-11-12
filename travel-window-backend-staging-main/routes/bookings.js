@@ -770,10 +770,14 @@ router.post('/:id/verify-account', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       return res.status(404).json({ message: 'Booking not found' });
     }
     
+    // Both flag pairs. verifiedByAccount drives the booking-detail lock and the booking-list
+    // filter; accountVerified is what every report reads. Setting only one left 204 bookings in
+    // the copy locked as verified but still listed as unverified by the payment reports.
     booking.verifiedByAccount = true;
+    booking.accountVerified = true;
     booking.verifiedByAccountDate = new Date();
     booking.verifiedByAccountUser = req.user._id;
-    
+
     if (booking.status === 'Pending Verification' || booking.status === 'Unticketed') {
       booking.status = 'Account Verified';
     }
@@ -796,7 +800,9 @@ router.post('/:id/verify-admin', auth, authorize('ADMIN'), async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
     
+    // Both flag pairs; see the note on /verify-account above.
     booking.verifiedByAdmin = true;
+    booking.adminVerified = true;
     booking.verifiedByAdminDate = new Date();
     booking.verifiedByAdminUser = req.user._id;
     

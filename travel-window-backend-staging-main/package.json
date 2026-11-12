@@ -13,7 +13,8 @@
     "test:payment-modes": "node tests/payment-modes.test.js",
     "test:timezone": "node tests/timezone.test.js --tz UTC && node tests/timezone.test.js --tz Asia/Kolkata && node tests/timezone.test.js --tz America/Los_Angeles",
     "test:date-only": "node tests/date-only.test.js --tz UTC && node tests/date-only.test.js --tz Asia/Kolkata && node tests/date-only.test.js --tz America/Los_Angeles",
-    "test": "npm run test:cancellation && npm run test:hardening && npm run test:reports && npm run test:report-paging && npm run test:payment-modes && npm run test:timezone && npm run test:date-only"
+    "test:verification": "node tests/verification.test.js",
+    "test": "npm run test:cancellation && npm run test:hardening && npm run test:reports && npm run test:report-paging && npm run test:payment-modes && npm run test:timezone && npm run test:date-only && npm run test:verification"
   },
   "dependencies": {
     "axios": "^1.16.1",
