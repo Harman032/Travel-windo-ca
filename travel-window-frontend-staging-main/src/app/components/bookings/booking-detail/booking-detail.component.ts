@@ -1603,7 +1603,7 @@ export class BookingDetailComponent implements OnInit {
       const paymentsPayload = (formValue.payments || []).map((p: any) => ({
         paidAmount: typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0,
         paymentMode: p.paymentMode || 'Cash',
-        paymentDate: p.paymentDate ? new Date(p.paymentDate) : new Date(),
+        paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
         referenceNo: p.referenceNo || ''
       }));
       const payload = {
@@ -1642,7 +1642,7 @@ export class BookingDetailComponent implements OnInit {
       const paymentsPayload = (formValue.payments || []).map((p: any) => ({
         paidAmount: typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0,
         paymentMode: p.paymentMode || 'Cash',
-        paymentDate: p.paymentDate ? new Date(p.paymentDate) : new Date(),
+        paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
         referenceNo: p.referenceNo || ''
       }));
 

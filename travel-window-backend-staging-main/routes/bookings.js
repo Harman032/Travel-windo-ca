@@ -8,6 +8,7 @@ const { validateFinancialFields } = require('../utils/validate-financial');
 const { resolvePagination } = require('../utils/pagination');
 const { safeSearchTerm } = require('../utils/search-safety');
 const { buildRange, startOfDayTz, startOfTodayTz } = require('../utils/tz');
+const { parseDateInput, normalizePayments } = require('../utils/date-only');
 
 const router = express.Router();
 
@@ -57,35 +58,6 @@ const calculateTotals = (booking) => {
   }
 };
 
-// Parse date inputs safely so date-only values don't shift by timezone.
-const parseDateInput = (value) => {
-  if (value === undefined || value === null || value === '') return null;
-  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-  const s = String(value).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-    return new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
-  }
-  const dt = new Date(value);
-  return isNaN(dt.getTime()) ? null : dt;
-};
-
-// Normalize payments so paidAmount is number and paymentDate is valid Date (avoids blank save)
-const normalizePayments = (payments) => {
-  if (!Array.isArray(payments)) return [];
-  return payments.map(p => {
-    const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
-    const d = p.paymentDate ? parseDateInput(p.paymentDate) : new Date();
-    const paymentDate = d || new Date();
-    return {
-      paidAmount,
-      paymentMode: p.paymentMode || 'Cash',
-      paymentDate,
-      referenceNo: p.referenceNo || ''
-    };
-  });
-};
 
 // Create booking (Agent1, Agent2, Account, Admin)
 router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async (req, res) => {
@@ -1332,7 +1304,7 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
         ? booking.cancellation.refundReceivedFromSupplier 
         : {};
       booking.cancellation.refundReceivedFromSupplier = {
-        date: refundReceivedFromSupplier.date || existing.date,
+        date: parseDateInput(refundReceivedFromSupplier.date) || existing.date,
         remarks: refundReceivedFromSupplier.remarks ?? existing.remarks ?? ''
       };
       booking.markModified('cancellation.refundReceivedFromSupplier');
@@ -1344,7 +1316,7 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
         ? booking.cancellation.refundPaidToClient 
         : {};
       booking.cancellation.refundPaidToClient = {
-        date: refundPaidToClient.date || existing.date,
+        date: parseDateInput(refundPaidToClient.date) || existing.date,
         remarks: refundPaidToClient.remarks ?? existing.remarks ?? ''
       };
       // Automatically set refundProcessed to true when refund date is saved
@@ -1381,7 +1353,7 @@ router.put('/:id/upfront-collection', auth, async (req, res) => {
 
     booking.cancellation.upfrontCollection = {
       amountCollected: Number(amountCollected) || 0,
-      collectionDate: collectionDate ? new Date(collectionDate) : null,
+      collectionDate: parseDateInput(collectionDate),
       paymentMode: paymentMode || '',
       remarks: remarks || '',
       updatedBy: req.user._id,

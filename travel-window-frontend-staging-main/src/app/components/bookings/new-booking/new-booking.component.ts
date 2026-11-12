@@ -796,13 +796,14 @@ export class NewBookingComponent implements OnInit {
     const { countryCode, ...rest } = formValue;
     const paymentsPayload = (formValue.payments || []).map((p: any) => {
       const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
-      const rawDate = p.paymentDate;
-      const paymentDate = rawDate ? new Date(rawDate) : new Date();
-      const validDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime()) ? paymentDate : new Date();
+      // Send the raw 'YYYY-MM-DD' the date input holds. Converting it to a Date here was the
+      // cause of every stored payment date being 00:00Z: new Date('2026-09-07') parses as UTC
+      // midnight, and the serialised timestamp then slipped past the backend's parseDateInput
+      // guard, which only applies its noon-UTC convention to a bare date-only string.
       return {
         paidAmount,
         paymentMode: p.paymentMode || 'Cash',
-        paymentDate: validDate,
+        paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
         referenceNo: p.referenceNo || ''
       };
     });
