@@ -322,6 +322,53 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 }
 
 {
+  // BEBGWI exactly. The credit cap removed the credit, so suppressing the fees as well left the
+  // whole booking as a single 0.00 line and silently dropped the 25.00 the supplier kept.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card',
+    supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 25,
+    cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 25,
+    'the booking must total totalSupplierTook: the supplier keeps the fee');
+  ok('BEBGWI: capped credit no longer swallows the 25.00 the supplier kept');
+  assert.deepStrictEqual(lines.map(l => l.fare), [0, 5, 20]);
+  ok('BEBGWI lines are 0.00 fare + 5.00 booking charge + 20.00 cancellation charge');
+  assert.strictEqual(lines.filter(l => l.kind === 'cancelCredit').length, 0);
+  ok('BEBGWI has no credit line, because the supplier holds nothing to return');
+}
+
+{
+  // B4MGRT: same shape, but supplierCharges equals the booking charge, so no derived
+  // cancellation charge exists and only the 5.00 is billed.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1220.32, paymentFromCard: 1220.32, cardType: 'Company Card',
+    supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 5,
+    cancellation: { isCancelled: true, totalSupplierTook: 5, supplierWillReturn: 901.32,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 5);
+  assert.deepStrictEqual(lines.map(l => l.fare), [0, 5]);
+  ok('B4MGRT: totals 5.00, with no phantom cancellation-charge line');
+}
+
+{
+  // An UNCAPPED cancellation must keep suppressing, or the fees would be double-counted:
+  // supplierWillReturn is already net of totalSupplierTook there.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 0,
+    supplierBookingCharge: 25, supplierUpdationCharge: 10, supplierCharges: 35,
+    cancellation: { isCancelled: true, totalSupplierTook: 35, supplierWillReturn: 800,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 0,
+    'nothing was capped, so the fees are still inside the credit');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 200);
+  ok('an uncapped cancellation still suppresses its fees, unchanged');
+}
+
+{
   // Client Card, same rule. Does not occur among the copy's cancelled bookings, so synthetic.
   const lines = bookingLines(booking({
     status: 'Cancelled', ourCost: 3000, paymentFromCard: 2900, cardType: 'Client Card',

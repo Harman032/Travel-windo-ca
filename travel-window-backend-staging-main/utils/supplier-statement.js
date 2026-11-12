@@ -120,15 +120,41 @@ function bookingLines(b) {
     fare: net
   });
 
-  // Supplier service charges, one line each.
-  //
-  // Suppressed on a cancelled booking ONLY when the cancellation figure already contains them.
-  // cancellation.totalSupplierTook is supplierBookingCharge + supplierUpdationCharge +
-  // autoSupplierCancellationCharge, and supplierWillReturn is net of it, so when it is non-zero
-  // the fees are already inside the credit and billing them again would double-count.
-  // When it is zero — which is the case on 17 of the 26 cancelled bookings in the staging copy —
-  // the cancellation never accounted for the fees, so the fee lines must stay.
-  const feesAlreadyInCredit = cancelled && r2(b.cancellation.totalSupplierTook) !== 0;
+  /**
+   * The cancellation credit, worked out before the fee lines because whether the fees are already
+   * inside it decides whether they are billed separately.
+   *
+   * A supplier can only return money they actually hold. supplierWillReturn is derived from the
+   * whole `ourCost`, so on a card-paid booking it counts the fare the card paid straight to the
+   * airline; the airline refunds the card, not us. So on a card-paid booking the credit is capped
+   * at what the supplier was actually paid.
+   *
+   * The cap applies ONLY when paymentFromCard is non-zero, which leaves every non-card cancelled
+   * booking bit-for-bit unchanged — supplierWillReturn can exceed ourCost in scenarios 3 and 5,
+   * and capping there would silently alter them.
+   */
+  const willReturn = cancelled ? r2(b.cancellation.supplierWillReturn) : 0;
+  const cardPaid = r2(b.paymentFromCard) !== 0;
+  const credit = cancelled
+    ? r2(cardPaid ? Math.min(willReturn, Math.max(0, net)) : willReturn)
+    : 0;
+  const creditWasCapped = cancelled && credit !== willReturn;
+
+  /**
+   * Supplier service charges, one line each.
+   *
+   * Suppressed on a cancelled booking only when the cancellation credit already contains them:
+   * totalSupplierTook is bookingCharge + updationCharge + autoSupplierCancellationCharge, and in
+   * the cancellation scenarios that apply to a cancelled booking paid through the supplier,
+   * supplierWillReturn is net of it, so billing the fees again would double-count.
+   *
+   * But when the card cap has cut that credit down, nothing is inside it any more, and
+   * suppressing the fees silently drops money the supplier definitely keeps. On the staging copy
+   * that lost 25.00 on BEBGWI and 5.00 on B4MGRT: both are cancelled, card-paid in full, net
+   * 0.00, and the whole booking came out as a single 0.00 line. So a capped credit un-suppresses
+   * the fees.
+   */
+  const feesAlreadyInCredit = cancelled && r2(b.cancellation.totalSupplierTook) !== 0 && !creditWasCapped;
   if (!feesAlreadyInCredit) {
     for (const [field, label] of [['supplierBookingCharge', 'booking'], ['supplierUpdationCharge', 'updation']]) {
       const amount = r2(b[field]);
@@ -160,29 +186,38 @@ function bookingLines(b) {
   // schema until recently, so a fresh run would produce a different scenario family; the stored
   // figure was written at cancel time with the real inputs in hand.
   if (cancelled) {
-    /**
-     * A supplier can only return money they actually hold.
-     *
-     * supplierWillReturn is derived from the whole `ourCost`, so on a card-paid booking it counts
-     * the fare the card paid straight to the airline. Crediting it in full would invent a refund
-     * from a supplier who never received that money — the airline refunds the card. On the five
-     * cancelled card bookings in the staging copy it would have produced credits of 861 to 1,582
-     * against a net exposure of 0.00 or 5.00.
-     *
-     * So on a card-paid booking the credit is capped at what the supplier was actually paid.
-     * The cap is applied ONLY when paymentFromCard is non-zero, which leaves all 21 non-card
-     * cancelled bookings in the copy bit-for-bit unchanged — supplierWillReturn can exceed
-     * ourCost in scenarios 3 and 5, and capping there would silently alter them.
-     */
-    const willReturn = r2(b.cancellation.supplierWillReturn);
-    const cardPaid = r2(b.paymentFromCard) !== 0;
-    const credit = cardPaid ? Math.min(willReturn, Math.max(0, net)) : willReturn;
+    const cancelledAt = b.cancellation.cancelledAt || issueDate;
+
     if (credit !== 0) {
       lines.push({
         ...common, kind: 'cancelCredit',
-        date: b.cancellation.cancelledAt || issueDate,
-        vendor: 'Cancelled', fare: -r2(credit)
+        date: cancelledAt,
+        vendor: 'Cancelled', fare: -credit
       });
+    }
+
+    /**
+     * The supplier's own cancellation charge, when the card cap has removed the credit that would
+     * otherwise have carried it.
+     *
+     * There is no stored field for it — cancellation.supplierCancellationCharge is 0 on all 26
+     * cancelled bookings in the copy — so it is derived the same way recalculateCancellationValues
+     * derives it: supplierCharges minus the booking and updation charges. With the fee lines above
+     * this makes a capped booking total exactly totalSupplierTook, which is what the supplier kept.
+     *
+     * Only emitted when the credit was capped. On an uncapped cancellation the charge is already
+     * inside supplierWillReturn and adding it would double-count.
+     */
+    if (creditWasCapped) {
+      const supplierCancelCharge = r2(Math.max(0,
+        r2(b.supplierCharges) - r2(b.supplierBookingCharge) - r2(b.supplierUpdationCharge)));
+      if (supplierCancelCharge !== 0) {
+        lines.push({
+          ...common, kind: 'fee', feeType: 'cancellation',
+          date: cancelledAt,
+          vendor: SVC_FEE_LABEL, fare: supplierCancelCharge
+        });
+      }
     }
   }
 

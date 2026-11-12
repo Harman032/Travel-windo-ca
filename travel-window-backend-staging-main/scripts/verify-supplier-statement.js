@@ -110,13 +110,32 @@ const dbNameOf = (uri) => {
       s + ((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0)), 0));
     const cardPaid = r2(issuedInRange.reduce((s, b) => s + (Number(b.paymentFromCard) || 0), 0));
 
-    // Fees, minus the ones a cancellation credit already contains.
+    // Was this booking's cancellation credit cut down by the card cap? If so nothing is inside it,
+    // so its fees are billed and its supplier cancellation charge needs its own line.
+    const wasCapped = (b) => {
+      if (!(b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled)) return false;
+      if (r2(b.paymentFromCard) === 0) return false;
+      const willReturn = r2(b.cancellation.supplierWillReturn);
+      const net = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
+      return r2(Math.min(willReturn, Math.max(0, net))) !== willReturn;
+    };
+
+    // Fees, minus the ones an UNCAPPED cancellation credit already contains.
     const feesGross = r2(issuedInRange.reduce((s, b) =>
       s + (Number(b.supplierBookingCharge) || 0) + (Number(b.supplierUpdationCharge) || 0), 0));
     const feesSuppressed = r2(cancelledInRange
-      .filter(b => r2(b.cancellation.totalSupplierTook) !== 0)
+      .filter(b => r2(b.cancellation.totalSupplierTook) !== 0 && !wasCapped(b))
       .reduce((s, b) => s + (Number(b.supplierBookingCharge) || 0) + (Number(b.supplierUpdationCharge) || 0), 0));
     const fees = r2(feesGross - feesSuppressed);
+
+    // The supplier's own cancellation charge, billed only when the credit was capped. Dated on the
+    // cancellation, so it is counted over every booking of this supplier, not just the ones issued
+    // in the period.
+    const cancelCharges = r2(bookings
+      .filter(wasCapped)
+      .filter(b => inRange(b.cancellation.cancelledAt || b.dateOfSubmission, range))
+      .reduce((s, b) => s + Math.max(0,
+        r2((Number(b.supplierCharges) || 0) - (Number(b.supplierBookingCharge) || 0) - (Number(b.supplierUpdationCharge) || 0))), 0));
 
     // Change add-ons are dated on the change, so they are counted over ALL bookings of this
     // supplier, not only the ones issued in the period.
@@ -147,7 +166,7 @@ const dbNameOf = (uri) => {
     const paid = r2(payments.filter(p => inRange(p.paymentDate, range))
       .reduce((s, p) => s - (Number(p.amount) || 0), 0));
 
-    const independentMovement = r2(fare + fees + addons + cancelCredits + paid);
+    const independentMovement = r2(fare + fees + cancelCharges + addons + cancelCredits + paid);
     const independentTotal = r2(statement.openingBalance + independentMovement);
 
     const residual = r2(statement.totals.totalOpen - independentTotal);
@@ -170,6 +189,7 @@ const dbNameOf = (uri) => {
     console.log(`    + fare lines (ourCost - paymentFromCard)     ${money(fare)}`);
     console.log(`        of which paid by card, not owed:         ${money(cardPaid)}`);
     console.log(`    + supplier fees (gross ${r2(feesGross).toFixed(2)}, suppressed ${r2(feesSuppressed).toFixed(2)})  ${money(fees)}`);
+    console.log(`    + supplier cancellation charges (capped)     ${money(cancelCharges)}`);
     console.log(`    + change add-ons (on change date)            ${money(addons)}`);
     console.log(`    + cancellation credits (on cancel date)      ${money(cancelCredits)}`);
     console.log(`    + payments recorded                          ${money(paid)}`);
