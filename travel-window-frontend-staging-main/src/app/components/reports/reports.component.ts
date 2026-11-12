@@ -27,12 +27,10 @@ import { ToastrService } from 'ngx-toastr';
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 auto-rows-fr">
           <ng-container *ngIf="isAdmin() || isAccount()">
             <button (click)="selectReportType('date-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'date-wise' ? 'btn-primary' : 'btn-secondary'">Date-wise</button>
-            <button (click)="selectReportType('supplier-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'supplier-wise' ? 'btn-primary' : 'btn-secondary'">Supplier-wise</button>
             <button (click)="selectReportType('employee-wise')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'employee-wise' ? 'btn-primary' : 'btn-secondary'">Employee-wise</button>
             <button (click)="selectReportType('pending-verification')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'pending-verification' ? 'btn-primary' : 'btn-secondary'">Pending Verification</button>
             <button (click)="selectReportType('outstanding-balance')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'outstanding-balance' ? 'btn-primary' : 'btn-secondary'">Outstanding Balance</button>
-            <button (click)="selectReportType('payment-supplier')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'payment-supplier' ? 'btn-primary' : 'btn-secondary'">Payment to Supplier</button>
-            <button (click)="selectReportType('unverified-payments')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'unverified-payments' ? 'btn-primary' : 'btn-secondary'">Unverified Payments</button>
+            <button (click)="selectReportType('payment-to-suppliers')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'payment-to-suppliers' ? 'btn-primary' : 'btn-secondary'">Payment to Suppliers</button>
             <button (click)="selectReportType('agent-margin')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'agent-margin' ? 'btn-primary' : 'btn-secondary'">Agent Margin</button>
             <button (click)="selectReportType('financial-summary')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'financial-summary' ? 'btn-primary' : 'btn-secondary'">Financial Summary</button>
             <button (click)="selectReportType('verified-payments')" class="btn h-full flex items-center justify-center text-center" [ngClass]="selectedReportType === 'verified-payments' ? 'btn-primary' : 'btn-secondary'">Verified Payments</button>
@@ -60,31 +58,6 @@ import { ToastrService } from 'ngx-toastr';
         </form>
       </div>
 
-      <!-- Supplier-wise Report (Admin/Account Only) -->
-      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'supplier-wise'" class="card mb-6">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Supplier-wise Report</h3>
-        <form [formGroup]="supplierWiseForm" (ngSubmit)="loadSupplierWiseReport()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-            <select formControlName="supplier" class="input">
-              <option value="">All Suppliers</option>
-              <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" [max]="today" />
-          </div>
-          <div class="flex items-end">
-            <button type="submit" class="btn btn-primary w-full">Generate Report</button>
-          </div>
-        </form>
-      </div>
-
       <!-- Employee-wise Report (Admin/Account Only) -->
       <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'employee-wise'" class="card mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-700">Employee-wise Report</h3>
@@ -96,24 +69,6 @@ import { ToastrService } from 'ngx-toastr';
               <option *ngFor="let u of users" [value]="u._id">{{ u.name }}</option>
             </select>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input type="date" formControlName="dateTo" class="input" [max]="today" />
-          </div>
-          <div class="flex items-end">
-            <button type="submit" class="btn btn-primary w-full">Generate Report</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Payment to Supplier Report Filter (Admin/Account Only) -->
-      <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'payment-supplier'" class="card mb-6">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Date-wise Payment to Supplier Report</h3>
-        <form [formGroup]="paymentSupplierForm" (ngSubmit)="loadPaymentSupplierReport()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
             <input type="date" formControlName="dateFrom" class="input" [max]="today" />
@@ -220,48 +175,6 @@ import { ToastrService } from 'ngx-toastr';
               </tr>
             </tbody>
           </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Supplier-wise Results -->
-      <div *ngIf="selectedReportType === 'supplier-wise' && supplierWiseData && !loading" class="card">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Supplier-wise Report Results</h3>
-        <div *ngFor="let group of supplierWiseData.groups" class="mb-6">
-          <h4 class="text-lg font-semibold mb-2">{{ group.supplier }}</h4>
-          <div class="mb-2 grid grid-cols-3 gap-4">
-            <div class="bg-gray-50 p-2 rounded">
-              <span class="text-sm text-gray-600">Total Sale: </span>
-              <span class="font-semibold">{{ group.totalSalePrice | number:'1.2-2' }}</span>
-            </div>
-            <div class="bg-gray-50 p-2 rounded">
-              <span class="text-sm text-gray-600">Total Paid: </span>
-              <span class="font-semibold">{{ group.totalPaidAmount | number:'1.2-2' }}</span>
-            </div>
-            <div class="bg-gray-50 p-2 rounded">
-              <span class="text-sm text-gray-600">Balance: </span>
-              <span class="font-semibold">{{ group.totalBalance | number:'1.2-2' }}</span>
-            </div>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr *ngFor="let booking of group.bookings">
-                  <td class="px-4 py-2 text-sm">{{ booking.pnr }}</td>
-                  <td class="px-4 py-2 text-sm">{{ booking.paxName }}</td>
-                  <td class="px-4 py-2 text-sm">{{ booking.totalSalePrice | number:'1.2-2' }}</td>
-                  <td class="px-4 py-2 text-sm">{{ booking.balanceAmount | number:'1.2-2' }}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -380,35 +293,10 @@ import { ToastrService } from 'ngx-toastr';
           </div>
         </div>
       </div>
-      <!-- Payment to Supplier Results -->
-      <div *ngIf="selectedReportType === 'payment-supplier' && paymentSupplierData && !loading" class="card">
-        <h3 class="text-xl font-semibold mb-4 text-gray-700">Payment to Supplier Report Results</h3>
-        <div class="overflow-x-auto -mx-3 sm:mx-0">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Name</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Paid (Our Cost)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Booking Cost (Sale Price)</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr *ngFor="let item of paymentSupplierData">
-                <td class="px-4 py-2 text-sm">{{ item.date | tzDate:'dd-MM-yyyy' }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
-                <td class="px-4 py-2 text-sm text-blue-600">{{ item.paymentPaid | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.totalBookingCost | number:'1.2-2' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- Unverified Payments Results -->
-      <div *ngIf="selectedReportType === 'unverified-payments' && unverifiedPaymentsData && !loading" class="card">
+      <div *ngIf="selectedReportType === 'payment-to-suppliers' && paymentToSuppliersData && !loading" class="card">
         <div class="mb-4">
-          <h3 class="text-xl font-semibold text-gray-700">Unverified Payments</h3>
+          <h3 class="text-xl font-semibold text-gray-700">Payment to Suppliers</h3>
         </div>
         
         <!-- Filters Card -->
@@ -416,15 +304,15 @@ import { ToastrService } from 'ngx-toastr';
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Date From</label>
-              <input type="date" [(ngModel)]="unverifiedDateFrom" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
+              <input type="date" [(ngModel)]="supplierStmtDateFrom" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
             </div>
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Date To</label>
-              <input type="date" [(ngModel)]="unverifiedDateTo" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
+              <input type="date" [(ngModel)]="supplierStmtDateTo" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
             </div>
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Verification Type</label>
-              <select [(ngModel)]="unverifiedVerificationType" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <select [(ngModel)]="supplierStmtVerificationType" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="both">Both</option>
                 <option value="original">Original Booking</option>
                 <option value="cancellation">Cancellation</option>
@@ -432,7 +320,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Payment Type</label>
-              <select [(ngModel)]="unverifiedPaymentType" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <select [(ngModel)]="supplierStmtPaymentType" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Payments</option>
                 <option value="card">Card Payments</option>
                 <option value="other">Other Payments</option>
@@ -440,14 +328,14 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div class="flex flex-col space-y-1">
               <label class="text-sm font-semibold text-gray-700">Supplier</label>
-              <select [(ngModel)]="unverifiedSupplierId" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <select [(ngModel)]="supplierStmtSupplierId" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Suppliers</option>
                 <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
               </select>
             </div>
-            <div class="flex flex-col space-y-1" *ngIf="unverifiedVerificationType === 'original'">
+            <div class="flex flex-col space-y-1" *ngIf="supplierStmtVerificationType === 'original'">
               <label class="text-sm font-semibold text-gray-700">Ticket Status</label>
-              <select [(ngModel)]="unverifiedTicketStatus" (change)="loadUnverifiedPaymentsReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <select [(ngModel)]="supplierStmtTicketStatus" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Statuses</option>
                 <option value="Pending Verification">Pending Verification</option>
                 <option value="Account Verified">Account Verified</option>
@@ -470,9 +358,9 @@ import { ToastrService } from 'ngx-toastr';
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Supplier Took (Cancelled)</th>
-                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
-                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
-                <th *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
+                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
+                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
+                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Status</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Value</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -480,7 +368,7 @@ import { ToastrService } from 'ngx-toastr';
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr *ngFor="let item of unverifiedPaymentsData">
+              <tr *ngFor="let item of paymentToSuppliersData">
                 <td class="px-4 py-2 text-sm">
                   <div class="flex items-center gap-1">
                     {{ item.bookingId }}
@@ -505,9 +393,9 @@ import { ToastrService } from 'ngx-toastr';
                   <span *ngIf="item.status === 'Cancelled'">{{ item.totalSupplierTook !== null ? (item.totalSupplierTook | number:'1.2-2') : '0.00' }}</span>
                   <span *ngIf="item.status !== 'Cancelled'">-</span>
                 </td>
-                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
-                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
-                <td *ngIf="unverifiedPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
+                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
+                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
+                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
                 <td>
                   <span *ngIf="item.crdr?.type === 'CR'"
                         class="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700">
@@ -538,7 +426,7 @@ import { ToastrService } from 'ngx-toastr';
                   </div>
                 </td>
               </tr>
-              <tr *ngIf="unverifiedPaymentsData.length === 0">
+              <tr *ngIf="paymentToSuppliersData.length === 0">
                 <td colspan="10" class="px-4 py-4 text-sm text-center text-gray-500">No unverified payments found.</td>
               </tr>
             </tbody>
@@ -796,20 +684,18 @@ export class ReportsComponent implements OnInit {
   loading = false;
   suppliers: Supplier[] = [];
   users: User[] = [];
-  unverifiedPaymentType: string = 'all';
-  unverifiedVerificationType: string = 'both';
-  unverifiedSupplierId: string = 'all';
-  unverifiedTicketStatus: string = 'all';
-  unverifiedDateFrom: string = '';
-  unverifiedDateTo: string = '';
+  supplierStmtPaymentType: string = 'all';
+  supplierStmtVerificationType: string = 'both';
+  supplierStmtSupplierId: string = 'all';
+  supplierStmtTicketStatus: string = 'all';
+  supplierStmtDateFrom: string = '';
+  supplierStmtDateTo: string = '';
   // Toronto's today, not UTC's. The old `toISOString()` form was already tomorrow between
   // 20:00 and midnight Toronto, so every report's date picker allowed a day that had not started.
   today = todayInTz();
 
   dateWiseForm: FormGroup;
-  supplierWiseForm: FormGroup;
   employeeWiseForm: FormGroup;
-  paymentSupplierForm: FormGroup;
   agentMarginForm: FormGroup;
   agentBookingListForm: FormGroup;
   agentMarginReportForm: FormGroup;
@@ -817,12 +703,10 @@ export class ReportsComponent implements OnInit {
   verifiedPaymentsForm: FormGroup;
 
   dateWiseData: any = null;
-  supplierWiseData: any = null;
   employeeWiseData: any = null;
   pendingVerificationData: any = null;
   outstandingBalanceData: any = null;
-  paymentSupplierData: any = null;
-  unverifiedPaymentsData: any = null;
+  paymentToSuppliersData: any = null;
   agentMarginData: any = null;
   agentBookingListData: any = null;
   agentMarginReportData: any = null;
@@ -839,9 +723,7 @@ export class ReportsComponent implements OnInit {
     private http: HttpClient
   ) {
     this.dateWiseForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
-    this.supplierWiseForm = this.fb.group({ supplier: [''], dateFrom: [''], dateTo: [''] });
     this.employeeWiseForm = this.fb.group({ employee: [''], dateFrom: [''], dateTo: [''] });
-    this.paymentSupplierForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
     this.agentMarginForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
     this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
@@ -882,7 +764,7 @@ export class ReportsComponent implements OnInit {
     if (this.isAdmin() || this.isAccount()) {
       this.loadPendingVerificationReport();
       this.loadOutstandingBalanceReport();
-      this.loadUnverifiedPaymentsReport();
+      this.loadPaymentToSuppliersReport();
     }
   }
 
@@ -912,8 +794,8 @@ export class ReportsComponent implements OnInit {
 
   selectReportType(type: string) {
     this.selectedReportType = type;
-    if (type === 'unverified-payments' && !this.unverifiedPaymentsData) {
-      this.loadUnverifiedPaymentsReport();
+    if (type === 'payment-to-suppliers' && !this.paymentToSuppliersData) {
+      this.loadPaymentToSuppliersReport();
     }
   }
 
@@ -948,18 +830,6 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  loadSupplierWiseReport() {
-    const { supplier, dateFrom, dateTo } = this.supplierWiseForm.value;
-    this.loading = true;
-    
-    this.reportService.getSupplierWiseReport(supplier || undefined, dateFrom || undefined, dateTo || undefined).subscribe({
-      next: (data) => {
-        this.supplierWiseData = data;
-        this.loading = false;
-      },
-      error: (err) => this.handleReportError(err)
-    });
-  }
 
   loadEmployeeWiseReport() {
     const { employee, dateFrom, dateTo } = this.employeeWiseForm.value;
@@ -996,30 +866,19 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  loadPaymentSupplierReport() {
-    const { dateFrom, dateTo } = this.paymentSupplierForm.value;
-    this.loading = true;
-    this.reportService.getPaymentToSupplierReport(dateFrom || undefined, dateTo || undefined).subscribe({
-      next: (data) => {
-        this.paymentSupplierData = data;
-        this.loading = false;
-      },
-      error: (err) => this.handleReportError(err)
-    });
-  }
 
-  loadUnverifiedPaymentsReport() {
+  loadPaymentToSuppliersReport() {
     this.loading = true;
-    this.reportService.getUnverifiedPaymentsReport(
-      this.unverifiedPaymentType, 
-      this.unverifiedVerificationType,
-      this.unverifiedSupplierId,
-      this.unverifiedTicketStatus,
-      this.unverifiedDateFrom || undefined,
-      this.unverifiedDateTo || undefined
+    this.reportService.getPaymentToSuppliersReport(
+      this.supplierStmtPaymentType, 
+      this.supplierStmtVerificationType,
+      this.supplierStmtSupplierId,
+      this.supplierStmtTicketStatus,
+      this.supplierStmtDateFrom || undefined,
+      this.supplierStmtDateTo || undefined
     ).subscribe({
       next: (data) => {
-        this.unverifiedPaymentsData = data;
+        this.paymentToSuppliersData = data;
         this.loading = false;
       },
       error: (err) => this.handleReportError(err)
@@ -1088,7 +947,7 @@ export class ReportsComponent implements OnInit {
         this.toastr.success('Payment verified', 'Success');
         // Reload whichever screen the action was taken from.
         if (this.selectedReportType === 'verified-payments') this.loadVerifiedPayments();
-        else this.loadUnverifiedPaymentsReport();
+        else this.loadPaymentToSuppliersReport();
       },
       error: (err) => this.handleReportError(err)
     });

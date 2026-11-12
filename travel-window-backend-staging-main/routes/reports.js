@@ -90,54 +90,6 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
   }
 });
 
-// Supplier-wise report
-router.get('/supplier-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
-  try {
-    const { supplier, dateFrom, dateTo } = req.query;
-    
-    const query = {};
-    if (supplier && supplier !== 'all') {
-      query.supplier = supplier;
-    }
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-    }
-    
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find(query)
-      .populate('submittedBy', 'name email')
-      .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 })
-      .skip(skip)
-      .limit(limit);
-    
-    // Group by supplier
-    const supplierGroups = {};
-    bookings.forEach(booking => {
-      const supplierName = booking.supplierName || 'No Supplier';
-      if (!supplierGroups[supplierName]) {
-        supplierGroups[supplierName] = {
-          supplier: supplierName,
-          bookings: [],
-          totalSalePrice: 0,
-          totalPaidAmount: 0,
-          totalBalance: 0
-        };
-      }
-      supplierGroups[supplierName].bookings.push(booking);
-      supplierGroups[supplierName].totalSalePrice += booking.totalSalePrice;
-      supplierGroups[supplierName].totalPaidAmount += booking.totalPaidAmount;
-      supplierGroups[supplierName].totalBalance += booking.balanceAmount;
-    });
-    
-    res.json({ groups: Object.values(supplierGroups) });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // Employee-wise report
 router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
@@ -230,49 +182,11 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   }
 });
 
-// Report A: Date-wise Payment to Supplier
-router.get('/payment-to-supplier', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
-  try {
-    const { dateFrom, dateTo } = req.query;
-    const query = {};
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-    }
-    
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find(query).populate('supplier', 'name').sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
-    
-    const reportData = [];
-    bookings.forEach(b => {
-      if (!b.supplier) return;
-      const dateStr = new Date(b.dateOfSubmission).toISOString().split('T')[0];
-      const supplierName = b.supplier.name || 'Unknown';
-      
-      let existing = reportData.find(r => r.date === dateStr && r.supplierName === supplierName);
-      if (!existing) {
-        existing = { date: dateStr, supplierName, paymentPaid: 0, totalBookingCost: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0, supplierCancellationCharge: 0, totalSupplierCharges: 0 };
-        reportData.push(existing);
-      }
-      
-      existing.paymentPaid += (b.ourCost || 0);
-      existing.totalBookingCost += (b.totalSalePrice || 0);
-      existing.supplierBookingCharge += (b.supplierBookingCharge || 0);
-      existing.supplierUpdationCharge += (b.supplierUpdationCharge || 0);
-      existing.supplierCancellationCharge += (b.autoSupplierCancellationCharge || 0);
-      existing.totalSupplierCharges += (b.supplierCharges || 0);
-    });
-    
-    reportData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    res.json(reportData);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Report B: Unverified Payments
-router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
+// Report B: Payment to Suppliers (renamed from Unverified Payments).
+// The verification workflow moved to Verified Payments, which can now show the not-yet-verified
+// side of its own population. The content of this report is rebuilt as a per-supplier statement
+// in the next commit; this commit is the rename only, so the behaviour here is still the old one.
+router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
     const { paymentType, verificationType = 'original', supplierId, ticketStatus, dateFrom, dateTo } = req.query;
     
@@ -313,7 +227,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
     if (unverifiedRange) query.dateOfSubmission = unverifiedRange;
 
     const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
-    const unverifiedPayments = [];
+    const rows = [];
     
     bookings.forEach(b => {
       if (paymentType === 'card') {
@@ -325,7 +239,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       if (b.payments && b.payments.length > 0) {
         b.payments.forEach(p => {
           const crdr = getCRDR(b);
-          unverifiedPayments.push({
+          rows.push({
             bookingId: b.pnr,
             _id: b._id,
             passengerName: b.paxName,
@@ -347,7 +261,7 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       }
     });
     
-    res.json(unverifiedPayments);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

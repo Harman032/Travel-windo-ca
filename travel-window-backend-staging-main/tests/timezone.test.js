@@ -193,9 +193,9 @@ const bookings = [
   console.log('  ok  verified-payments uses Toronto days');
   passed++;
 
-  const unver = await r('unverified-payments', { ...SEPT, verificationType: 'original' });
+  const unver = await r('payment-to-suppliers', { ...SEPT, verificationType: 'original' });
   assert.strictEqual(unver.length, 0, 'all three are adminVerified, so none is unverified');
-  console.log('  ok  unverified-payments uses Toronto days');
+  console.log('  ok  payment-to-suppliers uses Toronto days');
   passed++;
 
   const margin = await r('agent-margin', SEPT);

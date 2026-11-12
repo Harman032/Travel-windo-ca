@@ -19,14 +19,6 @@ export class ReportService {
     return this.http.get(`${this.apiUrl}/reports/date-wise`, { params });
   }
 
-  getSupplierWiseReport(supplier?: string, dateFrom?: string, dateTo?: string): Observable<any> {
-    let params = new HttpParams();
-    if (supplier) params = params.set('supplier', supplier);
-    if (dateFrom) params = params.set('dateFrom', dateFrom);
-    if (dateTo) params = params.set('dateTo', dateTo);
-    return this.http.get(`${this.apiUrl}/reports/supplier-wise`, { params });
-  }
-
   getEmployeeWiseReport(employee?: string, dateFrom?: string, dateTo?: string): Observable<any> {
     let params = new HttpParams();
     if (employee) params = params.set('employee', employee);
@@ -43,14 +35,7 @@ export class ReportService {
     return this.http.get(`${this.apiUrl}/reports/outstanding-balance`);
   }
 
-  getPaymentToSupplierReport(dateFrom?: string, dateTo?: string): Observable<any> {
-    let params = new HttpParams();
-    if (dateFrom) params = params.set('dateFrom', dateFrom);
-    if (dateTo) params = params.set('dateTo', dateTo);
-    return this.http.get(`${this.apiUrl}/reports/payment-to-supplier`, { params });
-  }
-
-  getUnverifiedPaymentsReport(paymentType: string = 'all', verificationType: string = 'original', supplierId: string = 'all', ticketStatus: string = 'all', dateFrom?: string, dateTo?: string): Observable<any> {
+  getPaymentToSuppliersReport(paymentType: string = 'all', verificationType: string = 'original', supplierId: string = 'all', ticketStatus: string = 'all', dateFrom?: string, dateTo?: string): Observable<any> {
     let params = new HttpParams();
     if (paymentType !== 'all') {
       params = params.set('paymentType', paymentType);
@@ -64,7 +49,7 @@ export class ReportService {
     params = params.set('verificationType', verificationType);
     if (dateFrom) params = params.set('dateFrom', dateFrom);
     if (dateTo) params = params.set('dateTo', dateTo);
-    return this.http.get(`${this.apiUrl}/reports/unverified-payments`, { params });
+    return this.http.get(`${this.apiUrl}/reports/payment-to-suppliers`, { params });
   }
 
   getAgentMarginReport(dateFrom?: string, dateTo?: string): Observable<any> {
