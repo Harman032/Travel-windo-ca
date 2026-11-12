@@ -217,6 +217,7 @@ app.use('/api/suppliers', ensureDB, require('../routes/suppliers'));
 app.use('/api/reports', ensureDB, require('../routes/reports'));
 app.use('/api/dashboard', ensureDB, require('../routes/dashboard'));
 app.use('/api/payments', ensureDB, require('../routes/payments'));
+app.use('/api/supplier-payments', ensureDB, require('../routes/supplier-payments'));
 app.use('/api/seed', ensureDB, require('../routes/seed'));
 
 // Catch-all route for debugging

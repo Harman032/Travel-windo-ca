@@ -2,7 +2,7 @@ import { TzDatePipe } from '../../utils/tz-date.pipe';
 import { todayInTz } from '../../utils/tz';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { ReportService } from '../../services/report.service';
@@ -293,146 +293,165 @@ import { ToastrService } from 'ngx-toastr';
           </div>
         </div>
       </div>
-      <!-- Unverified Payments Results -->
-      <div *ngIf="selectedReportType === 'payment-to-suppliers' && paymentToSuppliersData && !loading" class="card">
-        <div class="mb-4">
-          <h3 class="text-xl font-semibold text-gray-700">Payment to Suppliers</h3>
-        </div>
-        
-        <!-- Filters Card -->
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-            <div class="flex flex-col space-y-1">
-              <label class="text-sm font-semibold text-gray-700">Date From</label>
-              <input type="date" [(ngModel)]="supplierStmtDateFrom" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
-            </div>
-            <div class="flex flex-col space-y-1">
-              <label class="text-sm font-semibold text-gray-700">Date To</label>
-              <input type="date" [(ngModel)]="supplierStmtDateTo" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500" [max]="today" />
-            </div>
-            <div class="flex flex-col space-y-1">
-              <label class="text-sm font-semibold text-gray-700">Verification Type</label>
-              <select [(ngModel)]="supplierStmtVerificationType" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <option value="both">Both</option>
-                <option value="original">Original Booking</option>
-                <option value="cancellation">Cancellation</option>
-              </select>
-            </div>
-            <div class="flex flex-col space-y-1">
-              <label class="text-sm font-semibold text-gray-700">Payment Type</label>
-              <select [(ngModel)]="supplierStmtPaymentType" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">All Payments</option>
-                <option value="card">Card Payments</option>
-                <option value="other">Other Payments</option>
-              </select>
-            </div>
-            <div class="flex flex-col space-y-1">
-              <label class="text-sm font-semibold text-gray-700">Supplier</label>
-              <select [(ngModel)]="supplierStmtSupplierId" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">All Suppliers</option>
-                <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="flex flex-col space-y-1" *ngIf="supplierStmtVerificationType === 'original'">
-              <label class="text-sm font-semibold text-gray-700">Ticket Status</label>
-              <select [(ngModel)]="supplierStmtTicketStatus" (change)="loadPaymentToSuppliersReport()" class="input w-full bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">All Statuses</option>
-                <option value="Pending Verification">Pending Verification</option>
-                <option value="Account Verified">Account Verified</option>
-                <option value="Admin Verified">Admin Verified</option>
-                <option value="Unticketed">Unticketed</option>
-                <option value="Ticketed">Ticketed</option>
-              </select>
-            </div>
+      <!-- ===== Payment to Suppliers: per-supplier statement ===== -->
+      <div *ngIf="selectedReportType === 'payment-to-suppliers'" class="card mb-6 no-print">
+        <h3 class="text-xl font-semibold mb-4 text-gray-700">Payment to Suppliers</h3>
+        <form [formGroup]="supplierStatementForm" (ngSubmit)="loadSupplierStatement()" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Supplier <span class="text-red-600">*</span></label>
+            <select formControlName="supplier" class="input">
+              <option value="">Select a supplier…</option>
+              <option *ngFor="let s of suppliers" [value]="s._id">{{ s.name }}</option>
+            </select>
           </div>
-        </div>
-        <div class="overflow-x-auto -mx-3 sm:mx-0">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PNR</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Passenger</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sale Price</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Cost</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Supplier Took (Cancelled)</th>
-                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Paid</th>
-                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Card Type</th>
-                <th *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last 4</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Status</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CR/DR Value</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr *ngFor="let item of paymentToSuppliersData">
-                <td class="px-4 py-2 text-sm">
-                  <div class="flex items-center gap-1">
-                    {{ item.bookingId }}
-                    <button (click)="copyToClipboard(item.bookingId)" class="text-gray-400 hover:text-blue-600" title="Copy Reference">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                    </button>
-                  </div>
-                </td>
-                <td class="px-4 py-2 text-sm">{{ item.passengerName }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.salePrice | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm text-green-600 font-medium">{{ item.ourCost | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm">
-                  {{ item.paymentMode }}
-                  <span *ngIf="item.paymentMode === 'Credit Card'" 
-                        class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-1 font-medium">
-                    Credit Card
-                  </span>
-                </td>
-                <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
-                <td class="px-4 py-2 text-sm">{{ item.supplierCharges || 0 | number:'1.2-2' }}</td>
-                <td class="px-4 py-2 text-sm">
-                  <span *ngIf="item.status === 'Cancelled'">{{ item.totalSupplierTook !== null ? (item.totalSupplierTook | number:'1.2-2') : '0.00' }}</span>
-                  <span *ngIf="item.status !== 'Cancelled'">-</span>
-                </td>
-                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.paymentFromCard > 0 ? item.paymentFromCard : '-' }}</td>
-                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardType || '-' }}</td>
-                <td *ngIf="supplierStmtPaymentType !== 'other'" class="px-4 py-2 text-sm">{{ item.cardLast4Digits || '-' }}</td>
-                <td>
-                  <span *ngIf="item.crdr?.type === 'CR'"
-                        class="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700">
-                    CR
-                  </span>
-                  <span *ngIf="item.crdr?.type === 'DR'"
-                        class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">
-                    DR
-                  </span>
-                  <span *ngIf="item.crdr?.type === 'NIL'"
-                        class="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-500">
-                    NIL
-                  </span>
-                </td>
-                <td class="px-4 py-2 text-sm font-bold">
-                  <span *ngIf="item.crdr?.type !== 'NIL'" [ngClass]="item.crdr?.type === 'CR' ? 'text-green-600' : 'text-red-600'">
-                    {{ item.crdr?.value | number:'1.2-2' }}
-                  </span>
-                  <span *ngIf="item.crdr?.type === 'NIL'" class="text-gray-400">-</span>
-                </td>
-                <td class="px-4 py-2 text-sm">
-                  <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
-                </td>
-                <td class="px-4 py-2 text-sm">
-                  <div class="flex gap-1">
-                    <button class="btn btn-primary text-xs px-2 py-1" (click)="verifyPayment(item._id)">Verify</button>
-                    <a [href]="'/dashboard/bookings/' + item._id" class="btn btn-secondary text-xs px-2 py-1">View</a>
-                  </div>
-                </td>
-              </tr>
-              <tr *ngIf="paymentToSuppliersData.length === 0">
-                <td colspan="10" class="px-4 py-4 text-sm text-center text-gray-500">No unverified payments found.</td>
-              </tr>
-            </tbody>
-          </table>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+            <input type="date" formControlName="dateFrom" class="input" [max]="today" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+            <input type="date" formControlName="dateTo" class="input" [max]="today" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="btn btn-primary w-full" [disabled]="!supplierStatementForm.get('supplier')?.value">Generate Statement</button>
+          </div>
+        </form>
+
+        <!-- Record a payment to this supplier -->
+        <div class="mt-6 pt-6 border-t border-gray-200" *ngIf="supplierStatementForm.get('supplier')?.value">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3">Record a payment to this supplier</h4>
+          <p class="text-xs text-gray-500 mb-3">
+            For a balance carried over from before the system, add a payment dated before the first
+            statement period and note it "Opening balance".
+          </p>
+          <form [formGroup]="supplierPaymentForm" (ngSubmit)="addSupplierPayment()" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+              <input type="date" formControlName="paymentDate" class="input" [max]="today" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
+              <input type="number" step="0.01" min="0.01" formControlName="amount" class="input" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Reference</label>
+              <input type="text" formControlName="reference" class="input" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Note</label>
+              <input type="text" formControlName="note" class="input" />
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="btn btn-secondary w-full" [disabled]="supplierPaymentForm.invalid || savingSupplierPayment">
+                {{ savingSupplierPayment ? 'Saving…' : 'Add payment' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
+
+      <!-- Statement -->
+      <div *ngIf="selectedReportType === 'payment-to-suppliers' && statementData && !loading" class="card statement">
+        <div class="flex justify-end mb-4 no-print">
+          <button type="button" class="btn btn-secondary" (click)="printStatement()">Print / Save as PDF</button>
+        </div>
+
+        <!-- Repeats on every printed page -->
+        <div class="print-running-head">
+          {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
+        </div>
+
+        <!-- Company block -->
+        <div class="statement-head">
+          <div class="statement-company">
+            <div class="font-bold text-lg">{{ statementData.company?.name }}</div>
+            <div>{{ statementData.company?.addressLine1 }}</div>
+            <div>{{ statementData.company?.addressLine2 }}</div>
+            <div>{{ statementData.company?.phone }}</div>
+            <div>{{ statementData.company?.email }}</div>
+          </div>
+          <div class="statement-meta">
+            <div class="font-bold text-lg">Client Statement</div>
+            <div><span class="font-semibold">To:</span> {{ statementData.dateTo || '—' }}</div>
+            <div *ngIf="statementData.dateFrom"><span class="font-semibold">From:</span> {{ statementData.dateFrom }}</div>
+            <div class="text-xs text-gray-500 mt-1">Generated {{ statementData.generatedAt | tzDate:'long' }}</div>
+          </div>
+        </div>
+
+        <div class="statement-supplier">{{ statementData.supplierName }}</div>
+
+        <table class="statement-table">
+          <thead>
+            <tr class="statement-band">
+              <th>Issue Dt</th>
+              <th>Invoice No</th>
+              <th>Remarks</th>
+              <th>Ticket No</th>
+              <th>Passenger</th>
+              <th>Vendor</th>
+              <th>Start Dt</th>
+              <th>Itinerary</th>
+              <th class="text-right">Fare</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="statementData.openingBalance" class="statement-opening">
+              <td colspan="8">Opening balance</td>
+              <td class="text-right">{{ statementData.openingBalance | number:'1.2-2' }}</td>
+            </tr>
+
+            <ng-container *ngFor="let inv of statementData.invoices">
+              <ng-container *ngFor="let line of inv.lines; let first = first">
+                <!-- line 1: Issue Dt, Invoice No, Remarks -->
+                <tr class="statement-line-1">
+                  <td>{{ line.date | tzDate:'yyyy-MM-dd' }}</td>
+                  <td>{{ line.invoiceNo }}</td>
+                  <td colspan="7">{{ line.remarks }}</td>
+                </tr>
+                <!-- line 2: Ticket No, Passenger, Vendor, Start Dt, Itinerary, Fare -->
+                <tr class="statement-line-2">
+                  <td colspan="3"></td>
+                  <td>{{ line.ticketNo }}</td>
+                  <td>{{ line.passenger }}</td>
+                  <td>{{ line.vendor }}</td>
+                  <td>{{ line.startDate ? (line.startDate | tzDate:'yyyy-MM-dd') : '' }}</td>
+                  <td>{{ line.itinerary }}</td>
+                  <td class="text-right" [class.credit]="line.fare < 0">{{ line.fare | number:'1.2-2' }}</td>
+                </tr>
+                <tr *ngIf="line.kind === 'payment'" class="statement-line-2 no-print">
+                  <td colspan="8"></td>
+                  <td class="text-right">
+                    <button type="button" class="text-xs text-red-600 underline" (click)="deleteSupplierPayment(line.paymentId)">delete</button>
+                  </td>
+                </tr>
+              </ng-container>
+              <tr *ngIf="inv.showSubtotal" class="statement-subtotal">
+                <td colspan="8" class="text-right">Subtotal {{ inv.invoiceNo }}</td>
+                <td class="text-right">{{ inv.subtotal | number:'1.2-2' }}</td>
+              </tr>
+            </ng-container>
+
+            <tr *ngIf="statementData.lineCount === 0">
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="statement-total">
+              <td colspan="8" class="text-right">Total Open</td>
+              <td class="text-right">{{ statementData.totals?.totalOpen | number:'1.2-2' }}</td>
+            </tr>
+            <tr class="statement-total">
+              <td colspan="8" class="text-right">Account Balance</td>
+              <td class="text-right">{{ statementData.totals?.accountBalance | number:'1.2-2' }}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="text-xs text-gray-500 mt-4 no-print">
+          {{ statementData.lineCount }} line(s). Negative amounts are credits. All rows shown; no paging.
+        </div>
+      </div>
+
 
       <!-- Verified Payments Report Filter (Admin/Account Only) -->
       <div *ngIf="(isAdmin() || isAccount()) && selectedReportType === 'verified-payments'" class="card mb-6">
@@ -677,19 +696,55 @@ import { ToastrService } from 'ngx-toastr';
         </table></div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    /* Supplier statement. Printing is done by the browser: no PDF library, and a <thead>
+       repeats on every page natively. "Page N of M" inside the document is not achievable in
+       Chrome (no @page content counters), so the page number comes from the browser's own
+       print footer. */
+    .statement { font-size: 12px; }
+    .statement-head { display: flex; justify-content: space-between; gap: 2rem; margin-bottom: 1rem; }
+    .statement-company div, .statement-meta div { line-height: 1.4; }
+    .statement-meta { text-align: right; }
+    .statement-supplier { font-weight: 700; font-size: 14px; padding: 0.5rem 0; border-top: 1px solid #111; }
+    .statement-table { width: 100%; border-collapse: collapse; }
+    .statement-table th, .statement-table td { padding: 2px 6px; vertical-align: top; }
+    /* The grey column band under the header row, as in the client's statement. */
+    .statement-band th { background: #e5e7eb; border-top: 1px solid #9ca3af; border-bottom: 1px solid #9ca3af;
+                         text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    .statement-line-1 td { padding-top: 6px; }
+    .statement-line-2 td { padding-bottom: 6px; }
+    .statement-opening td { font-style: italic; border-bottom: 1px solid #d1d5db; }
+    /* Underline above a subtotal, as in the client's statement. */
+    .statement-subtotal td { border-top: 1px solid #111; font-weight: 600; }
+    .statement-total td { border-top: 2px solid #111; font-weight: 700; }
+    .credit { color: #b91c1c; }
+    .text-right { text-align: right; }
+    .print-running-head { display: none; }
+
+    @media print {
+      /* The browser adds its own page numbers in the print footer. */
+      @page { size: letter; margin: 14mm 12mm; }
+      .no-print { display: none !important; }
+      /* Everything on the page except the statement is chrome. */
+      :host ::ng-deep body * { visibility: hidden; }
+      .statement, .statement * { visibility: visible; }
+      .statement { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: 0; padding: 0; }
+      /* Repeat the header row and the running head on every page. */
+      .statement-table thead { display: table-header-group; }
+      .statement-table tfoot { display: table-footer-group; }
+      .print-running-head { display: block; font-size: 10px; color: #374151; padding-bottom: 4px; }
+      /* Never split an invoice's two lines or its subtotal across a page break. */
+      .statement-line-1, .statement-line-2, .statement-subtotal, .statement-total { page-break-inside: avoid; }
+      .statement-line-1 { page-break-after: avoid; }
+    }
+  `]
 })
 export class ReportsComponent implements OnInit {
   selectedReportType: string = 'date-wise';
   loading = false;
   suppliers: Supplier[] = [];
   users: User[] = [];
-  supplierStmtPaymentType: string = 'all';
-  supplierStmtVerificationType: string = 'both';
-  supplierStmtSupplierId: string = 'all';
-  supplierStmtTicketStatus: string = 'all';
-  supplierStmtDateFrom: string = '';
-  supplierStmtDateTo: string = '';
   // Toronto's today, not UTC's. The old `toISOString()` form was already tomorrow between
   // 20:00 and midnight Toronto, so every report's date picker allowed a day that had not started.
   today = todayInTz();
@@ -701,12 +756,15 @@ export class ReportsComponent implements OnInit {
   agentMarginReportForm: FormGroup;
   financialSummaryForm: FormGroup;
   verifiedPaymentsForm: FormGroup;
+  supplierStatementForm: FormGroup;
+  supplierPaymentForm: FormGroup;
 
   dateWiseData: any = null;
   employeeWiseData: any = null;
   pendingVerificationData: any = null;
   outstandingBalanceData: any = null;
-  paymentToSuppliersData: any = null;
+  statementData: any = null;
+  savingSupplierPayment = false;
   agentMarginData: any = null;
   agentBookingListData: any = null;
   agentMarginReportData: any = null;
@@ -729,6 +787,13 @@ export class ReportsComponent implements OnInit {
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
     this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['both'] });
+    this.supplierStatementForm = this.fb.group({ supplier: [''], dateFrom: [''], dateTo: [''] });
+    this.supplierPaymentForm = this.fb.group({
+      paymentDate: [this.today, Validators.required],
+      amount: [null, [Validators.required, Validators.min(0.01)]],
+      reference: [''],
+      note: ['']
+    });
   }
 
   isAgent(): boolean {
@@ -764,7 +829,6 @@ export class ReportsComponent implements OnInit {
     if (this.isAdmin() || this.isAccount()) {
       this.loadPendingVerificationReport();
       this.loadOutstandingBalanceReport();
-      this.loadPaymentToSuppliersReport();
     }
   }
 
@@ -794,9 +858,6 @@ export class ReportsComponent implements OnInit {
 
   selectReportType(type: string) {
     this.selectedReportType = type;
-    if (type === 'payment-to-suppliers' && !this.paymentToSuppliersData) {
-      this.loadPaymentToSuppliersReport();
-    }
   }
 
   loadSuppliers() {
@@ -867,22 +928,60 @@ export class ReportsComponent implements OnInit {
   }
 
 
-  loadPaymentToSuppliersReport() {
+  loadSupplierStatement() {
+    const { supplier, dateFrom, dateTo } = this.supplierStatementForm.value;
+    if (!supplier) {
+      this.toastr.error('Choose a supplier first', 'Error');
+      return;
+    }
     this.loading = true;
-    this.reportService.getPaymentToSuppliersReport(
-      this.supplierStmtPaymentType, 
-      this.supplierStmtVerificationType,
-      this.supplierStmtSupplierId,
-      this.supplierStmtTicketStatus,
-      this.supplierStmtDateFrom || undefined,
-      this.supplierStmtDateTo || undefined
-    ).subscribe({
+    this.reportService.getSupplierStatement(supplier, dateFrom || undefined, dateTo || undefined).subscribe({
       next: (data) => {
-        this.paymentToSuppliersData = data;
+        this.statementData = data;
         this.loading = false;
       },
       error: (err) => this.handleReportError(err)
     });
+  }
+
+  addSupplierPayment() {
+    const supplier = this.supplierStatementForm.get('supplier')?.value;
+    if (!supplier || this.supplierPaymentForm.invalid) return;
+    this.savingSupplierPayment = true;
+    this.reportService.addSupplierPayment({ supplier, ...this.supplierPaymentForm.value }).subscribe({
+      next: () => {
+        this.savingSupplierPayment = false;
+        this.toastr.success('Payment recorded', 'Success');
+        this.supplierPaymentForm.reset({ paymentDate: this.today, amount: null, reference: '', note: '' });
+        if (this.statementData) this.loadSupplierStatement();
+      },
+      error: (err) => {
+        this.savingSupplierPayment = false;
+        this.handleReportError(err);
+      }
+    });
+  }
+
+  deleteSupplierPayment(paymentId: string) {
+    if (!paymentId) return;
+    if (!confirm('Delete this recorded payment? There is no edit; a wrong entry is deleted and re-entered.')) return;
+    this.reportService.deleteSupplierPayment(paymentId).subscribe({
+      next: () => {
+        this.toastr.success('Payment deleted', 'Success');
+        this.loadSupplierStatement();
+      },
+      error: (err) => this.handleReportError(err)
+    });
+  }
+
+  /**
+   * The browser's own print dialog produces the PDF. No PDF library is needed: a <thead> repeats
+   * on every printed page natively, and the print dialog offers "Save as PDF". The one thing it
+   * cannot do is render "Page N of M" inside the document — Chrome does not support CSS @page
+   * counters for arbitrary content — so the page number comes from the browser's own footer.
+   */
+  printStatement() {
+    window.print();
   }
 
   loadAgentMarginReport() {
@@ -946,8 +1045,7 @@ export class ReportsComponent implements OnInit {
       next: () => {
         this.toastr.success('Payment verified', 'Success');
         // Reload whichever screen the action was taken from.
-        if (this.selectedReportType === 'verified-payments') this.loadVerifiedPayments();
-        else this.loadPaymentToSuppliersReport();
+        this.loadVerifiedPayments();
       },
       error: (err) => this.handleReportError(err)
     });

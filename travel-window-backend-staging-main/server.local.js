@@ -25,6 +25,7 @@ app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/supplier-payments', require('./routes/supplier-payments'));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/travel_agency', {

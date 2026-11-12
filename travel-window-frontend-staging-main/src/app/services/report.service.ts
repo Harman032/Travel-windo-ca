@@ -35,21 +35,29 @@ export class ReportService {
     return this.http.get(`${this.apiUrl}/reports/outstanding-balance`);
   }
 
-  getPaymentToSuppliersReport(paymentType: string = 'all', verificationType: string = 'original', supplierId: string = 'all', ticketStatus: string = 'all', dateFrom?: string, dateTo?: string): Observable<any> {
-    let params = new HttpParams();
-    if (paymentType !== 'all') {
-      params = params.set('paymentType', paymentType);
-    }
-    if (supplierId !== 'all') {
-      params = params.set('supplierId', supplierId);
-    }
-    if (ticketStatus !== 'all') {
-      params = params.set('ticketStatus', ticketStatus);
-    }
-    params = params.set('verificationType', verificationType);
+  /** Per-supplier statement. A single supplier is required; the backend 400s without one. */
+  getSupplierStatement(supplier: string, dateFrom?: string, dateTo?: string): Observable<any> {
+    let params = new HttpParams().set('supplier', supplier);
     if (dateFrom) params = params.set('dateFrom', dateFrom);
     if (dateTo) params = params.set('dateTo', dateTo);
     return this.http.get(`${this.apiUrl}/reports/payment-to-suppliers`, { params });
+  }
+
+  // Money actually sent to a supplier. There is no update endpoint on purpose: a wrong entry is
+  // deleted and re-entered, which leaves a clearer trail than a mutable amount.
+  addSupplierPayment(body: { supplier: string; paymentDate: string; amount: number; reference?: string; note?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/supplier-payments`, body);
+  }
+
+  deleteSupplierPayment(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/supplier-payments/${id}`);
+  }
+
+  getSupplierPayments(supplier: string, dateFrom?: string, dateTo?: string): Observable<any> {
+    let params = new HttpParams().set('supplier', supplier);
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    return this.http.get(`${this.apiUrl}/supplier-payments`, { params });
   }
 
   getAgentMarginReport(dateFrom?: string, dateTo?: string): Observable<any> {

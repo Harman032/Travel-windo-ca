@@ -193,10 +193,14 @@ const bookings = [
   console.log('  ok  verified-payments uses Toronto days');
   passed++;
 
-  const unver = await r('payment-to-suppliers', { ...SEPT, verificationType: 'original' });
-  assert.strictEqual(unver.length, 0, 'all three are adminVerified, so none is unverified');
-  console.log('  ok  payment-to-suppliers uses Toronto days');
+  const unverSide = await r('verified-payments', { ...SEPT, verificationType: 'unverified' });
+  assert.deepStrictEqual(pnrs(unverSide.bookings), [],
+    'all three are adminVerified, so the unverified side of the same population is empty');
+  console.log('  ok  the unverified side of verified-payments uses the same Toronto days');
   passed++;
+
+  // payment-to-suppliers is a per-supplier statement, not a date-range list, so its Toronto day
+  // boundaries are asserted in tests/supplier-statement.test.js instead.
 
   const margin = await r('agent-margin', SEPT);
   assert.strictEqual(margin.length, 1);

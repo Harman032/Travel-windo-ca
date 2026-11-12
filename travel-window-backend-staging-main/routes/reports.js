@@ -2,8 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
+const Supplier = require('../models/Supplier');
+const SupplierPayment = require('../models/SupplierPayment');
 const { inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
-const { buildRange } = require('../utils/tz');
+const { buildRange, TZ } = require('../utils/tz');
+const { buildStatement } = require('../utils/supplier-statement');
+const { COMPANY } = require('../utils/company');
 
 function getPaginationParams(req) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -182,90 +186,67 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
   }
 });
 
-// Report B: Payment to Suppliers (renamed from Unverified Payments).
-// The verification workflow moved to Verified Payments, which can now show the not-yet-verified
-// side of its own population. The content of this report is rebuilt as a per-supplier statement
-// in the next commit; this commit is the rename only, so the behaviour here is still the old one.
+// Report B: Payment to Suppliers — a per-supplier statement of what we owe.
+//
+// Replaces the old Unverified Payments report and the old Payment to Supplier report. Verification
+// is no longer part of this screen (it moved to Verified Payments); it is shown as a column here
+// and never used as a filter, because we owe a supplier from the moment a ticket is issued, not
+// from the moment our own accounts team ticks a box. Filtering by it would make our statement
+// disagree with the supplier's own for reasons they cannot see.
+//
+// Included: non-Draft bookings with a supplier id, by dateOfSubmission in the Toronto range.
+// Every line is returned; there is no paging, because a statement that stops at 50 rows is wrong.
 router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { paymentType, verificationType = 'original', supplierId, ticketStatus, dateFrom, dateTo } = req.query;
-    
-    const { skip, limit } = getPaginationParams(req);
-    
-    let query = {};
-    if (verificationType === 'cancellation') {
-      query = {
-        status: 'Cancelled',
-        cancellationVerified: { $ne: true }
-      };
-    } else if (verificationType === 'original') {
-      query = {
-        status: { $ne: 'Cancelled' },
-        adminVerified: { $ne: true },
-        accountVerified: { $ne: true }
-      };
-      
-      if (ticketStatus && ticketStatus !== 'all') {
-        query.status = ticketStatus;
-      }
-    } else {
-      query.$or = [
-        { status: 'Cancelled', cancellationVerified: { $ne: true } },
-        { status: { $ne: 'Cancelled' }, adminVerified: { $ne: true }, accountVerified: { $ne: true } }
-      ];
-      if (ticketStatus && ticketStatus !== 'all') {
-        // Only apply ticket status to the 'original' side or overall if it matches
-        query.status = ticketStatus;
-      }
+    const { supplier, dateFrom, dateTo } = req.query;
+
+    if (!supplier || supplier === 'all') {
+      return res.status(400).json({ message: 'A single supplier is required' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(supplier)) {
+      return res.status(400).json({ message: 'Invalid supplier id' });
     }
 
-    if (supplierId && supplierId !== 'all') {
-      query.supplier = supplierId;
-    }
+    const supplierDoc = await Supplier.findById(supplier).select('name').lean();
+    if (!supplierDoc) return res.status(404).json({ message: 'Supplier not found' });
 
-    const unverifiedRange = buildRange(dateFrom, dateTo);
-    if (unverifiedRange) query.dateOfSubmission = unverifiedRange;
+    const range = buildRange(dateFrom, dateTo);
 
-    const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
-    const rows = [];
-    
-    bookings.forEach(b => {
-      if (paymentType === 'card') {
-        if (!b.cardType || b.cardType.trim() === '') return;
-      } else if (paymentType === 'other') {
-        if (b.cardType && b.cardType.trim() !== '') return;
-      }
+    // Everything for this supplier, not just the range: lines before the range open become the
+    // opening balance, so the statement's arithmetic closes without a second mechanism.
+    const bookings = await Booking.find({
+      supplier,
+      status: { $ne: 'Draft' }
+    })
+      .select('pnr paxName dateOfSubmission travelDate from to sectorType multipleSectors airline ' +
+              'status ourCost supplierBookingCharge supplierUpdationCharge cancellation ' +
+              'dateChanges flightChanges seatBookChanges adminVerified accountVerified')
+      .lean();
 
-      if (b.payments && b.payments.length > 0) {
-        b.payments.forEach(p => {
-          const crdr = getCRDR(b);
-          rows.push({
-            bookingId: b.pnr,
-            _id: b._id,
-            passengerName: b.paxName,
-            salePrice: b.salePrice || 0,
-            paymentAmount: p.paidAmount,
-            paymentMode: p.paymentMode,
-            status: b.status,
-            supplierName: b.supplierName || 'N/A',
-            paymentFromCard: b.paymentFromCard || 0,
-            cardType: b.cardType || '',
-            cardLast4Digits: b.cardLast4Digits || '',
-            supplierCharges: b.supplierCharges || 0,
-            ourCost: b.ourCost || 0,
-            totalSupplierTook: b.cancellation?.totalSupplierTook || 0,
-            cancellation: b.cancellation || null,
-            crdr
-          });
-        });
-      }
+    const payments = await SupplierPayment.find({ supplier }).lean();
+
+    const statement = buildStatement(bookings, payments, range);
+
+    // Verification status per booking, shown as a column, never filtered on.
+    const verified = {};
+    for (const b of bookings) verified[String(b._id)] = !!(b.adminVerified || b.accountVerified);
+
+    res.json({
+      company: COMPANY,
+      supplierName: (supplierDoc.name || '').trim(),
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
+      generatedAt: new Date().toISOString(),
+      timezone: TZ,
+      verified,
+      ...statement
     });
-    
-    res.json(rows);
   } catch (error) {
+    console.error(`[${req.id}] GET /api/reports/payment-to-suppliers failed:`, error.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // Report C: Agent Margin Report (summary by agent)
 router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {

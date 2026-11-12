@@ -46,13 +46,19 @@ const SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
   ok('GET /reports/unverified-payments returns 404 (renamed)');
 
   console.log('\nsurviving routes');
-  for (const p of ['payment-to-suppliers', 'date-wise', 'employee-wise', 'pending-verification',
+  for (const p of ['date-wise', 'employee-wise', 'pending-verification',
                    'outstanding-balance', 'agent-margin', 'agent-booking-list',
                    'agent-margin-report', 'financial-summary', 'verified-payments']) {
     assert.strictEqual(await status(p), 200, `${p} must still answer`);
   }
-  ok('payment-to-suppliers answers on its new path');
   ok('the other nine reports are untouched');
+
+  // payment-to-suppliers is mounted but is a per-supplier statement: without a supplier it must
+  // 400, which is a different thing from the 404 of a deleted route. Its own behaviour is covered
+  // in tests/supplier-statement.test.js.
+  assert.strictEqual(await status('payment-to-suppliers'), 400,
+    'payment-to-suppliers is mounted (400 for a missing supplier), not deleted (404)');
+  ok('payment-to-suppliers answers on its new path');
 
   server.close();
   console.log(`\n${passed} assertions passed`);
