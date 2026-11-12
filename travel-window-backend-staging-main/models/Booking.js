@@ -338,6 +338,23 @@ const bookingSchema = new mongoose.Schema({
       type: String,
       enum: PAYMENT_MODES
     },
+    // These three are the INPUTS the cancellation engine was given, and they were missing from
+    // this schema while the cancel route wrote them. Mongoose silently drops unknown paths, so
+    // every cancellation lost them: 0 of 26 cancelled bookings in the staging copy has
+    // cancellationMode or airlineRefundAmount stored.
+    //
+    // The damage is not just a blank field. recalculateCancellationValues reads
+    // `c.cancellationMode === 'charges'` to pick which formula to run, so without it every
+    // recalculation silently falls into refund-amount mode with a refund of 0 — a different
+    // scenario family than the one the booking was cancelled under. Storing them makes a
+    // recalculation reproduce the original decision instead of inventing a new one.
+    cancellationMode: {
+      type: String,
+      enum: ['charges', 'refundAmount']
+    },
+    airlineRefundAmount: { type: Number, default: 0 },
+    // Engine output, kept so the stored figures can be audited without re-running the engine.
+    airlineDeducted: { type: Number, default: 0 },
     totalAmountPaidByClient: {
       type: Number,
       default: 0
