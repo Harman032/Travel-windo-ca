@@ -1,3 +1,4 @@
+import { TzDatePipe } from '../../utils/tz-date.pipe';
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule, RouterOutlet, NavigationEnd } from '@angular/router';
@@ -8,7 +9,7 @@ import { Subscription, filter } from 'rxjs';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, RouterModule, RouterOutlet, TzDatePipe],
   providers: [DatePipe],
   template: `
     <div class="min-h-screen bg-gray-50">
@@ -101,7 +102,7 @@ import { Subscription, filter } from 'rxjs';
                         <div class="flex-1 min-w-0">
                           <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
                           <p class="text-sm text-gray-600 mt-1">{{ notification.message }}</p>
-                          <p class="text-xs text-gray-400 mt-1">{{ notification.timestamp | date:'dd-MM-yyyy HH:mm' }}</p>
+                          <p class="text-xs text-gray-400 mt-1">{{ notification.timestamp | tzDate:'dd-MM-yyyy HH:mm' }}</p>
                         </div>
                         <button 
                           (click)="clearNotification(notification.id); $event.stopPropagation()"

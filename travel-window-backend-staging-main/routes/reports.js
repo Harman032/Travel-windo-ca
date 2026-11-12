@@ -2,7 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
-const { buildRange, inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
+const { inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
+const { buildRange } = require('../utils/tz');
 
 function getPaginationParams(req) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -68,18 +69,13 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
     }
     
     const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({
-      dateOfSubmission: {
-        $gte: new Date(dateFrom),
-        $lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999))
-      }
-    })
+    const bookings = await Booking.find({ dateOfSubmission: buildRange(dateFrom, dateTo) })
       .populate('submittedBy', 'name email')
       .populate('supplier', 'name')
       .sort({ dateOfSubmission: -1 })
       .skip(skip)
       .limit(limit);
-    
+
     const summary = {
       totalBookings: bookings.length,
       totalSalePrice: bookings.reduce((sum, b) => sum + b.totalSalePrice, 0),
@@ -151,12 +147,9 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
     if (employee && employee !== 'all') {
       query.submittedBy = employee;
     }
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-    }
-    
+    const employeeRange = buildRange(dateFrom, dateTo);
+    if (employeeRange) query.dateOfSubmission = employeeRange;
+
     const { skip, limit } = getPaginationParams(req);
     const bookings = await Booking.find(query)
       .populate('submittedBy', 'name email')
@@ -316,20 +309,8 @@ router.get('/unverified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (r
       query.supplier = supplierId;
     }
 
-    const dateFilter = {};
-    if (dateFrom) {
-      const start = new Date(dateFrom);
-      start.setHours(0, 0, 0, 0);
-      dateFilter.$gte = start;
-    }
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      dateFilter.$lte = end;
-    }
-    if (Object.keys(dateFilter).length > 0) {
-      query.dateOfSubmission = dateFilter;
-    }
+    const unverifiedRange = buildRange(dateFrom, dateTo);
+    if (unverifiedRange) query.dateOfSubmission = unverifiedRange;
 
     const bookings = await Booking.find(query).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
     const unverifiedPayments = [];
@@ -633,13 +614,9 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     }
 
     const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({
-      dateOfSubmission: {
-        $gte: new Date(dateFrom),
-        $lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999))
-      }
-      // Include all statuses including Cancelled
-    }).sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
+    // Include all statuses including Cancelled
+    const bookings = await Booking.find({ dateOfSubmission: buildRange(dateFrom, dateTo) })
+      .sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
 
     const rows = bookings.map(b => ({
       _id: b._id,
@@ -701,15 +678,8 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       ];
     }
 
-    if (dateFrom || dateTo) {
-      matchQuery.dateOfSubmission = {};
-      if (dateFrom) matchQuery.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) {
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        matchQuery.dateOfSubmission.$lte = endOfDay;
-      }
-    }
+    const verifiedRange = buildRange(dateFrom, dateTo);
+    if (verifiedRange) matchQuery.dateOfSubmission = verifiedRange;
 
     if (agent && agent !== 'all') {
       try {

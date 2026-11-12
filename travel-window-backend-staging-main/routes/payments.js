@@ -1,6 +1,7 @@
 const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
+const { buildRange, inRange } = require('../utils/tz');
 
 const router = express.Router();
 
@@ -16,15 +17,9 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
     if (pnr && pnr.trim()) {
       filter.pnr = new RegExp(pnr.trim(), 'i');
     }
-    if (startDate || endDate) {
-      filter['payments.paymentDate'] = {};
-      if (startDate) filter['payments.paymentDate'].$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        filter['payments.paymentDate'].$lte = end;
-      }
-    }
+    // Toronto whole days, same boundaries as the in-memory re-filter below.
+    const range = buildRange(startDate, endDate);
+    if (range) filter['payments.paymentDate'] = range;
     if (paymentMode && paymentMode !== 'All Modes' && paymentMode.trim()) {
       filter['payments.paymentMode'] = paymentMode.trim();
     }
@@ -39,12 +34,9 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
       const addedBy = b.submittedByName || '—';
       for (const p of b.payments) {
         if (paymentMode && paymentMode !== 'All Modes' && paymentMode.trim() && p.paymentMode !== paymentMode.trim()) continue;
-        if (startDate && new Date(p.paymentDate) < new Date(startDate)) continue;
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (new Date(p.paymentDate) > end) continue;
-        }
+        // The Mongo filter above matches a BOOKING that has any payment in range; each payment
+        // row still has to be tested individually, against the same range.
+        if (!inRange(p.paymentDate, range)) continue;
         rows.push({
           date: p.paymentDate,
           bookingPnr: b.pnr,

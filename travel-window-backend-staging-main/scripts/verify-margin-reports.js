@@ -28,7 +28,7 @@ if (!uri || decodeURIComponent(dbNameOf(uri)) !== ALLOWED_DB) {
 
 const Booking = require('../models/Booking');
 const User = require('../models/User');
-const { buildRange, inRange, REPORT_TZ } = require('../utils/margin-split');
+const { buildRange, inRange, TZ } = require('../utils/tz');
 
 const round2 = n => Math.round(n * 100) / 100;
 const show = (label, v) => console.log(`${label}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);
@@ -142,7 +142,7 @@ async function allPages(api, endpoint, params) {
 }
 
 async function step3(api, awth) {
-  console.log('\n===== STEP 3: reports via real Mongo queries (timezone ' + REPORT_TZ + ') =====');
+  console.log('\n===== STEP 3: reports via real Mongo queries (timezone ' + TZ + ') =====');
   const ranges = [
     ['12-09-2026 to 12-09-2026', { dateFrom: '2026-09-12', dateTo: '2026-09-12' }],
     ['12-04-2026 to 12-04-2026', { dateFrom: '2026-04-12', dateTo: '2026-04-12' }],

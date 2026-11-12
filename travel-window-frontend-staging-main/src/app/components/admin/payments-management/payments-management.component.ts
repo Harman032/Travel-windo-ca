@@ -1,3 +1,4 @@
+import { TzDatePipe } from '../../../utils/tz-date.pipe';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
 @Component({
   selector: 'app-payments-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, TzDatePipe],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-title-card">
@@ -143,7 +144,7 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
                 <td colspan="7" class="px-6 py-8 text-center text-gray-500">No payments found.</td>
               </tr>
               <tr *ngFor="let p of payments" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.date | date:'dd-MM-yyyy' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.date | tzDate:'dd-MM-yyyy' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">
                   <div class="flex items-center gap-1">
                     <a [routerLink]="['/dashboard/bookings', p.bookingId]" class="hover:underline">{{ p.bookingPnr }}</a>

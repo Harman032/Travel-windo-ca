@@ -1,3 +1,5 @@
+import { TzDatePipe } from '../../../utils/tz-date.pipe';
+import { todayInTz, toDateInputValue, isPastDay } from '../../../utils/tz';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
@@ -11,7 +13,7 @@ import { ToastrService } from 'ngx-toastr';
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, TzDatePipe],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-title-card flex justify-between items-center">
@@ -93,7 +95,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Date of Submission</label>
-              <p class="text-gray-900">{{ booking.dateOfSubmission | date:'dd-MM-yyyy HH:mm' }}</p>
+              <p class="text-gray-900">{{ booking.dateOfSubmission | tzDate:'dd-MM-yyyy HH:mm' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Submitted By</label>
@@ -113,11 +115,11 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Travel Date</label>
-              <p class="text-gray-900">{{ booking.travelDate | date:'dd-MM-yyyy' }}</p>
+              <p class="text-gray-900">{{ booking.travelDate | tzDate:'dd-MM-yyyy' }}</p>
             </div>
             <div *ngIf="booking.returnDate">
               <label class="block text-sm font-medium text-gray-500 mb-1">Return Date</label>
-              <p class="text-gray-900">{{ booking.returnDate | date:'dd-MM-yyyy' }}</p>
+              <p class="text-gray-900">{{ booking.returnDate | tzDate:'dd-MM-yyyy' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Route</label>
@@ -199,7 +201,7 @@ import { ToastrService } from 'ngx-toastr';
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr *ngFor="let sector of booking.multipleSectors">
-                    <td class="px-4 py-2 text-sm">{{ sector.travelDate | date:'dd-MM-yyyy' }}</td>
+                    <td class="px-4 py-2 text-sm">{{ sector.travelDate | tzDate:'dd-MM-yyyy' }}</td>
                     <td class="px-4 py-2 text-sm">{{ sector.from }}</td>
                     <td class="px-4 py-2 text-sm">{{ sector.to }}</td>
                   </tr>
@@ -223,7 +225,7 @@ import { ToastrService } from 'ngx-toastr';
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr *ngFor="let payment of booking.payments">
-                    <td class="px-4 py-2 text-sm">{{ payment.paymentDate | date:'dd-MM-yyyy' }}</td>
+                    <td class="px-4 py-2 text-sm">{{ payment.paymentDate | tzDate:'dd-MM-yyyy' }}</td>
                     <td class="px-4 py-2 text-sm">{{ payment.paidAmount | number:'1.2-2' }}</td>
                     <td class="px-4 py-2 text-sm">
                       {{ payment.paymentMode }}
@@ -444,7 +446,7 @@ import { ToastrService } from 'ngx-toastr';
                 <p class="font-semibold text-green-800">Cancellation Verified</p>
                 <p class="text-sm text-green-600">
                   <ng-container *ngIf="booking.cancellationVerifiedBy?.name">Verified by {{ booking.cancellationVerifiedBy?.name }}</ng-container>
-                  <ng-container *ngIf="booking.cancellationVerifiedAt"> at {{ booking.cancellationVerifiedAt | date:'medium' }}</ng-container>
+                  <ng-container *ngIf="booking.cancellationVerifiedAt"> at {{ booking.cancellationVerifiedAt | tzDate:'medium' }}</ng-container>
                 </p>
               </div>
             </div>
@@ -479,7 +481,7 @@ import { ToastrService } from 'ngx-toastr';
             </div>
             <div *ngIf="booking.cancellation.upfrontCollection?.collectionDate">
               <label class="block text-sm font-medium text-gray-500 mb-1">Collection Date</label>
-              <p class="text-gray-900">{{ booking.cancellation.upfrontCollection?.collectionDate | date:'dd-MM-yyyy' }}</p>
+              <p class="text-gray-900">{{ booking.cancellation.upfrontCollection?.collectionDate | tzDate:'dd-MM-yyyy' }}</p>
             </div>
             <div *ngIf="booking.cancellation.upfrontCollection?.paymentMode">
               <label class="block text-sm font-medium text-gray-500 mb-1">Payment Mode</label>
@@ -505,9 +507,9 @@ import { ToastrService } from 'ngx-toastr';
           <div class="mb-4 p-3 bg-gray-100 rounded border border-gray-200">
             <p class="text-sm font-medium text-gray-600 mb-1">Old Travel Date &amp; Old Return Date (not editable)</p>
             <p class="text-gray-900">
-              <span class="font-semibold">Travel:</span> {{ booking.travelDate | date:'dd-MM-yyyy' }}
+              <span class="font-semibold">Travel:</span> {{ booking.travelDate | tzDate:'dd-MM-yyyy' }}
               <span class="mx-2">|</span>
-              <span class="font-semibold">Return:</span> {{ booking.returnDate ? (booking.returnDate | date:'dd-MM-yyyy') : 'N/A' }}
+              <span class="font-semibold">Return:</span> {{ booking.returnDate ? (booking.returnDate | tzDate:'dd-MM-yyyy') : 'N/A' }}
             </p>
           </div>
           <!-- Original (read-only) -->
@@ -775,7 +777,7 @@ import { ToastrService } from 'ngx-toastr';
               <div class="flex-1">
                 <p class="font-medium text-gray-800 mb-2">Refund Received from Supplier</p>
                 <div *ngIf="booking.cancellation?.refundReceivedFromSupplier?.date" class="text-sm text-gray-600 mb-2">
-                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundReceivedFromSupplier.date | date:'dd-MM-yyyy' }}
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundReceivedFromSupplier.date | tzDate:'dd-MM-yyyy' }}
                   <span *ngIf="booking.cancellation.refundReceivedFromSupplier.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundReceivedFromSupplier.remarks }}</span>
                 </div>
                 <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -802,7 +804,7 @@ import { ToastrService } from 'ngx-toastr';
               <div class="flex-1">
                 <p class="font-medium text-gray-800 mb-2">Refund Paid to Client</p>
                 <div *ngIf="booking.cancellation?.refundPaidToClient?.date" class="text-sm text-gray-600 mb-2">
-                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundPaidToClient.date | date:'dd-MM-yyyy' }}
+                  <span class="font-medium">Date:</span> {{ booking.cancellation.refundPaidToClient.date | tzDate:'dd-MM-yyyy' }}
                   <span *ngIf="booking.cancellation.refundPaidToClient.remarks" class="ml-4"><span class="font-medium">Remarks:</span> {{ booking.cancellation.refundPaidToClient.remarks }}</span>
                 </div>
                 <div *ngIf="isAdmin() || isAccount()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -848,7 +850,7 @@ import { ToastrService } from 'ngx-toastr';
                     <span class="font-semibold text-gray-900">{{ history.action }}</span>
                     <span class="text-xs text-gray-400">·</span>
                     <span class="text-sm text-gray-600">{{ history.performedByName }}</span>
-                    <span class="text-xs text-gray-400">{{ history.timestamp | date:'dd-MM-yyyy HH:mm' }}</span>
+                    <span class="text-xs text-gray-400">{{ history.timestamp | tzDate:'dd-MM-yyyy HH:mm' }}</span>
                   </div>
                   <p *ngIf="history.remarks" class="text-sm text-gray-600 mt-2 pl-1 border-l-2 border-gray-200">{{ history.remarks }}</p>
                   <!-- Old → New -->
@@ -1029,7 +1031,7 @@ export class BookingDetailComponent implements OnInit {
     this.dateChangePaymentsArray.push(this.fb.group({
       paidAmount: [0],
       paymentMode: ['Cash'],
-      paymentDate: [new Date().toISOString().split('T')[0]],
+      paymentDate: [todayInTz()],
       referenceNo: ['']
     }));
   }
@@ -1046,7 +1048,7 @@ export class BookingDetailComponent implements OnInit {
     this.flightChangePaymentsArray.push(this.fb.group({
       paidAmount: [0],
       paymentMode: ['Cash'],
-      paymentDate: [new Date().toISOString().split('T')[0]],
+      paymentDate: [todayInTz()],
       referenceNo: ['']
     }));
   }
@@ -1055,58 +1057,36 @@ export class BookingDetailComponent implements OnInit {
     this.flightChangePaymentsArray.removeAt(i);
   }
 
-  /** True if travel date is before today (checkboxes only if not past per spec) */
+  /** True if travel date is before today in Toronto (checkboxes only if not past per spec) */
   isTravelDatePast(): boolean {
     if (!this.booking?.travelDate) return false;
-    const t = new Date(this.booking.travelDate);
-    t.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return t < today;
+    return isPastDay(this.booking.travelDate);
   }
 
-  /** True if return date is before today */
+  /** True if return date is before today in Toronto */
   isReturnDatePast(): boolean {
     if (!this.booking?.returnDate) return true;
-    const t = new Date(this.booking.returnDate);
-    t.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return t < today;
+    return isPastDay(this.booking.returnDate);
   }
 
-  /** Min date for Date Change new travel date = today (local) */
+  /** Min date for Date Change new travel date = today in Toronto */
   get minDateChangeTravelDate(): string {
-    const d = new Date();
-    const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-    return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return todayInTz();
   }
 
   /** Min date for Date Change new return date = new travel date (if set) or today */
   get minDateChangeReturnDate(): string {
-    const t = this.dateChangeForm?.get('newTravelDate')?.value;
-    if (t) {
-      const s = typeof t === 'string' ? t : (t instanceof Date ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` : '');
-      if (s) return s;
-    }
-    return this.minDateChangeTravelDate;
+    return toDateInputValue(this.dateChangeForm?.get('newTravelDate')?.value) || this.minDateChangeTravelDate;
   }
 
-  /** Min date for Flight Change travel date = today (local); past dates not selectable */
+  /** Min date for Flight Change travel date = today in Toronto; past dates not selectable */
   get minFlightChangeTravelDate(): string {
-    const d = new Date();
-    const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-    return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return todayInTz();
   }
 
   /** Min date for Flight Change return date = selected travel date or today */
   get minFlightChangeReturnDate(): string {
-    const t = this.flightChangeForm?.get('travelDate')?.value;
-    if (t) {
-      const s = typeof t === 'string' ? t : (t instanceof Date ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` : '');
-      if (s) return s;
-    }
-    return this.minFlightChangeTravelDate;
+    return toDateInputValue(this.flightChangeForm?.get('travelDate')?.value) || this.minFlightChangeTravelDate;
   }
 
   ngOnInit() {
@@ -1246,11 +1226,11 @@ export class BookingDetailComponent implements OnInit {
       // Pre-fill refund status fields from existing data
       const c = this.booking.cancellation;
       if (c?.refundReceivedFromSupplier?.date) {
-        this.refundReceivedDate = new Date(c.refundReceivedFromSupplier.date).toISOString().split('T')[0];
+        this.refundReceivedDate = toDateInputValue(c.refundReceivedFromSupplier.date);
         this.refundReceivedRemarks = c.refundReceivedFromSupplier.remarks || '';
       }
       if (c?.refundPaidToClient?.date) {
-        this.refundPaidDate = new Date(c.refundPaidToClient.date).toISOString().split('T')[0];
+        this.refundPaidDate = toDateInputValue(c.refundPaidToClient.date);
         this.refundPaidRemarks = c.refundPaidToClient.remarks || '';
       }
     }
@@ -1515,11 +1495,10 @@ export class BookingDetailComponent implements OnInit {
 
   private formatDate(v: any): string {
     if (!v) return '–';
-    const d = typeof v === 'string' ? new Date(v) : v;
-    if (!(d instanceof Date) || isNaN(d.getTime())) return String(v);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
+    // Toronto, same zone and same dd-MM-yyyy shape as the tzDate pipe used in the template.
+    const iso = toDateInputValue(v);
+    if (!iso) return String(v);
+    const [year, month, day] = iso.split('-');
     return `${day}-${month}-${year}`;
   }
 
@@ -2200,7 +2179,7 @@ export class BookingDetailComponent implements OnInit {
     const uc = this.booking?.cancellation?.upfrontCollection;
     this.upfrontCollectionForm.patchValue({
       amountCollected: uc?.amountCollected || 0,
-      collectionDate: uc?.collectionDate ? new Date(uc.collectionDate).toISOString().split('T')[0] : '',
+      collectionDate: toDateInputValue(uc?.collectionDate),
       paymentMode: uc?.paymentMode || '',
       remarks: uc?.remarks || ''
     });

@@ -1,3 +1,5 @@
+import { TzDatePipe } from '../../../utils/tz-date.pipe';
+import { todayInTz, toDateInputValue } from '../../../utils/tz';
 import { Component, OnInit, HostListener, ElementRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
@@ -11,7 +13,7 @@ import { ToastrService } from 'ngx-toastr';
 @Component({
   selector: 'app-new-booking',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, TzDatePipe],
   template: `
     <div class="max-w-6xl mx-auto">
       <div class="page-title-card">
@@ -25,7 +27,7 @@ import { ToastrService } from 'ngx-toastr';
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Date of Submission</label>
-              <input type="text" [value]="bookingForm.get('dateOfSubmission')?.value | date:'dd-MM-yyyy'" class="input bg-gray-100" readonly />
+              <input type="text" [value]="bookingForm.get('dateOfSubmission')?.value | tzDate:'dd-MM-yyyy'" class="input bg-gray-100" readonly />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Submitted By</label>
@@ -753,21 +755,14 @@ export class NewBookingComponent implements OnInit {
     return this.totalSalePrice - this.totalPaidAmount;
   }
 
-  /** Min date for Travel Date = today in local timezone (cannot select past date in new booking) */
+  /** Min date for Travel Date = today in Toronto (cannot select a past date in a new booking) */
   get minTravelDate(): string {
-    const d = new Date();
-    const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-    return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return todayInTz();
   }
 
-  /** Min date for Return Date = selected travel date or today (local) */
+  /** Min date for Return Date = selected travel date, or today in Toronto */
   get minReturnDate(): string {
-    const t = this.bookingForm.get('travelDate')?.value;
-    if (t) {
-      const s = typeof t === 'string' ? t : (t instanceof Date ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` : '');
-      return s || this.minTravelDate;
-    }
-    return this.minTravelDate;
+    return toDateInputValue(this.bookingForm.get('travelDate')?.value) || this.minTravelDate;
   }
 
   onSubmit() {
@@ -919,14 +914,11 @@ export class NewBookingComponent implements OnInit {
     return { countryCode: '+91', localNumber: trimmed };
   }
 
-  /** Convert Date/ISO/date-string to yyyy-mm-dd for date inputs without local timezone shifts. */
+  /**
+   * Convert Date/ISO/date-string to yyyy-mm-dd for date inputs, in Toronto.
+   * Reads the same zone as the display pipe, so the picker and the table never disagree.
+   */
   toDateInputValue(value: any): string {
-    if (!value) return '';
-    const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d.getTime())) return '';
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return toDateInputValue(value);
   }
 }

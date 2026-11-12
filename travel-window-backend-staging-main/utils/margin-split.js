@@ -2,57 +2,9 @@
 
 const CHANGE_FIELDS = ['dateChanges', 'flightChanges', 'seatBookChanges'];
 
-// Business timezone the report dates are read in. Dates are stored in UTC and shown in each
-// viewer's browser timezone, so report day boundaries need one fixed zone to agree with the client.
-const REPORT_TZ = process.env.REPORT_TIMEZONE || 'America/Toronto';
-
-// Milliseconds the zone is ahead of UTC at the given instant.
-function tzOffsetMs(utcMs, tz) {
-  const p = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: 'numeric', second: 'numeric'
-    }).formatToParts(new Date(utcMs)).map(x => [x.type, Number(x.value)])
-  );
-  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(utcMs / 1000) * 1000;
-}
-
-// UTC instant of a wall-clock time in `tz` (iterates once to settle DST edges).
-function zonedToUtc(y, m, d, h, mi, s, ms, tz) {
-  const wall = Date.UTC(y, m - 1, d, h, mi, s, ms);
-  let utc = wall - tzOffsetMs(wall, tz);
-  utc = wall - tzOffsetMs(utc, tz);
-  return new Date(utc);
-}
-
-const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-// { $gte, $lte } for a report's dateFrom/dateTo, or null when no range was given.
-// Date-only values (YYYY-MM-DD) span the whole day in the business timezone; anything else
-// falls back to the previous behaviour. dateTo is inclusive of the whole day.
-function buildRange(dateFrom, dateTo, tz = REPORT_TZ) {
-  if (!dateFrom && !dateTo) return null;
-  const range = {};
-  if (dateFrom) {
-    const m = DATE_ONLY.exec(String(dateFrom).trim());
-    range.$gte = m ? zonedToUtc(+m[1], +m[2], +m[3], 0, 0, 0, 0, tz) : new Date(dateFrom);
-  }
-  if (dateTo) {
-    const m = DATE_ONLY.exec(String(dateTo).trim());
-    range.$lte = m ? zonedToUtc(+m[1], +m[2], +m[3], 23, 59, 59, 999, tz) : new Date(new Date(dateTo).setHours(23, 59, 59, 999));
-  }
-  return range;
-}
-
-function inRange(date, range) {
-  if (!range) return true;
-  if (!date) return false;
-  const t = new Date(date).getTime();
-  if (Number.isNaN(t)) return false;
-  if (range.$gte && t < range.$gte.getTime()) return false;
-  if (range.$lte && t > range.$lte.getTime()) return false;
-  return true;
-}
+// Day boundaries live in utils/tz.js, which every date filter in the app now shares.
+// Re-exported here so the report routes that already import buildRange need no change.
+const { TZ, buildRange, inRange } = require('./tz');
 
 // Mongo conditions matching a booking that has any modification inside the range.
 function changeRangeConditions(range) {
@@ -96,4 +48,4 @@ function getSplitSummary(booking, range) {
   return summary;
 }
 
-module.exports = { buildRange, inRange, changeRangeConditions, getSplitSummary, REPORT_TZ };
+module.exports = { buildRange, inRange, changeRangeConditions, getSplitSummary };

@@ -1,3 +1,4 @@
+import { TzDatePipe } from '../../../utils/tz-date.pipe';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -8,7 +9,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TzDatePipe],
   template: `
     <div class="max-w-7xl mx-auto space-y-6">
       <div class="page-title-card">
@@ -133,7 +134,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
               >
                 <p class="text-sm font-medium text-gray-900">{{ n.title }}</p>
                 <p class="text-xs text-gray-600 mt-0.5">{{ n.message }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ n.timestamp | date:'dd-MM-yyyy HH:mm' }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ n.timestamp | tzDate:'dd-MM-yyyy HH:mm' }}</p>
               </a>
             </ng-container>
             <ng-template #noNotifications>
@@ -179,7 +180,7 @@ import { NotificationService, Notification } from '../../../services/notificatio
                     <span *ngIf="a.pnr"> · PNR {{ a.pnr }}</span>
                     <span *ngIf="a.remarks"> · {{ a.remarks }}</span>
                   </p>
-                  <p class="text-xs text-gray-400 mt-0.5">{{ a.timestamp | date:'dd-MM-yyyy HH:mm' }}</p>
+                  <p class="text-xs text-gray-400 mt-0.5">{{ a.timestamp | tzDate:'dd-MM-yyyy HH:mm' }}</p>
                   <a [routerLink]="['/dashboard/bookings', a.bookingId]" class="text-xs text-[#0096D2] hover:underline">View booking</a>
                 </div>
               </div>

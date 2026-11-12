@@ -1,3 +1,5 @@
+import { TzDatePipe } from '../../utils/tz-date.pipe';
+import { todayInTz } from '../../utils/tz';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -12,7 +14,7 @@ import { ToastrService } from 'ngx-toastr';
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, TzDatePipe],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-title-card">
@@ -334,7 +336,7 @@ import { ToastrService } from 'ngx-toastr';
                 <td class="px-4 py-2 text-sm">
                   <span class="badge" [ngClass]="getStatusClass(booking.status)">{{ booking.status }}</span>
                 </td>
-                <td class="px-4 py-2 text-sm">{{ booking.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
+                <td class="px-4 py-2 text-sm">{{ booking.dateOfSubmission | tzDate:'dd-MM-yyyy' }}</td>
               </tr>
             </tbody>
           </table>
@@ -393,7 +395,7 @@ import { ToastrService } from 'ngx-toastr';
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let item of paymentSupplierData">
-                <td class="px-4 py-2 text-sm">{{ item.date | date:'dd-MM-yyyy' }}</td>
+                <td class="px-4 py-2 text-sm">{{ item.date | tzDate:'dd-MM-yyyy' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.supplierName }}</td>
                 <td class="px-4 py-2 text-sm text-blue-600">{{ item.paymentPaid | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ item.totalBookingCost | number:'1.2-2' }}</td>
@@ -619,7 +621,7 @@ import { ToastrService } from 'ngx-toastr';
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngFor="let b of verifiedPaymentsData.bookings">
-                <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | tzDate:'dd-MM-yyyy' }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.submittedBy?.name }}</td>
@@ -629,7 +631,7 @@ import { ToastrService } from 'ngx-toastr';
                 <td class="px-4 py-2 text-sm font-bold text-green-700">{{ (b.totalSalePrice - b.ourCost - b.supplierCharges) | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.payments && b.payments.length > 0 ? b.payments[0].referenceNo : '-' }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminUser?.name }}</td>
-                <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminDate | date:'dd-MM-yyyy' }}</td>
+                <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminDate | tzDate:'dd-MM-yyyy' }}</td>
               </tr>
               <tr *ngIf="verifiedPaymentsData.bookings.length === 0">
                 <td colspan="11" class="px-4 py-8 text-center text-gray-500">No verified payments found for the selected filters.</td>
@@ -693,9 +695,9 @@ import { ToastrService } from 'ngx-toastr';
             <tr *ngFor="let b of agentBookingListData.bookings">
               <td class="px-4 py-2 text-sm">{{ b.pnr }}</td>
               <td class="px-4 py-2 text-sm">{{ b.paxName }}</td>
-              <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | date:'dd-MM-yyyy' }}</td>
-              <td class="px-4 py-2 text-sm">{{ b.travelDate | date:'dd-MM-yyyy' }}</td>
-              <td class="px-4 py-2 text-sm">{{ b.returnDate ? (b.returnDate | date:'dd-MM-yyyy') : '-' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.dateOfSubmission | tzDate:'dd-MM-yyyy' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.travelDate | tzDate:'dd-MM-yyyy' }}</td>
+              <td class="px-4 py-2 text-sm">{{ b.returnDate ? (b.returnDate | tzDate:'dd-MM-yyyy') : '-' }}</td>
             </tr>
           </tbody>
         </table></div>
@@ -792,7 +794,9 @@ export class ReportsComponent implements OnInit {
   unverifiedTicketStatus: string = 'all';
   unverifiedDateFrom: string = '';
   unverifiedDateTo: string = '';
-  today = new Date().toISOString().split('T')[0];
+  // Toronto's today, not UTC's. The old `toISOString()` form was already tomorrow between
+  // 20:00 and midnight Toronto, so every report's date picker allowed a day that had not started.
+  today = todayInTz();
 
   dateWiseForm: FormGroup;
   supplierWiseForm: FormGroup;

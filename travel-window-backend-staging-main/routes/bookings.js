@@ -7,6 +7,7 @@ const User = require('../models/User');
 const { validateFinancialFields } = require('../utils/validate-financial');
 const { resolvePagination } = require('../utils/pagination');
 const { safeSearchTerm } = require('../utils/search-safety');
+const { buildRange, startOfDayTz, startOfTodayTz } = require('../utils/tz');
 
 const router = express.Router();
 
@@ -289,12 +290,11 @@ router.get('/', auth, async (req, res) => {
       query.contactNumber = { $regex: safeContact, $options: 'i' };
     }
     
-    if (dateFrom || dateTo) {
-      query.dateOfSubmission = {};
-      if (dateFrom) query.dateOfSubmission.$gte = new Date(dateFrom);
-      if (dateTo) query.dateOfSubmission.$lte = new Date(dateTo);
-    }
-    
+    // Toronto whole days. The old code set $lte to UTC midnight of dateTo, which excluded every
+    // booking submitted on the last day of the range.
+    const submissionRange = buildRange(dateFrom, dateTo);
+    if (submissionRange) query.dateOfSubmission = submissionRange;
+
     // Account: filter by verified (Verified / Unverified)
     if (req.user.role === 'ACCOUNT' && req.query.verified) {
       const v = req.query.verified;
@@ -870,18 +870,10 @@ router.post('/:id/date-change', auth, async (req, res) => {
       return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
     }
 
-    // Check if dates are in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const oldTravelDate = new Date(booking.travelDate);
-    oldTravelDate.setHours(0, 0, 0, 0);
-    
-    const oldReturnDate = booking.returnDate ? new Date(booking.returnDate) : null;
-    if (oldReturnDate) {
-      oldReturnDate.setHours(0, 0, 0, 0);
-    }
-    
+    // Check if dates are in the past, measured in Toronto days (not the server's zone).
+    const today = startOfTodayTz();
+    const oldTravelDate = startOfDayTz(booking.travelDate);
+
     if (oldTravelDate < today) {
       if (!changeTravelDate && !changeReturnDate) {
         return res.status(400).json({ message: 'Please select which date(s) to change' });
