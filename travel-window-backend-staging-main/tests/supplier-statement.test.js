@@ -9,7 +9,7 @@ if (tzArg !== -1 && process.argv[tzArg + 1]) process.env.TZ = process.argv[tzArg
 
 const assert = require('assert');
 const mongoose = require('mongoose');
-const { buildStatement, bookingLines, buildItinerary, r2 } = require('../utils/supplier-statement');
+const { buildStatement, bookingLines, buildItinerary, vendorLabel, CARD_FEE_CEILING, r2 } = require('../utils/supplier-statement');
 const { buildRange } = require('../utils/tz');
 
 let passed = 0;
@@ -221,6 +221,142 @@ console.log('\nToronto day boundaries');
   assert.strictEqual(st.openingBalance, 0, 'no range means no opening balance');
   assert.strictEqual(st.totals.totalOpen, 100);
   ok('with no date range the whole history is the statement');
+}
+
+console.log('\nfare basis: what we owe is ourCost MINUS paymentFromCard');
+
+{
+  const lines = bookingLines(booking({ ourCost: 2412.42, paymentFromCard: 2407.42, cardType: 'Company Card' }));
+  const fare = lines.find(l => l.kind === 'fare');
+  assert.strictEqual(fare.fare, 5,
+    'the card paid the airline; only the service charge is owed to the supplier');
+  ok('a card-paid booking owes ourCost - paymentFromCard, not ourCost');
+  assert.strictEqual(fare.vendor, 'Svc fee');
+  ok('a small positive card-paid net is labelled Svc fee, not the airline');
+}
+
+{
+  // 242Z6X in the staging copy: the card paid 2350.00 against a cost of 2264.12.
+  const lines = bookingLines(booking({ ourCost: 2264.12, paymentFromCard: 2350, cardType: 'Client Card' }));
+  const fare = lines.find(l => l.kind === 'fare');
+  assert.strictEqual(fare.fare, -85.88,
+    'NOT floored at zero: a card can pay more than our cost, and that is a real credit');
+  ok('a negative net is kept as a credit, matching the PDF exactly (-85.88)');
+  assert.strictEqual(fare.vendor, 'Discount/Adjustments');
+  ok('a negative card-paid net is labelled Discount/Adjustments');
+}
+
+{
+  // ABJOLI: a genuine fare on a client card, three orders of magnitude above any service net.
+  const lines = bookingLines(booking({ ourCost: 26904.48, paymentFromCard: 19260, cardType: 'Client Card', airline: 'EK' }));
+  const fare = lines.find(l => l.kind === 'fare');
+  assert.strictEqual(fare.fare, 7644.48);
+  assert.strictEqual(fare.vendor, 'EK', 'above the ceiling it is a fare, so the airline is right');
+  ok('a large card-paid net keeps the airline label');
+}
+
+{
+  assert.strictEqual(vendorLabel({ paymentFromCard: 0, airline: 'AC' }, 1000), 'AC');
+  assert.strictEqual(vendorLabel({ paymentFromCard: 0, airline: 'AC' }, -50), 'AC',
+    'a NON-card booking keeps the airline whatever the sign');
+  ok('the label rule only applies to card-paid bookings');
+
+  assert.strictEqual(vendorLabel({ paymentFromCard: 100, airline: 'AC' }, CARD_FEE_CEILING), 'Svc fee');
+  assert.strictEqual(vendorLabel({ paymentFromCard: 100, airline: 'AC' }, CARD_FEE_CEILING + 0.01), 'AC');
+  ok('the ceiling is inclusive, and above it the airline returns');
+
+  assert.strictEqual(vendorLabel({ paymentFromCard: 100, airline: 'AC' }, 0), 'AC',
+    'a zero net is neither a fee nor a discount');
+  ok('a zero card-paid net falls through to the airline');
+}
+
+{
+  const lines = bookingLines(booking({ ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card' }));
+  assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 0);
+  assert.strictEqual(lines.filter(l => l.kind === 'fare').length, 1,
+    'a 0.00 line is still emitted so the PNR appears on the statement');
+  ok('a fully card-paid booking shows a 0.00 line rather than vanishing');
+}
+
+{
+  const lines = bookingLines(booking({ pnr: '  BL3WQY /2GOQXJ ', ourCost: 100 }));
+  assert.strictEqual(lines[0].invoiceNo, 'BL3WQY /2GOQXJ');
+  assert.strictEqual(lines[0].ticketNo, 'BL3WQY /2GOQXJ');
+  ok('the PNR is trimmed for display (80 stored PNRs carry stray whitespace)');
+}
+
+{
+  // The fee fields are separate from ourCost, so they are still additive on a card-paid booking.
+  const lines = bookingLines(booking({ ourCost: 1000, paymentFromCard: 995, supplierBookingCharge: 20 }));
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 25);
+  ok('supplier fees stay additive on a card-paid booking: 5 net + 20 fee');
+}
+
+console.log('\ncancelled AND card-paid: a supplier cannot return money they never held');
+
+{
+  // BEBGWI in the copy: card paid the lot, supplier kept a 25.00 fee, engine says they would
+  // return 1582.52 — which is the airline's money, refunded to the card, not to us.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card',
+    cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'cancelCredit').length, 0,
+    'net is 0, so there is nothing for the supplier to give back');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 0);
+  ok('Company Card, net 0: no invented 1,582.52 credit, booking nets 0.00');
+}
+
+{
+  // CNOOMG shape: the supplier held 5.00 and kept none of it.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1933.42, paymentFromCard: 1928.42, cardType: 'Company Card',
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 1480,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  const credit = lines.find(l => l.kind === 'cancelCredit');
+  assert.strictEqual(credit.fare, -5, 'capped at the 5.00 the supplier actually held');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 0);
+  ok('Company Card, net 5.00: the credit is capped at 5.00, booking nets 0.00');
+}
+
+{
+  // Client Card, same rule. Does not occur among the copy's cancelled bookings, so synthetic.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 3000, paymentFromCard: 2900, cardType: 'Client Card',
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 2500,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -100);
+  ok('Client Card behaves identically: the cap is the money, not the card brand');
+}
+
+{
+  // The other direction: the card overpaid, so the net is a credit and there is nothing to cap.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1200, cardType: 'Client Card',
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 800,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'cancelCredit').length, 0,
+    'max(0, net) is 0, so no credit line');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), -200,
+    'the booking is a net credit of 200, from the overpayment alone');
+  ok('Client Card with a negative net: no credit line, the booking is already a credit');
+}
+
+{
+  // The cap must NOT touch a non-card cancellation, including the scenarios where
+  // supplierWillReturn legitimately exceeds ourCost.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 800, paymentFromCard: 0,
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 950,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -950,
+    'uncapped: scenarios 3 and 5 can return more than ourCost, and that must not change');
+  ok('a non-card cancellation is never capped, so existing behaviour is untouched');
 }
 
 console.log('\nSupplierPayment record');

@@ -26,6 +26,35 @@ const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
  */
 
 const SVC_FEE_LABEL = 'Svc fee';
+const DISCOUNT_LABEL = 'Discount/Adjustments';
+
+/**
+ * A card-paid booking whose net is at or below this is a service charge, not a fare, so its line
+ * is labelled "Svc fee". Derived from the data, not guessed: across the SKYBIRDS week every
+ * card-paid service net is between 5.00 and 25.00, while the one card-paid booking that is a real
+ * fare nets 7,644.48. Three orders of magnitude separate the two groups, so the exact threshold
+ * does not matter — it only has to sit in the gap.
+ *
+ * This is a LABEL ONLY. It never changes a line's amount or any total.
+ */
+const CARD_FEE_CEILING = 100;
+
+/**
+ * What goes in the Vendor column.
+ *
+ * For a booking paid directly on a card, the supplier was not paid the fare — the card paid the
+ * airline — so what remains is a service charge or an adjustment, and the airline's name would be
+ * misleading. The sign tells which: a negative net means the card paid more than our cost, which
+ * the supplier's own statement shows as Discount/Adjustments.
+ */
+function vendorLabel(booking, net) {
+  const cardPaid = r2(booking.paymentFromCard) !== 0;
+  const airline = String(booking.airline || '').trim();
+  if (!cardPaid) return airline;
+  if (net < 0) return DISCOUNT_LABEL;
+  if (net > 0 && net <= CARD_FEE_CEILING) return SVC_FEE_LABEL;
+  return airline;
+}
 
 /**
  * Itinerary as concatenated airport codes, no separators, uppercase.
@@ -54,24 +83,41 @@ function bookingLines(b) {
   const issueDate = b.dateOfSubmission;
   const cancelled = b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled;
 
+  // 80 PNRs in the staging copy carry leading or trailing whitespace. Trim for display only;
+  // the stored value is left alone.
+  const pnr = String(b.pnr || '').trim();
   const common = {
     bookingId: String(b._id),
-    invoiceNo: b.pnr,          // there is no invoice entity; the client chose the PNR
-    remarks: b.pnr,
-    ticketNo: b.pnr,           // there is no ticket-number field on the schema
+    invoiceNo: pnr,            // there is no invoice entity; the client chose the PNR
+    remarks: pnr,
+    ticketNo: pnr,             // there is no ticket-number field on the schema
     passenger: b.paxName,
     startDate: b.travelDate,
     itinerary: buildItinerary(b)
   };
 
-  // The ticket cost. Stays on a cancelled booking: the credit below is what comes back, and the
-  // two together net to what the supplier actually kept.
+  /**
+   * What we owe the supplier for the ticket.
+   *
+   * NOT `ourCost`. When a booking is paid directly on a card, the card pays the airline and the
+   * supplier never receives the fare — they bill us only their service charge. `ourCost` still
+   * records the whole fare, so using it overstates the debt by the card amount: across one
+   * SKYBIRDS week that was 61,341.88 of a 98,728.70 total. The same relationship is already
+   * encoded in getCRDR() in routes/reports.js, as paymentFromCard - (ourCost + supplierCharges).
+   *
+   * Deliberately NOT floored at zero. A card can pay more than our cost, and the resulting
+   * negative is a real credit: booking 242Z6X nets -85.88, which is exactly what the supplier's
+   * own statement shows as a Discount/Adjustments line.
+   */
+  const net = r2(r2(b.ourCost) - r2(b.paymentFromCard));
+
+  // Emitted even when it is 0.00, so a card-paid booking still appears on the statement.
   lines.push({
     ...common,
     kind: 'fare',
     date: issueDate,
-    vendor: String(b.airline || '').trim(),   // stored as-is; the field holds a mix of codes and names
-    fare: r2(b.ourCost)
+    vendor: vendorLabel(b, net),
+    fare: net
   });
 
   // Supplier service charges, one line each.
@@ -114,12 +160,28 @@ function bookingLines(b) {
   // schema until recently, so a fresh run would produce a different scenario family; the stored
   // figure was written at cancel time with the real inputs in hand.
   if (cancelled) {
+    /**
+     * A supplier can only return money they actually hold.
+     *
+     * supplierWillReturn is derived from the whole `ourCost`, so on a card-paid booking it counts
+     * the fare the card paid straight to the airline. Crediting it in full would invent a refund
+     * from a supplier who never received that money — the airline refunds the card. On the five
+     * cancelled card bookings in the staging copy it would have produced credits of 861 to 1,582
+     * against a net exposure of 0.00 or 5.00.
+     *
+     * So on a card-paid booking the credit is capped at what the supplier was actually paid.
+     * The cap is applied ONLY when paymentFromCard is non-zero, which leaves all 21 non-card
+     * cancelled bookings in the copy bit-for-bit unchanged — supplierWillReturn can exceed
+     * ourCost in scenarios 3 and 5, and capping there would silently alter them.
+     */
     const willReturn = r2(b.cancellation.supplierWillReturn);
-    if (willReturn !== 0) {
+    const cardPaid = r2(b.paymentFromCard) !== 0;
+    const credit = cardPaid ? Math.min(willReturn, Math.max(0, net)) : willReturn;
+    if (credit !== 0) {
       lines.push({
         ...common, kind: 'cancelCredit',
         date: b.cancellation.cancelledAt || issueDate,
-        vendor: 'Cancelled', fare: -willReturn
+        vendor: 'Cancelled', fare: -r2(credit)
       });
     }
   }
@@ -216,4 +278,5 @@ function buildStatement(bookings, payments, range) {
   };
 }
 
-module.exports = { buildStatement, bookingLines, paymentLine, buildItinerary, SVC_FEE_LABEL, r2 };
+module.exports = { buildStatement, bookingLines, paymentLine, buildItinerary, vendorLabel,
+  SVC_FEE_LABEL, DISCOUNT_LABEL, CARD_FEE_CEILING, r2 };

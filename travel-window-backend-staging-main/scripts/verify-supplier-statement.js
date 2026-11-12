@@ -104,7 +104,11 @@ const dbNameOf = (uri) => {
     const issuedInRange = bookings.filter(b => inRange(b.dateOfSubmission, range));
     const cancelledInRange = issuedInRange.filter(b => b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled);
 
-    const fare = r2(issuedInRange.reduce((s, b) => s + (Number(b.ourCost) || 0), 0));
+    // What we owe for the ticket: ourCost MINUS what the card paid straight to the airline.
+    // Not floored at zero — a card can pay more than our cost, and that is a real credit.
+    const fare = r2(issuedInRange.reduce((s, b) =>
+      s + ((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0)), 0));
+    const cardPaid = r2(issuedInRange.reduce((s, b) => s + (Number(b.paymentFromCard) || 0), 0));
 
     // Fees, minus the ones a cancellation credit already contains.
     const feesGross = r2(issuedInRange.reduce((s, b) =>
@@ -129,10 +133,16 @@ const dbNameOf = (uri) => {
     addons = r2(addons);
 
     // Cancellation credits are dated on the cancellation, likewise over all bookings.
+    // Capped at what the supplier actually held on a card-paid booking; uncapped otherwise.
     const cancelCredits = r2(bookings
       .filter(b => b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled)
       .filter(b => inRange(b.cancellation.cancelledAt || b.dateOfSubmission, range))
-      .reduce((s, b) => s - (Number(b.cancellation.supplierWillReturn) || 0), 0));
+      .reduce((s, b) => {
+        const willReturn = r2(b.cancellation.supplierWillReturn);
+        const net = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
+        const credit = r2(b.paymentFromCard) !== 0 ? Math.min(willReturn, Math.max(0, net)) : willReturn;
+        return s - credit;
+      }, 0));
 
     const paid = r2(payments.filter(p => inRange(p.paymentDate, range))
       .reduce((s, p) => s - (Number(p.amount) || 0), 0));
@@ -157,7 +167,8 @@ const dbNameOf = (uri) => {
     console.log('');
     console.log('  BRIDGE — independent sum from raw bookings');
     console.log(`    opening balance (everything before ${from})   ${money(statement.openingBalance)}`);
-    console.log(`    + fare lines (ourCost, issued in period)      ${money(fare)}`);
+    console.log(`    + fare lines (ourCost - paymentFromCard)     ${money(fare)}`);
+    console.log(`        of which paid by card, not owed:         ${money(cardPaid)}`);
     console.log(`    + supplier fees (gross ${r2(feesGross).toFixed(2)}, suppressed ${r2(feesSuppressed).toFixed(2)})  ${money(fees)}`);
     console.log(`    + change add-ons (on change date)            ${money(addons)}`);
     console.log(`    + cancellation credits (on cancel date)      ${money(cancelCredits)}`);
