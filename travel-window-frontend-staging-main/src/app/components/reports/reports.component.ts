@@ -386,6 +386,11 @@ import { ToastrService } from 'ngx-toastr';
 
         <div class="statement-supplier">{{ statementData.supplierName }}</div>
 
+        <!-- Screen only: in print the same line is in the running head on every page. -->
+        <div class="statement-generated no-print">
+          Generated {{ statementData.generatedAt | tzDate:'long' }}
+        </div>
+
         <table class="statement-table">
           <thead>
             <!-- A thead row, not a floating div: only thead repeats on every printed page. -->
@@ -393,6 +398,12 @@ import { ToastrService } from 'ngx-toastr';
               <th colspan="8">
                 {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
               </th>
+              <!--
+                The row is hidden on screen and shown in print. That used to leave the screen with
+                no generation time at all once the duplicate in the meta block was removed, which
+                is the wrong thing to drop from a financial document an operator reads before
+                sending. The screen-only line below carries it.
+              -->
             </tr>
             <tr class="statement-band">
               <th>Issue Dt</th>
@@ -734,6 +745,7 @@ import { ToastrService } from 'ngx-toastr';
     .text-right { text-align: right; }
     .statement-provisional { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px;
                              padding: 8px 12px; margin-bottom: 12px; font-size: 11px; color: #78350f; }
+    .statement-generated { font-size: 11px; color: #6b7280; padding-bottom: 6px; }
     .print-running-head { display: none; }
     .print-running-head th { background: none; border: 0; font-weight: 400; text-transform: none;
                              font-size: 10px; color: #374151; padding: 0 0 4px 0; text-align: left; }
