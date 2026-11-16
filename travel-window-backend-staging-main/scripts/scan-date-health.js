@@ -17,7 +17,9 @@ const mongoose = require('mongoose');
 
 const ALLOWED_DB = 'travel_window_staging_copy';
 
-// Every stored date the new code reads. `path` is for display; `get` pulls the values out.
+// Every stored date the new code reads ON A BOOKING. Supplier payments live in their own
+// collection and are scanned separately, below -- see the note there for why that one matters
+// most.
 const SCALAR = [
   'dateOfSubmission',
   'travelDate',
@@ -104,6 +106,10 @@ function throwsInIntl(v) {
   // every check above: CBXCAA stores travelDate 1927-02-22 where the supplier's own statement
   // shows 2027-02-02. Nothing in the CRM rejects it, and the statement prints it verbatim.
   const LO = 2000, HI = 2100;
+  // toISOString().slice(0,10) is wrong for exactly the values this scan exists to find: an
+  // out-of-band year renders in ISO extended form (+022026-04-09), and the first ten characters
+  // of that are "+022026-0". Take the date part properly instead.
+  const isoDay = v => { const i = new Date(v).toISOString(); return i.slice(0, i.indexOf('T')); };
   const yearInTz = v => {
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return null;
@@ -127,7 +133,7 @@ function throwsInIntl(v) {
       for (const v of vals) {
         const y = yearInTz(v);
         if (y !== null && (y < LO || y > HI)) {
-          hits.push(`${String(b.pnr || '?').trim()} -> ${new Date(v).toISOString().slice(0, 10)}`);
+          hits.push(`${String(b.pnr || '?').trim()} -> ${isoDay(v)}`);
         }
       }
     }
@@ -138,6 +144,33 @@ function throwsInIntl(v) {
       if (hits.length > 25) console.log(`    ... and ${hits.length - 25} more`);
     }
   }
+  /**
+   * supplierpayments.paymentDate is a DIFFERENT field from a booking's embedded
+   * payments[].paymentDate above: that one is the customer paying us, this one is us paying the
+   * supplier. It is its own collection (models/SupplierPayment.js), so scanning bookings never
+   * reaches it -- and it is the date the STATEMENT itself turns on. It decides whether a payment
+   * lands in the opening balance or inside the period (utils/supplier-statement.js), so a typo'd
+   * year moves money between Opening Balance and Total Open on a document we hand the supplier.
+   * Exactly the failure this scan exists to find.
+   */
+  const supPayments = await raw.collection('supplierpayments').find({}).toArray();
+  let supMissing = 0, supBad = 0, supOdd = 0;
+  const supOddRows = [];
+  for (const p of supPayments) {
+    const v = p.paymentDate;
+    if (v === undefined || v === null || v === '') { supMissing++; continue; }
+    if (Number.isNaN(new Date(v).getTime()) || throwsInIntl(v)) { supBad++; continue; }
+    const y = yearInTz(v);
+    if (y !== null && (y < LO || y > HI)) {
+      supOdd++;
+      supOddRows.push(`${String(p.reference || '(no reference)').trim()} -> ${isoDay(v)}`);
+    }
+  }
+  console.log(`\nsupplierpayments.paymentDate: ${supPayments.length} record(s), `
+    + `${supMissing} missing, ${supBad} invalid, ${supOdd} implausible`);
+  for (const r of supOddRows.slice(0, 25)) console.log(`    ${r}`);
+  odd += supOdd;
+
   console.log(odd ? `\nTOTAL implausible values: ${odd}` : '\nNone. Every stored date falls inside the band.');
 
   const atRisk = bookings.filter(b => {
