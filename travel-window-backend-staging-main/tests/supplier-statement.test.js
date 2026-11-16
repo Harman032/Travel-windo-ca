@@ -105,7 +105,7 @@ console.log('\nline rules');
 {
   // Two add-ons on a card-paid booking.
   const lines = bookingLines(booking({
-    ourCost: 1300, paymentFromCard: 1000, cardType: 'Company Card',
+    ourCost: 1300, paymentFromCard: 1000,
     dateChanges: [{ ourCostAddon: 150, changedAt: new Date('2026-09-20T18:00:00Z') }],
     flightChanges: [{ ourCostAddon: 150, changedAt: new Date('2026-09-22T18:00:00Z') }]
   }));
@@ -267,7 +267,7 @@ console.log('\nToronto day boundaries');
 console.log('\nfare basis: what we owe is ourCost MINUS paymentFromCard');
 
 {
-  const lines = bookingLines(booking({ ourCost: 2412.42, paymentFromCard: 2407.42, cardType: 'Company Card' }));
+  const lines = bookingLines(booking({ ourCost: 2412.42, paymentFromCard: 2407.42 }));
   const fare = lines.find(l => l.kind === 'fare');
   assert.strictEqual(fare.fare, 5,
     'the card paid the airline; only the service charge is owed to the supplier');
@@ -278,7 +278,7 @@ console.log('\nfare basis: what we owe is ourCost MINUS paymentFromCard');
 
 {
   // 242Z6X in the staging copy: the card paid 2350.00 against a cost of 2264.12.
-  const lines = bookingLines(booking({ ourCost: 2264.12, paymentFromCard: 2350, cardType: 'Client Card' }));
+  const lines = bookingLines(booking({ ourCost: 2264.12, paymentFromCard: 2350 }));
   const fare = lines.find(l => l.kind === 'fare');
   assert.strictEqual(fare.fare, -85.88,
     'NOT floored at zero: a card can pay more than our cost, and that is a real credit');
@@ -289,7 +289,7 @@ console.log('\nfare basis: what we owe is ourCost MINUS paymentFromCard');
 
 {
   // ABJOLI: a genuine fare on a client card, three orders of magnitude above any service net.
-  const lines = bookingLines(booking({ ourCost: 26904.48, paymentFromCard: 19260, cardType: 'Client Card', airline: 'EK' }));
+  const lines = bookingLines(booking({ ourCost: 26904.48, paymentFromCard: 19260, airline: 'EK' }));
   const fare = lines.find(l => l.kind === 'fare');
   assert.strictEqual(fare.fare, 7644.48);
   assert.strictEqual(fare.vendor, 'EK', 'above the ceiling it is a fare, so the airline is right');
@@ -312,7 +312,7 @@ console.log('\nfare basis: what we owe is ourCost MINUS paymentFromCard');
 }
 
 {
-  const lines = bookingLines(booking({ ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card' }));
+  const lines = bookingLines(booking({ ourCost: 1857.52, paymentFromCard: 1857.52 }));
   assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 0);
   assert.strictEqual(lines.filter(l => l.kind === 'fare').length, 1,
     'a 0.00 line is still emitted so the PNR appears on the statement');
@@ -339,7 +339,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // BEBGWI in the copy: card paid the lot, supplier kept a 25.00 fee, engine says they would
   // return 1582.52 — which is the airline's money, refunded to the card, not to us.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52,
     cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
   }));
@@ -352,7 +352,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 {
   // CNOOMG shape: the supplier held 5.00 and kept none of it.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1933.42, paymentFromCard: 1928.42, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1933.42, paymentFromCard: 1928.42,
     cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 1480,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
   }));
@@ -366,7 +366,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // BEBGWI exactly. The credit cap removed the credit, so suppressing the fees as well left the
   // whole booking as a single 0.00 line and silently dropped the 25.00 the supplier kept.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1857.52, paymentFromCard: 1857.52,
     supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 25,
     cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
@@ -384,7 +384,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // B4MGRT: same shape, but supplierCharges equals the booking charge, so no derived
   // cancellation charge exists and only the 5.00 is billed.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1220.32, paymentFromCard: 1220.32, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1220.32, paymentFromCard: 1220.32,
     supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 5,
     cancellation: { isCancelled: true, totalSupplierTook: 5, supplierWillReturn: 901.32,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
@@ -402,7 +402,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // would the moment one of them is cancelled, and a negative "Svc fee" line would hand the
   // supplier money on their own statement.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000,
     supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 0,
     cancellation: { isCancelled: true, totalSupplierTook: 5, supplierWillReturn: 800,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
@@ -418,7 +418,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 {
   // The same clamp, with the shortfall spread across both fee fields.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 500, paymentFromCard: 500, cardType: 'Client Card',
+    status: 'Cancelled', ourCost: 500, paymentFromCard: 500,
     supplierBookingCharge: 5, supplierUpdationCharge: 40, supplierCharges: 20,
     cancellation: { isCancelled: true, totalSupplierTook: 45, supplierWillReturn: 300,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
@@ -438,8 +438,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   for (const s of shapes) {
     for (const card of [0, 500, 1000]) {
       const lines = bookingLines(booking({
-        status: 'Cancelled', ourCost: 1000, paymentFromCard: card,
-        cardType: card ? 'Company Card' : '', ...s,
+        status: 'Cancelled', ourCost: 1000, paymentFromCard: card, ...s,
         cancellation: { isCancelled: true, totalSupplierTook: r2(s.supplierCharges),
                         supplierWillReturn: 300, cancelledAt: new Date('2026-09-25T15:00:00Z') }
       }));
@@ -467,20 +466,46 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 }
 
 {
-  // Client Card, same rule. Does not occur among the copy's cancelled bookings, so synthetic.
-  const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 3000, paymentFromCard: 2900, cardType: 'Client Card',
+  /**
+   * The card BRAND is irrelevant, and this is the only test that says so.
+   *
+   * buildStatement never reads `cardType` -- card-ness is `paymentFromCard !== 0`, and
+   * `cardType` is not even in the statement's projection. Fixtures that set it while asserting
+   * something else only look like they test card handling, which is the same kind of lie as a
+   * no-op select(). They have all been stripped; this one proves the claim instead of decorating
+   * it, by running the identical booking under every brand value and comparing the output.
+   */
+  const shape = over => booking(Object.assign({
+    status: 'Cancelled', ourCost: 3000, paymentFromCard: 2900,
+    supplierBookingCharge: 15, supplierUpdationCharge: 5, supplierCharges: 40,
     cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 2500,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }, over));
+
+  // bookingId is a fresh ObjectId per fixture, so it is the one field that must differ.
+  const shapeOf = b => JSON.stringify(bookingLines(b).map(l => {
+    const { bookingId, ...rest } = l;
+    return rest;
   }));
-  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -100);
-  ok('Client Card behaves identically: the cap is the money, not the card brand');
+
+  const base = shapeOf(shape({ cardType: 'Company Card' }));
+  for (const brand of ['Client Card', 'Machine Charge', '', null, undefined]) {
+    assert.strictEqual(shapeOf(shape({ cardType: brand })), base,
+      `cardType ${JSON.stringify(brand)} changed the statement, but nothing reads it`);
+  }
+
+  const lines = bookingLines(shape({ cardType: 'Client Card' }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -100,
+    'the cap is the money the supplier holds: 3000 - 2900');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 3,
+    'capped, so booking 15, updation 5 and the derived 20 are all billed');
+  ok('the card brand never changes a statement line, under any of six values');
 }
 
 {
   // The other direction: the card overpaid, so the net is a credit and there is nothing to cap.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1200, cardType: 'Client Card',
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1200,
     cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 800,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
   }));
@@ -511,7 +536,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // un-suppresses the fees on top. No such booking exists in the copy yet; this is the guard.
   const changedAt = new Date('2026-09-20T18:00:00Z');
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1150, paymentFromCard: 900, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 900,
     supplierCharges: 10, supplierBookingCharge: 5, supplierUpdationCharge: 5,
     dateChanges: [{ ourCostAddon: 150, changedAt }],
     cancellation: { isCancelled: true, totalSupplierTook: 10, supplierWillReturn: 140,
@@ -531,7 +556,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   // Same booking fully card-paid against the BASE cost: held is 150, the add-on alone.
   const changedAt = new Date('2026-09-20T18:00:00Z');
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1150, paymentFromCard: 1000, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 1000,
     supplierCharges: 10, supplierBookingCharge: 5, supplierUpdationCharge: 5,
     dateChanges: [{ ourCostAddon: 150, changedAt }],
     cancellation: { isCancelled: true, totalSupplierTook: 10, supplierWillReturn: 140,
@@ -547,7 +572,7 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 {
   // The cap still bites when it should: no add-on, so held equals the fare line.
   const lines = bookingLines(booking({
-    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000, cardType: 'Company Card',
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000,
     supplierCharges: 25, supplierBookingCharge: 5, supplierUpdationCharge: 0,
     cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
                     cancelledAt: new Date('2026-09-25T15:00:00Z') }
