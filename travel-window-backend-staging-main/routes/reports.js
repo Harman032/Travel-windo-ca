@@ -225,16 +225,12 @@ router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (
       .select('pnr paxName dateOfSubmission travelDate from to sectorType multipleSectors airline ' +
               'status ourCost paymentFromCard supplierCharges ' +
               'supplierBookingCharge supplierUpdationCharge cancellation ' +
-              'dateChanges flightChanges seatBookChanges adminVerified accountVerified')
+              'dateChanges flightChanges')
       .lean();
 
     const payments = await SupplierPayment.find({ supplier }).lean();
 
     const statement = buildStatement(bookings, payments, range);
-
-    // Verification status per booking, shown as a column, never filtered on.
-    const verified = {};
-    for (const b of bookings) verified[String(b._id)] = !!(b.adminVerified || b.accountVerified);
 
     res.json({
       company: COMPANY,
@@ -243,7 +239,6 @@ router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (
       dateTo: dateTo || null,
       generatedAt: new Date().toISOString(),
       timezone: TZ,
-      verified,
       ...statement
     });
   } catch (error) {
