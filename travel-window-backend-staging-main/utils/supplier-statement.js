@@ -215,10 +215,24 @@ function bookingLines(b) {
    *   5A/5B              (engine:167,174) paidAmount - AD / ara          NO
    *   fallback isPP&&isCO(engine:186,192) baseOurCost - AD - TST         YES
    *
-   * So in the NO branches the booking and updation charges are not inside the credit, and
-   * suppressing them understates what the supplier kept by exactly those two fields. (The auto
-   * cancellation charge genuinely is netted in all of them, so only bookingCharge +
-   * updationCharge is at stake.) Exposure on the staging copy: 10.00, across CVJZK9 and BPJD4Z.
+   * So in the NO branches what the supplier kept is not inside the credit, and suppressing the
+   * fees understates it. How much is at stake depends on the branch, and this is finer than it
+   * first looks:
+   *
+   *   1A/1B, 2A/2B, machine charge  subtract `autoSupplierCancCharge` explicitly, so only
+   *                                 bookingCharge + updationCharge is at stake
+   *   3A (engine:131)               baseSalePrice - acc, where `acc` is the AIRLINE charge,
+   *                                 not the auto supplier charge
+   *   3B (engine:138), 5B (:174)    reduce to `ara` alone, subtracting nothing
+   *   5A (engine:167)               paidAmount - acc, the airline charge again
+   *
+   * So in branches 3 and 5 the WHOLE of totalSupplierTook is at stake, auto cancellation charge
+   * included — not just the two fee fields.
+   *
+   * Exposure on the staging copy is still 10.00, across CVJZK9 and BPJD4Z, because
+   * `cancellation.autoSupplierCancellationCharge` is 0 on all 26 cancelled bookings (it is not
+   * in the schema, so it is dropped on every save). The moment it is added to the schema the
+   * exposure grows beyond those two fields.
    *
    * It is left as-is deliberately. Fixing it changes non-card cancellations, and the scenario
    * family cannot be recovered from stored data: cancellation.cancellationMode only distinguishes
@@ -226,9 +240,14 @@ function bookingLines(b) {
    * scenario "1A"/"1B", making it indistinguishable from true scenario 1, which is a broken one.
    * Legacy rows have no cancellationMode at all (see models/Booking.js).
    *
-   * Until it is fixed, a cancelled line on the statement should be read as provisional. The
-   * statement footer says so when any cancelled booking in the period lacks a stored
-   * cancellationMode.
+   * Until it is fixed, a cancelled line on the statement should be read as provisional.
+   *
+   * NOT YET SAID ANYWHERE THE READER CAN SEE IT. A footer disclaimer has been drafted and is
+   * awaiting approval; it is deliberately not built. `buildStatement` returns only
+   * { openingBalance, invoices, lineCount, totals } and the route adds only company, supplier
+   * name, the dates, generatedAt and timezone — there is no footer field, and `cancellationMode`
+   * is not even in the statement's projection, so the condition could not be evaluated today.
+   * When the wording is approved, both of those have to change with it.
    */
   const feesAlreadyInCredit = cancelled && r2(b.cancellation.totalSupplierTook) !== 0 && !creditWasCapped;
   if (!feesAlreadyInCredit) {
