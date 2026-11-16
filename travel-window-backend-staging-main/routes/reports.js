@@ -218,8 +218,13 @@ router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (
       supplier,
       status: { $ne: 'Draft' }
     })
+      // Every field buildStatement reads must be listed here. paymentFromCard drives the fare
+      // basis and the cancellation-credit cap; supplierCharges drives the derived cancellation
+      // charge. Leaving them out does not error — Mongoose returns undefined and the arithmetic
+      // quietly falls back to the pre-fix behaviour.
       .select('pnr paxName dateOfSubmission travelDate from to sectorType multipleSectors airline ' +
-              'status ourCost supplierBookingCharge supplierUpdationCharge cancellation ' +
+              'status ourCost paymentFromCard supplierCharges ' +
+              'supplierBookingCharge supplierUpdationCharge cancellation ' +
               'dateChanges flightChanges seatBookChanges adminVerified accountVerified')
       .lean();
 

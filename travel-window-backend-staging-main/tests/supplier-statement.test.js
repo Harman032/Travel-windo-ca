@@ -354,6 +354,63 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
 }
 
 {
+  // The derived cancellation charge is supplierCharges - bookingCharge - updationCharge, and that
+  // subtraction can go negative: 75 bookings in the staging copy have supplierCharges LESS than
+  // the sum of the two fee fields (65 of them have supplierCharges 0 against a booking charge of
+  // 5). None of those 75 is cancelled today, so the clamp never fires on current data — but it
+  // would the moment one of them is cancelled, and a negative "Svc fee" line would hand the
+  // supplier money on their own statement.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000, cardType: 'Company Card',
+    supplierBookingCharge: 5, supplierUpdationCharge: 0, supplierCharges: 0,
+    cancellation: { isCancelled: true, totalSupplierTook: 5, supplierWillReturn: 800,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  const derived = lines.filter(l => l.feeType === 'cancellation');
+  assert.strictEqual(derived.length, 0,
+    'supplierCharges 0 - bookingCharge 5 = -5, which must be clamped away, not emitted');
+  ok('a derived cancellation charge below zero produces no line at all');
+  assert.deepStrictEqual(lines.map(l => l.fare), [0, 5]);
+  ok('only the real booking charge is billed: 0.00 fare + 5.00');
+}
+
+{
+  // The same clamp, with the shortfall spread across both fee fields.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 500, paymentFromCard: 500, cardType: 'Client Card',
+    supplierBookingCharge: 5, supplierUpdationCharge: 40, supplierCharges: 20,
+    cancellation: { isCancelled: true, totalSupplierTook: 45, supplierWillReturn: 300,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.ok(lines.every(l => l.kind !== 'fee' || l.fare > 0), 'no fee line may be negative');
+  ok('20 - 5 - 40 = -25 is clamped away, and no fee line is negative');
+}
+
+{
+  // The invariant itself, over every shape above: a fee line is never negative.
+  const shapes = [
+    { supplierCharges: 0, supplierBookingCharge: 5, supplierUpdationCharge: 0 },
+    { supplierCharges: 20, supplierBookingCharge: 5, supplierUpdationCharge: 40 },
+    { supplierCharges: 25, supplierBookingCharge: 5, supplierUpdationCharge: 0 },
+    { supplierCharges: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0 }
+  ];
+  for (const s of shapes) {
+    for (const card of [0, 500, 1000]) {
+      const lines = bookingLines(booking({
+        status: 'Cancelled', ourCost: 1000, paymentFromCard: card,
+        cardType: card ? 'Company Card' : '', ...s,
+        cancellation: { isCancelled: true, totalSupplierTook: r2(s.supplierCharges),
+                        supplierWillReturn: 300, cancelledAt: new Date('2026-09-25T15:00:00Z') }
+      }));
+      const bad = lines.filter(l => l.kind === 'fee' && l.fare < 0);
+      assert.strictEqual(bad.length, 0,
+        `negative fee line for ${JSON.stringify(s)} card=${card}: ${JSON.stringify(bad)}`);
+    }
+  }
+  ok('across 12 fee/card combinations, no fee line is ever negative');
+}
+
+{
   // An UNCAPPED cancellation must keep suppressing, or the fees would be double-counted:
   // supplierWillReturn is already net of totalSupplierTook there.
   const lines = bookingLines(booking({
@@ -499,5 +556,77 @@ console.log('\nroute guards');
   ok('the statement is unpaginated');
 
   server.close();
+
+  // ---- the route end to end, through a projection-honouring find ----
+  //
+  // The route's .select() must list every field buildStatement reads. When paymentFromCard and
+  // supplierCharges were missing, Mongoose returned undefined, the fare basis silently reverted to
+  // ourCost and the cancellation-credit cap never fired — in other words both money fixes were
+  // dead in production while every unit test still passed, because the old harness ignored
+  // .select() entirely. These assertions go through the real route and the real projection.
+  console.log('\nthe route reads every field the statement needs');
+  {
+    const { startReports } = require('./report-harness');
+    const SUPID = oid();
+    const Supplier2 = require('../models/Supplier');
+    const SupplierPayment2 = require('../models/SupplierPayment');
+    Supplier2.findById = () => {
+      const c = { select: () => c, lean: () => c, then: (res, rej) => Promise.resolve({ _id: SUPID, name: 'PROJ TEST' }).then(res, rej) };
+      return c;
+    };
+    SupplierPayment2.find = () => {
+      const c = { lean: () => c, then: (res, rej) => Promise.resolve([]).then(res, rej) };
+      return c;
+    };
+
+    const rows = [
+      // card-paid: the fare basis and the Svc fee label both depend on paymentFromCard
+      {
+        _id: oid(), pnr: 'CARDED', paxName: 'X', status: 'Ticketed', supplier: SUPID,
+        dateOfSubmission: new Date('2026-09-10T16:00:00Z'), travelDate: new Date('2026-10-01T12:00:00Z'),
+        from: 'YYZ', to: 'DEL', sectorType: 'One Way', airline: 'AC',
+        ourCost: 2412.42, paymentFromCard: 2407.42, supplierCharges: 0,
+        supplierBookingCharge: 0, supplierUpdationCharge: 0,
+        dateChanges: [], flightChanges: [], seatBookChanges: [], cancellation: null
+      },
+      // cancelled + card-paid: the cap and the derived charge depend on supplierCharges
+      {
+        _id: oid(), pnr: 'CANCRD', paxName: 'Y', status: 'Cancelled', supplier: SUPID,
+        dateOfSubmission: new Date('2026-09-12T16:00:00Z'), travelDate: new Date('2026-10-01T12:00:00Z'),
+        from: 'YYZ', to: 'DEL', sectorType: 'One Way', airline: 'CX',
+        ourCost: 1857.52, paymentFromCard: 1857.52, supplierCharges: 25,
+        supplierBookingCharge: 5, supplierUpdationCharge: 0,
+        dateChanges: [], flightChanges: [], seatBookChanges: [],
+        cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
+                        cancelledAt: new Date('2026-09-25T15:00:00Z') }
+      }
+    ];
+    const api2 = await startReports('../routes/reports', rows);
+    const body = await api2.get('payment-to-suppliers',
+      { supplier: String(SUPID), dateFrom: '2026-09-01', dateTo: '2026-09-30' });
+
+    const byPnr = Object.fromEntries(body.invoices.map(i => [i.invoiceNo, i]));
+
+    assert.strictEqual(byPnr.CARDED.subtotal, 5,
+      'fare basis through the route: 2412.42 - 2407.42 = 5.00, not 2412.42');
+    ok('the route applies the card-paid fare basis (would be 2,412.42 with the old projection)');
+
+    assert.strictEqual(byPnr.CARDED.lines[0].vendor, 'Svc fee',
+      'the label depends on paymentFromCard reaching buildStatement');
+    ok('the route applies the Svc fee label');
+
+    assert.strictEqual(byPnr.CANCRD.subtotal, 25,
+      'the capped cancellation must still bill the 25.00 the supplier kept');
+    ok('the route applies the credit cap AND the fee un-suppression');
+
+    assert.ok(byPnr.CANCRD.lines.some(l => l.fare === 20),
+      'the derived cancellation charge needs supplierCharges in the projection');
+    ok('the route derives the 20.00 cancellation charge from supplierCharges');
+
+    assert.strictEqual(body.totals.totalOpen, 30, '5.00 + 25.00');
+    ok('the route total is 30.00, proving both fields survive the projection');
+
+    api2.close();
+  }
   console.log(`\n${passed} assertions passed under TZ=${process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone}`);
 })().catch(e => { console.error('\nFAILED:', e.message); process.exit(1); });

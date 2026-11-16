@@ -46,16 +46,30 @@ async function startReports(routerPath, bookings) {
     return String(nx).localeCompare(String(ny));
   };
   // Honors sort/skip/limit like Mongo does, so truncation bugs show up in tests.
+  //
+  // select() is APPLIED, not ignored. A no-op select hides a whole class of bug: a route whose
+  // projection omits a field the downstream code reads gets `undefined` from Mongoose and quietly
+  // computes something wrong, while a test that ignores the projection passes. That is exactly how
+  // paymentFromCard and supplierCharges went missing from the statement route.
+  const project = (doc, fields) => {
+    if (!fields) return doc;
+    const keep = new Set(String(fields).split(/\s+/).filter(Boolean));
+    keep.add('_id');
+    const out = {};
+    for (const k of keep) if (doc[k] !== undefined) out[k] = doc[k];
+    return out;
+  };
   Booking.find = q => {
     const docs = bookings.filter(b => matches(b, q || {}));
-    let sortSpec = null, skipN = 0, limitN = Infinity;
+    let sortSpec = null, skipN = 0, limitN = Infinity, projection = null;
     const chain = {
-      populate: () => chain, lean: () => chain, select: () => chain,
+      populate: () => chain, lean: () => chain,
+      select: f => { projection = f; return chain; },
       sort: s => { sortSpec = s; return chain; },
       skip: n => { skipN = n; return chain; },
       limit: n => { limitN = n; return chain; },
       then: (res, rej) => {
-        const out = docs.slice();
+        const out = docs.slice().map(d => project(d, projection));
         if (sortSpec) {
           out.sort((a, b) => {
             for (const [k, dir] of Object.entries(sortSpec)) {
