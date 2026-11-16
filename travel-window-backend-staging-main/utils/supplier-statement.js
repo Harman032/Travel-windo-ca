@@ -304,8 +304,21 @@ function bookingLines(b) {
      *
      * There is no stored field for it — cancellation.supplierCancellationCharge is 0 on all 26
      * cancelled bookings in the copy — so it is derived the same way recalculateCancellationValues
-     * derives it: supplierCharges minus the booking and updation charges. With the fee lines above
-     * this makes a capped booking total exactly totalSupplierTook, which is what the supplier kept.
+     * derives it: supplierCharges minus the booking and updation charges, floored at 0.
+     *
+     * What a capped booking therefore totals is `max(supplierCharges, bookingCharge +
+     * updationCharge)`: the two fee lines above bill `bookingCharge + updationCharge`, and this
+     * line bills `max(0, supplierCharges − bookingCharge − updationCharge)` on top.
+     *
+     * It is NOT `totalSupplierTook`, which is a separate stored field (bookingCharge +
+     * updationCharge + autoSupplierCancellationCharge) and is not consulted here at all. The two
+     * coincide on every cancelled booking in the copy and in every fixture, because
+     * supplierCharges happens to equal totalSupplierTook in all of them — which is exactly why an
+     * earlier version of this comment claimed otherwise and no test caught it. The one fixture
+     * where they differ (supplierCharges 20, bookingCharge 5, updationCharge 40,
+     * totalSupplierTook 45) bills 45.00, i.e. the fee fields, with supplierCharges ignored.
+     *
+     * If the two ever have to be reconciled, `supplierCharges` is the field this line reads.
      *
      * Only emitted when the credit was capped. On an uncapped cancellation the charge is already
      * inside supplierWillReturn and adding it would double-count.

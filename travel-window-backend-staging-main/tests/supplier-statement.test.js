@@ -870,6 +870,41 @@ console.log('\nthe internal note never reaches the statement');
   ok('the whole statement payload is free of the note');
 }
 
+console.log('\nwhat a capped cancellation actually totals');
+
+{
+  /**
+   * The comment above the derived cancellation charge used to say a capped booking totals
+   * `totalSupplierTook`. It does not: it totals max(supplierCharges, bookingCharge +
+   * updationCharge). The two coincide whenever supplierCharges === totalSupplierTook, which is
+   * true of every cancelled booking in the copy and was true of every fixture, so nothing caught
+   * it. These three pin the real rule, with the fields deliberately disagreeing.
+   */
+  const capped = over => bookingLines(booking(Object.assign({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000,
+    cancellation: { isCancelled: true, totalSupplierTook: 999, supplierWillReturn: 500,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }, over)));
+  const total = lines => r2(lines.reduce((s, l) => s + l.fare, 0));
+
+  // supplierCharges ABOVE the two fee fields: the derived line makes up the difference.
+  assert.strictEqual(total(capped({
+    supplierCharges: 60, supplierBookingCharge: 15, supplierUpdationCharge: 5
+  })), 60, 'max(60, 20) = 60, nothing to do with totalSupplierTook 999');
+
+  // supplierCharges BELOW them: the derived line is clamped away and the fees stand alone.
+  assert.strictEqual(total(capped({
+    supplierCharges: 20, supplierBookingCharge: 5, supplierUpdationCharge: 40
+  })), 45, 'max(20, 45) = 45; supplierCharges 20 is ignored, not billed');
+
+  // supplierCharges zero: the fee fields alone.
+  assert.strictEqual(total(capped({
+    supplierCharges: 0, supplierBookingCharge: 12, supplierUpdationCharge: 3
+  })), 15, 'max(0, 15) = 15');
+
+  ok('a capped booking totals max(supplierCharges, bookingCharge + updationCharge), not totalSupplierTook');
+}
+
 console.log('\nroute guards');
 
 (async () => {
