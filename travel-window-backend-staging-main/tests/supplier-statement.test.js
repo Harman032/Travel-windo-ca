@@ -504,6 +504,52 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   ok('a non-card cancellation is never capped, so existing behaviour is untouched');
 }
 
+console.log('\nsupplierWillReturn at or below zero');
+
+{
+  // AEFSGR in the staging copy stores supplierWillReturn -20 on a non-card booking. Non-card is
+  // never capped, so the credit used to be -20 and the line pushed `fare: -credit` = +20 on a row
+  // labelled "Cancelled": a charge presented to the reader as a refund.
+  const lines2 = bookingLines(booking({
+    status: 'Cancelled', ourCost: 500, paymentFromCard: 0,
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: -20,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines2.filter(l => l.kind === 'cancelCredit').length, 0,
+    'a negative supplierWillReturn must not become a positive line labelled Cancelled');
+  ok('AEFSGR shape: a negative supplierWillReturn produces no credit line');
+  assert.ok(lines2.every(l => !(l.kind === 'cancelCredit' && l.fare > 0)));
+  ok('no cancelCredit line is ever positive');
+}
+
+{
+  // Scenario 4A with a fully non-refundable fare: supplierWillReturn is exactly 0 while the
+  // supplier still kept totalSupplierTook. The credit absorbed nothing, so the fees must be billed.
+  const lines2 = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 0,
+    supplierBookingCharge: 25, supplierUpdationCharge: 10, supplierCharges: 35,
+    cancellation: { isCancelled: true, totalSupplierTook: 35, supplierWillReturn: 0,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(r2(lines2.reduce((s2, l) => s2 + l.fare, 0)), 1035,
+    'fare 1000 + 25 + 10: a zero credit must not suppress the fees');
+  ok('a zero supplierWillReturn still bills the fees the supplier kept');
+}
+
+{
+  // The uncapped case is still untouched: a real credit absorbs the fees.
+  const lines2 = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 0,
+    supplierBookingCharge: 25, supplierUpdationCharge: 10, supplierCharges: 35,
+    cancellation: { isCancelled: true, totalSupplierTook: 35, supplierWillReturn: 800,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines2.filter(l => l.kind === 'fee').length, 0);
+  assert.strictEqual(r2(lines2.reduce((s2, l) => s2 + l.fare, 0)), 200);
+  ok('a genuine credit still absorbs the fees, unchanged');
+}
+
+
 console.log('\nSupplierPayment record');
 
 {

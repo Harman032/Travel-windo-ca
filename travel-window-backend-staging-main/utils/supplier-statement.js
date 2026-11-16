@@ -143,12 +143,28 @@ function bookingLines(b) {
    * booking bit-for-bit unchanged — supplierWillReturn can exceed ourCost in scenarios 3 and 5,
    * and capping there would silently alter them.
    */
-  const willReturn = cancelled ? r2(b.cancellation.supplierWillReturn) : 0;
+  const rawWillReturn = cancelled ? r2(b.cancellation.supplierWillReturn) : 0;
   const cardPaid = r2(b.paymentFromCard) !== 0;
+
+  // A credit can never be negative. supplierWillReturn goes below zero in the engine whenever
+  // the airline charge exceeds the base cost (utils/cancellation-engine.js:97 among others),
+  // and booking AEFSGR in the staging copy stores -20. Without this floor the line below pushes
+  // `fare: -credit`, i.e. a POSITIVE 20.00 on a line labelled "Cancelled" — billing the supplier
+  // on a row the reader is told is a refund.
+  const willReturn = Math.max(0, rawWillReturn);
+
   const credit = cancelled
     ? r2(cardPaid ? Math.min(willReturn, Math.max(0, net)) : willReturn)
     : 0;
-  const creditWasCapped = cancelled && credit !== willReturn;
+
+  // "Capped" has to mean "this credit did not absorb the fees", not merely "the cap changed the
+  // number". A cancellation whose credit is 0 absorbed nothing, so its fees must still be billed
+  // — otherwise a fully non-refundable fare (scenario 4A with acc = baseOurCost - totalSupplierTook
+  // gives supplierWillReturn exactly 0) silently drops everything the supplier kept, which is the
+  // same loss that BEBGWI and B4MGRT showed. 10 cancelled bookings in the copy have
+  // supplierWillReturn 0 today; none of them has fees yet, so this is a latent hole, not a
+  // current loss.
+  const creditWasCapped = cancelled && (credit !== rawWillReturn || credit === 0);
 
   /**
    * Supplier service charges, one line each.

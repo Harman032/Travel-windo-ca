@@ -118,9 +118,11 @@ const dbNameOf = (uri) => {
     const wasCapped = (b) => {
       if (!(b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled)) return false;
       if (r2(b.paymentFromCard) === 0) return false;
-      const willReturn = r2(b.cancellation.supplierWillReturn);
-      const net = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
-      return r2(Math.min(willReturn, Math.max(0, net))) !== willReturn;
+      const raw = r2(b.cancellation.supplierWillReturn);
+      const willReturn = Math.max(0, raw);
+      const net = r2((Number(b.ourCost) || 0) - addonsOf(b) - (Number(b.paymentFromCard) || 0));
+      const credit = r2(Math.min(willReturn, Math.max(0, net)));
+      return credit !== raw || credit === 0;
     };
 
     // Fees, minus the ones an UNCAPPED cancellation credit already contains.
@@ -160,8 +162,8 @@ const dbNameOf = (uri) => {
       .filter(b => b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled)
       .filter(b => inRange(b.cancellation.cancelledAt || b.dateOfSubmission, range))
       .reduce((s, b) => {
-        const willReturn = r2(b.cancellation.supplierWillReturn);
-        const net = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
+        const willReturn = Math.max(0, r2(b.cancellation.supplierWillReturn));
+        const net = r2((Number(b.ourCost) || 0) - addonsOf(b) - (Number(b.paymentFromCard) || 0));
         const credit = r2(b.paymentFromCard) !== 0 ? Math.min(willReturn, Math.max(0, net)) : willReturn;
         return s - credit;
       }, 0));
