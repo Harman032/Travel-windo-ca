@@ -109,7 +109,17 @@ function bookingLines(b) {
    * negative is a real credit: booking 242Z6X nets -85.88, which is exactly what the supplier's
    * own statement shows as a Discount/Adjustments line.
    */
-  const net = r2(r2(b.ourCost) - r2(b.paymentFromCard));
+  // ourCost ALREADY INCLUDES every date/flight change add-on: routes/bookings.js:891 and :985 do
+  // booking.ourCost = booking.ourCost + ourCostAddon while also pushing ourCostAddon into the
+  // change array. The add-ons are billed again below as their own lines, dated on the change, so
+  // the fare line has to use the BASE cost or the same money is charged twice. The rest of the
+  // codebase already does this: routes/bookings.js:1177 and :1457 strip the same two sums before
+  // calling the cancellation engine.
+  const addonTotal = r2(['dateChanges', 'flightChanges'].reduce((s2, f2) =>
+    s2 + (b[f2] || []).reduce((s3, c) => s3 + (Number(c && c.ourCostAddon) || 0), 0), 0));
+  const baseOurCost = r2(r2(b.ourCost) - addonTotal);
+
+  const net = r2(baseOurCost - r2(b.paymentFromCard));
 
   // Emitted even when it is 0.00, so a card-paid booking still appears on the statement.
   lines.push({
@@ -167,8 +177,14 @@ function bookingLines(b) {
     }
   }
 
-  // Cost side of each post-booking change, on the date the change was made.
-  for (const field of ['dateChanges', 'flightChanges', 'seatBookChanges']) {
+  // Cost side of each post-booking change, on the date the change was made. These are the same
+  // sums stripped from the fare line above, re-billed on their own dates.
+  //
+  // seatBookChanges is deliberately NOT here: it has no ourCostAddon field (models/Booking.js),
+  // because routes/bookings.js:1085 overwrites booking.ourCost outright instead of adding to it.
+  // Iterating it was dead code, and including it would have double-billed if the field were ever
+  // added without revisiting the fare line.
+  for (const field of ['dateChanges', 'flightChanges']) {
     for (const c of (b[field] || [])) {
       const amount = r2(c && c.ourCostAddon);
       if (amount !== 0) {

@@ -104,10 +104,13 @@ const dbNameOf = (uri) => {
     const issuedInRange = bookings.filter(b => inRange(b.dateOfSubmission, range));
     const cancelledInRange = issuedInRange.filter(b => b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled);
 
-    // What we owe for the ticket: ourCost MINUS what the card paid straight to the airline.
+    // What we owe for the ticket: the BASE cost (ourCost already contains every date/flight
+    // change add-on, which is billed separately below) MINUS what the card paid to the airline.
     // Not floored at zero — a card can pay more than our cost, and that is a real credit.
+    const addonsOf = (b) => ['dateChanges', 'flightChanges'].reduce((t, f2) =>
+      t + (b[f2] || []).reduce((u, c) => u + (Number(c && c.ourCostAddon) || 0), 0), 0);
     const fare = r2(issuedInRange.reduce((s, b) =>
-      s + ((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0)), 0));
+      s + ((Number(b.ourCost) || 0) - addonsOf(b) - (Number(b.paymentFromCard) || 0)), 0));
     const cardPaid = r2(issuedInRange.reduce((s, b) => s + (Number(b.paymentFromCard) || 0), 0));
 
     // Was this booking's cancellation credit cut down by the card cap? If so nothing is inside it,
@@ -141,7 +144,7 @@ const dbNameOf = (uri) => {
     // supplier, not only the ones issued in the period.
     let addons = 0;
     for (const b of bookings) {
-      for (const f of ['dateChanges', 'flightChanges', 'seatBookChanges']) {
+      for (const f of ['dateChanges', 'flightChanges']) {
         for (const c of (b[f] || [])) {
           if (inRange(c && c.changedAt ? c.changedAt : b.dateOfSubmission, range)) {
             addons += Number(c && c.ourCostAddon) || 0;

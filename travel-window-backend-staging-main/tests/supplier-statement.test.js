@@ -78,11 +78,52 @@ console.log('\nline rules');
 
 {
   const changedAt = new Date('2026-09-20T18:00:00Z');
-  const lines = bookingLines(booking({ dateChanges: [{ ourCostAddon: 150, changedAt }] }));
+  // ourCost 1150 because the route adds the add-on into it; 1000 + 150 is the real state.
+  const lines = bookingLines(booking({ ourCost: 1150, dateChanges: [{ ourCostAddon: 150, changedAt }] }));
   const addon = lines.find(l => l.kind === 'addon');
   assert.strictEqual(addon.fare, 150);
   assert.strictEqual(addon.date, changedAt, 'dated on the change, not the booking');
   ok('a change add-on is its own line on the date the change was made');
+}
+
+{
+  // THE FIXTURE MATTERS. routes/bookings.js:891 does booking.ourCost = ourCost + ourCostAddon,
+  // so a booking that cost 1000 and then took a 150 add-on has ourCost 1150 AND a 150 add-on row.
+  // A fixture with ourCost 1000 plus a 150 add-on is a state the app cannot produce, and testing
+  // against it hid a double-count: the fare line billed the add-on inside ourCost and the add-on
+  // loop billed it again.
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({ ourCost: 1150, dateChanges: [{ ourCostAddon: 150, changedAt }] }));
+  assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 1000,
+    'the fare line must bill the BASE cost, not ourCost');
+  assert.strictEqual(lines.find(l => l.kind === 'addon').fare, 150);
+  assert.strictEqual(r2(lines.reduce((s2, l) => s2 + l.fare, 0)), 1150,
+    'the booking total must equal ourCost, not ourCost + the add-on again');
+  ok('a changed booking totals ourCost once, not ourCost plus the add-on again');
+}
+
+{
+  // Two add-ons on a card-paid booking.
+  const lines = bookingLines(booking({
+    ourCost: 1300, paymentFromCard: 1000, cardType: 'Company Card',
+    dateChanges: [{ ourCostAddon: 150, changedAt: new Date('2026-09-20T18:00:00Z') }],
+    flightChanges: [{ ourCostAddon: 150, changedAt: new Date('2026-09-22T18:00:00Z') }]
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 0, '1300 - 300 add-ons - 1000 card');
+  assert.strictEqual(r2(lines.reduce((s2, l) => s2 + l.fare, 0)), 300);
+  ok('two add-ons on a card-paid booking: base nets to 0.00, total is the 300 of add-ons');
+}
+
+{
+  // seatBookChanges has no ourCostAddon field (routes/bookings.js:1085 overwrites ourCost
+  // outright), so it must not be iterated - doing so would double-bill if the field appeared.
+  const lines = bookingLines(booking({
+    ourCost: 500,
+    seatBookChanges: [{ ourCostAddon: 99, changedAt: new Date('2026-09-20T18:00:00Z') }]
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'addon').length, 0);
+  assert.strictEqual(r2(lines.reduce((s2, l) => s2 + l.fare, 0)), 500);
+  ok('seatBookChanges is not treated as an add-on source');
 }
 
 console.log('\ncancelled bookings');
