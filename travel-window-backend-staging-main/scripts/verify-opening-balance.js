@@ -103,7 +103,10 @@ function torontoMidnightUtc(ymd) {
       const rawWR = canc ? r2(num(canc.supplierWillReturn)) : 0;
       const onCard = r2(num(b.paymentFromCard)) !== 0;
       const wr = rawWR > 0 ? rawWR : 0;
-      const credit = !canc ? 0 : r2(onCard ? Math.min(wr, net > 0 ? net : 0) : wr);
+      // The cap is what the supplier HOLDS, not the fare line: the add-ons were paid to the
+      // supplier and are billed back on their own dated lines, so they count toward the ceiling.
+      const held = r2(num(b.ourCost) - r2(num(b.paymentFromCard)));
+      const credit = !canc ? 0 : r2(onCard ? Math.min(wr, held > 0 ? held : 0) : wr);
       const capped = !!canc && (credit !== rawWR || credit === 0);
       const absorbed = !!canc && r2(num(canc.totalSupplierTook)) !== 0 && !capped;
 

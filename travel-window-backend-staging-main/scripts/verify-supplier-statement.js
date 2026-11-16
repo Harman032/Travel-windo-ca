@@ -120,8 +120,10 @@ const dbNameOf = (uri) => {
       if (r2(b.paymentFromCard) === 0) return false;
       const raw = r2(b.cancellation.supplierWillReturn);
       const willReturn = Math.max(0, raw);
-      const net = r2((Number(b.ourCost) || 0) - addonsOf(b) - (Number(b.paymentFromCard) || 0));
-      const credit = r2(Math.min(willReturn, Math.max(0, net)));
+      // The cap is what the supplier HOLDS, which includes the add-ons: they were paid to the
+      // supplier and billed back on their own lines. Not the add-on-stripped fare basis.
+      const held = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
+      const credit = r2(Math.min(willReturn, Math.max(0, held)));
       return credit !== raw || credit === 0;
     };
 
@@ -163,8 +165,8 @@ const dbNameOf = (uri) => {
       .filter(b => inRange(b.cancellation.cancelledAt || b.dateOfSubmission, range))
       .reduce((s, b) => {
         const willReturn = Math.max(0, r2(b.cancellation.supplierWillReturn));
-        const net = r2((Number(b.ourCost) || 0) - addonsOf(b) - (Number(b.paymentFromCard) || 0));
-        const credit = r2(b.paymentFromCard) !== 0 ? Math.min(willReturn, Math.max(0, net)) : willReturn;
+        const held = r2((Number(b.ourCost) || 0) - (Number(b.paymentFromCard) || 0));
+        const credit = r2(b.paymentFromCard) !== 0 ? Math.min(willReturn, Math.max(0, held)) : willReturn;
         return s - credit;
       }, 0));
 
