@@ -180,6 +180,36 @@ function bookingLines(b) {
    * 0.00, and the whole booking came out as a single 0.00 line. So a capped credit un-suppresses
    * the fees.
    */
+  /**
+   * KNOWN ISSUE — the suppression rule is not right for every cancellation scenario.
+   *
+   * Suppression assumes supplierWillReturn is net of totalSupplierTook. Checking every branch
+   * of utils/cancellation-engine.js, that is true in only two of them:
+   *
+   *   branch                              supplierWillReturn            net of TST?
+   *   machine charge     (engine:80,86)   baseOurCost - (AD + autoSCC)   NO
+   *   1A/1B              (engine:97,103)  baseOurCost - (AD + autoSCC)   NO
+   *   2A/2B              (engine:114,120) paidAmount  - (AD + autoSCC)   NO
+   *   3A/3B              (engine:131,138) baseSalePrice - AD             NO
+   *   4A/4B              (engine:150,156) baseOurCost - TST - AD         YES
+   *   5A/5B              (engine:167,174) paidAmount - AD / ara          NO
+   *   fallback isPP&&isCO(engine:186,192) baseOurCost - AD - TST         YES
+   *
+   * So in the NO branches the booking and updation charges are not inside the credit, and
+   * suppressing them understates what the supplier kept by exactly those two fields. (The auto
+   * cancellation charge genuinely is netted in all of them, so only bookingCharge +
+   * updationCharge is at stake.) Exposure on the staging copy: 10.00, across CVJZK9 and BPJD4Z.
+   *
+   * It is left as-is deliberately. Fixing it changes non-card cancellations, and the scenario
+   * family cannot be recovered from stored data: cancellation.cancellationMode only distinguishes
+   * charges from refundAmount, and the fallback branch — one of the two CORRECT ones — stores
+   * scenario "1A"/"1B", making it indistinguishable from true scenario 1, which is a broken one.
+   * Legacy rows have no cancellationMode at all (see models/Booking.js).
+   *
+   * Until it is fixed, a cancelled line on the statement should be read as provisional. The
+   * statement footer says so when any cancelled booking in the period lacks a stored
+   * cancellationMode.
+   */
   const feesAlreadyInCredit = cancelled && r2(b.cancellation.totalSupplierTook) !== 0 && !creditWasCapped;
   if (!feesAlreadyInCredit) {
     for (const [field, label] of [['supplierBookingCharge', 'booking'], ['supplierUpdationCharge', 'updation']]) {
