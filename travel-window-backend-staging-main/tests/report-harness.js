@@ -38,6 +38,48 @@ function matches(doc, q) {
   });
 }
 
+// select() is APPLIED, not ignored. A no-op select hides a whole class of bug: a route whose
+// projection omits a field the downstream code reads gets `undefined` from Mongoose and quietly
+// computes something wrong, while a test that ignores the projection passes. That is exactly how
+// paymentFromCard and supplierCharges went missing from the statement route.
+//
+// Nested paths ('cancellation.supplierWillReturn') and exclusion syntax ('-password') are both
+// handled. Neither is reachable from a reports route today, but getting either wrong makes the
+// harness lie in the opposite direction: a naive top-level lookup drops a nested projection
+// entirely, and exclusion syntax would collapse the document to { _id }. Both would read as a
+// failing route rather than a failing double.
+//
+// Exported so tests/report-harness.test.js can check it. A test double that has logic of its own
+// needs its own test; this one has already hidden a production defect once.
+const dig = (o, p) => p.split('.').reduce((v, k) => (v == null ? undefined : v[k]), o);
+const plant = (o, p, v) => {
+  const ks = p.split('.');
+  const last = ks.pop();
+  let cur = o;
+  for (const k of ks) cur = (cur[k] = cur[k] || {});
+  cur[last] = v;
+};
+function project(doc, fields) {
+  if (!fields) return doc;
+  const names = String(fields).split(/\s+/).filter(Boolean);
+  if (!names.length) return doc;
+
+  // Mongo forbids mixing inclusion with exclusion (except _id), so the first name decides.
+  if (names[0].startsWith('-')) {
+    const out = { ...doc };
+    for (const n of names) if (n.startsWith('-')) delete out[n.slice(1)];
+    return out;
+  }
+
+  const out = {};
+  for (const n of names) {
+    const v = dig(doc, n);
+    if (v !== undefined) plant(out, n, v);
+  }
+  if (!names.includes('-_id') && doc._id !== undefined) out._id = doc._id;
+  return out;
+}
+
 async function startReports(routerPath, bookings) {
   const cmp = (x, y) => {
     const nx = x instanceof Date ? x.getTime() : x;
@@ -47,18 +89,6 @@ async function startReports(routerPath, bookings) {
   };
   // Honors sort/skip/limit like Mongo does, so truncation bugs show up in tests.
   //
-  // select() is APPLIED, not ignored. A no-op select hides a whole class of bug: a route whose
-  // projection omits a field the downstream code reads gets `undefined` from Mongoose and quietly
-  // computes something wrong, while a test that ignores the projection passes. That is exactly how
-  // paymentFromCard and supplierCharges went missing from the statement route.
-  const project = (doc, fields) => {
-    if (!fields) return doc;
-    const keep = new Set(String(fields).split(/\s+/).filter(Boolean));
-    keep.add('_id');
-    const out = {};
-    for (const k of keep) if (doc[k] !== undefined) out[k] = doc[k];
-    return out;
-  };
   Booking.find = q => {
     const docs = bookings.filter(b => matches(b, q || {}));
     let sortSpec = null, skipN = 0, limitN = Infinity, projection = null;
@@ -69,7 +99,10 @@ async function startReports(routerPath, bookings) {
       skip: n => { skipN = n; return chain; },
       limit: n => { limitN = n; return chain; },
       then: (res, rej) => {
-        const out = docs.slice().map(d => project(d, projection));
+        // Sort FIRST, then project. Mongo sorts the stored document, so a route that sorts on a
+        // field it does not project still gets the right order; projecting first sorts on
+        // undefined and silently returns insertion order.
+        const out = docs.slice();
         if (sortSpec) {
           out.sort((a, b) => {
             for (const [k, dir] of Object.entries(sortSpec)) {
@@ -79,7 +112,8 @@ async function startReports(routerPath, bookings) {
             return 0;
           });
         }
-        return Promise.resolve(out.slice(skipN, skipN + limitN)).then(res, rej);
+        return Promise.resolve(out.slice(skipN, skipN + limitN).map(d => project(d, projection)))
+          .then(res, rej);
       }
     };
     return chain;
@@ -101,4 +135,4 @@ async function startReports(routerPath, bookings) {
   };
 }
 
-module.exports = { startReports };
+module.exports = { startReports, project };
