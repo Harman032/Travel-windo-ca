@@ -356,11 +356,6 @@ import { ToastrService } from 'ngx-toastr';
           <button type="button" class="btn btn-secondary" (click)="printStatement()">Print / Save as PDF</button>
         </div>
 
-        <!-- Repeats on every printed page -->
-        <div class="print-running-head">
-          {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
-        </div>
-
         <!-- Company block -->
         <div class="statement-head">
           <div class="statement-company">
@@ -372,9 +367,8 @@ import { ToastrService } from 'ngx-toastr';
           </div>
           <div class="statement-meta">
             <div class="font-bold text-lg">Client Statement</div>
-            <div><span class="font-semibold">To:</span> {{ statementData.dateTo || '—' }}</div>
             <div *ngIf="statementData.dateFrom"><span class="font-semibold">From:</span> {{ statementData.dateFrom }}</div>
-            <div class="text-xs text-gray-500 mt-1">Generated {{ statementData.generatedAt | tzDate:'long' }}</div>
+            <div><span class="font-semibold">To:</span> {{ statementData.dateTo || '—' }}</div>
           </div>
         </div>
 
@@ -382,6 +376,12 @@ import { ToastrService } from 'ngx-toastr';
 
         <table class="statement-table">
           <thead>
+            <!-- A thead row, not a floating div: only thead repeats on every printed page. -->
+            <tr class="print-running-head">
+              <th colspan="9">
+                {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
+              </th>
+            </tr>
             <tr class="statement-band">
               <th>Issue Dt</th>
               <th>Invoice No</th>
@@ -406,14 +406,15 @@ import { ToastrService } from 'ngx-toastr';
                 <tr class="statement-line-1">
                   <td>{{ line.date | tzDate:'yyyy-MM-dd' }}</td>
                   <td>{{ line.invoiceNo }}</td>
-                  <td colspan="7">{{ line.remarks }}</td>
+                  <td class="statement-remarks">{{ line.remarks }}</td>
+                  <td colspan="6"></td>
                 </tr>
                 <!-- line 2: Ticket No, Passenger, Vendor, Start Dt, Itinerary, Fare -->
                 <tr class="statement-line-2">
                   <td colspan="3"></td>
                   <td>{{ line.ticketNo }}</td>
-                  <td>{{ line.passenger }}</td>
-                  <td>{{ line.vendor }}</td>
+                  <td>{{ clean(line.passenger) }}</td>
+                  <td>{{ line.vendor | uppercase }}</td>
                   <td>{{ line.startDate ? (line.startDate | tzDate:'yyyy-MM-dd') : '' }}</td>
                   <td>{{ line.itinerary }}</td>
                   <td class="text-right" [class.credit]="line.fare < 0">{{ line.fare | number:'1.2-2' }}</td>
@@ -434,8 +435,9 @@ import { ToastrService } from 'ngx-toastr';
             <tr *ngIf="statementData.lineCount === 0">
               <td colspan="9" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
             </tr>
-          </tbody>
-          <tfoot>
+
+            <!-- In tbody, NOT tfoot: a tfoot is a table-footer-group, which browsers repeat on
+                 every printed page. Totals belong once, at the end. -->
             <tr class="statement-total">
               <td colspan="8" class="text-right">Total Open</td>
               <td class="text-right">{{ statementData.totals?.totalOpen | number:'1.2-2' }}</td>
@@ -444,7 +446,7 @@ import { ToastrService } from 'ngx-toastr';
               <td colspan="8" class="text-right">Account Balance</td>
               <td class="text-right">{{ statementData.totals?.accountBalance | number:'1.2-2' }}</td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
 
         <div class="text-xs text-gray-500 mt-4 no-print">
@@ -720,10 +722,16 @@ import { ToastrService } from 'ngx-toastr';
     .statement-total td { border-top: 2px solid #111; font-weight: 700; }
     .credit { color: #b91c1c; }
     .text-right { text-align: right; }
+    .statement-remarks { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
     .print-running-head { display: none; }
+    .print-running-head th { background: none; border: 0; font-weight: 400; text-transform: none;
+                             font-size: 10px; color: #374151; padding: 0 0 4px 0; text-align: left; }
 
     @media print {
-      /* The browser adds its own page numbers in the print footer. */
+      /* Page numbers come from the print engine: Chrome has no @page margin boxes, so
+         counter(page) cannot be rendered from the document. The app relies on the browser's
+         own print footer; the generated PDF uses Chrome's headerTemplate, which carries the
+         same line plus the page number. */
       @page { size: letter; margin: 14mm 12mm; }
       .no-print { display: none !important; }
       /* Everything on the page except the statement is chrome. */
@@ -732,8 +740,7 @@ import { ToastrService } from 'ngx-toastr';
       .statement { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: 0; padding: 0; }
       /* Repeat the header row and the running head on every page. */
       .statement-table thead { display: table-header-group; }
-      .statement-table tfoot { display: table-footer-group; }
-      .print-running-head { display: block; font-size: 10px; color: #374151; padding-bottom: 4px; }
+      .print-running-head { display: table-row; }
       /* Never split an invoice's two lines or its subtotal across a page break. */
       .statement-line-1, .statement-line-2, .statement-subtotal, .statement-total { page-break-inside: avoid; }
       .statement-line-1 { page-break-after: avoid; }
@@ -741,6 +748,15 @@ import { ToastrService } from 'ngx-toastr';
   `]
 })
 export class ReportsComponent implements OnInit {
+  /**
+   * Display-only tidy-up for stored text: trim the ends and collapse runs of internal
+   * whitespace. 80 stored PNRs carry stray whitespace and passenger names have the same
+   * problem. Never written back -- the stored value is left exactly as it is.
+   */
+  clean(v: any): string {
+    return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  }
+
   selectedReportType: string = 'date-wise';
   loading = false;
   suppliers: Supplier[] = [];
