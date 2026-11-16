@@ -100,6 +100,46 @@ function throwsInIntl(v) {
 
   // The one live hazard: routes/bookings.js:853 calls startOfDayTz(booking.travelDate) on the
   // date-change path. A booking with no usable travelDate would 500 there under the new code.
+  // Parseable is not the same as plausible. A typo'd year parses perfectly and sails through
+  // every check above: CBXCAA stores travelDate 1927-02-22 where the supplier's own statement
+  // shows 2027-02-02. Nothing in the CRM rejects it, and the statement prints it verbatim.
+  const LO = 2000, HI = 2100;
+  const yearInTz = v => {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric' }).format(d));
+  };
+  console.log('\n' + '='.repeat(78));
+  console.log(`Implausible dates - outside ${LO}..${HI}, Toronto year`);
+  console.log('='.repeat(78));
+  let odd = 0;
+  for (const f of [...SCALAR, ...ARRAY.map(a => a[0])]) {
+    const hits = [];
+    for (const b of bookings) {
+      const vals = [];
+      if (f.includes('[]')) {
+        const [, arr, key] = ARRAY.find(a => a[0] === f);
+        for (const r of (Array.isArray(b[arr]) ? b[arr] : [])) if (r && r[key] != null) vals.push(r[key]);
+      } else {
+        const v = dig(b, f);
+        if (v != null && v !== '') vals.push(v);
+      }
+      for (const v of vals) {
+        const y = yearInTz(v);
+        if (y !== null && (y < LO || y > HI)) {
+          hits.push(`${String(b.pnr || '?').trim()} -> ${new Date(v).toISOString().slice(0, 10)}`);
+        }
+      }
+    }
+    if (hits.length) {
+      odd += hits.length;
+      console.log(`\n${f}: ${hits.length}`);
+      for (const h of hits.slice(0, 25)) console.log(`    ${h}`);
+      if (hits.length > 25) console.log(`    ... and ${hits.length - 25} more`);
+    }
+  }
+  console.log(odd ? `\nTOTAL implausible values: ${odd}` : '\nNone. Every stored date falls inside the band.');
+
   const atRisk = bookings.filter(b => {
     if (b.status === 'Cancelled') return false;
     const v = b.travelDate;
