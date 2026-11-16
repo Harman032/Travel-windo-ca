@@ -153,8 +153,28 @@ function bookingLines(b) {
   // on a row the reader is told is a refund.
   const willReturn = Math.max(0, rawWillReturn);
 
+  /**
+   * The ceiling is everything the supplier was paid, which is NOT the fare line's `net`.
+   *
+   * `net` has the change add-ons stripped out of it, because they are billed back on their own
+   * dated lines below. But the supplier was still PAID those add-ons — that is the whole reason
+   * they are billed. Capping at `net` therefore understates what the supplier holds by
+   * `addonTotal`, which chops a credit they genuinely owe, and then flips `creditWasCapped` true,
+   * which un-suppresses the fee lines and emits the derived cancellation charge on top. Three
+   * effects, all over-billing.
+   *
+   * Worked case: ourCost 1150 (base 1000 + a 150 add-on), paymentFromCard 900, cancelled,
+   * supplierWillReturn 140, totalSupplierTook 10. Capping at `net` (100) gives
+   * 100 fare + 150 add-on - 100 credit + 10 un-suppressed fees = 160.00. Capping at what the
+   * supplier holds (250) leaves the credit uncapped: 100 + 150 - 140 = 110.00, which is right.
+   *
+   * No booking in the staging copy is cancelled AND card-paid AND carries an add-on (0 of 26),
+   * so this is a latent defect, not a present loss.
+   */
+  const heldBySupplier = r2(r2(b.ourCost) - r2(b.paymentFromCard));
+
   const credit = cancelled
-    ? r2(cardPaid ? Math.min(willReturn, Math.max(0, net)) : willReturn)
+    ? r2(cardPaid ? Math.min(willReturn, Math.max(0, heldBySupplier)) : willReturn)
     : 0;
 
   // "Capped" has to mean "this credit did not absorb the fees", not merely "the cap changed the

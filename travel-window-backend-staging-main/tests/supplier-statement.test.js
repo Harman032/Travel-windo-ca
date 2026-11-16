@@ -504,6 +504,61 @@ console.log('\ncancelled AND card-paid: a supplier cannot return money they neve
   ok('a non-card cancellation is never capped, so existing behaviour is untouched');
 }
 
+{
+  // The cap is "what the supplier HOLDS", not the fare line. The fare line has the change
+  // add-ons stripped out (they are billed back on their own dated lines), but the supplier was
+  // still paid them. Capping at the stripped figure chops a credit they genuinely owe AND
+  // un-suppresses the fees on top. No such booking exists in the copy yet; this is the guard.
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 900, cardType: 'Company Card',
+    supplierCharges: 10, supplierBookingCharge: 5, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 10, supplierWillReturn: 140,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  // Held = 1150 - 900 = 250, which is above 140, so nothing is capped.
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -140,
+    'the add-ons are money the supplier holds, so the 140 credit survives in full');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 0,
+    'nothing was capped, so totalSupplierTook still absorbs the fees');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 110,
+    '100 fare + 150 add-on - 140 credit = 110.00 (capping at the fare line gave 160.00)');
+  ok('a cancelled, card-paid booking with a change add-on is capped on what the supplier holds');
+}
+
+{
+  // Same booking fully card-paid against the BASE cost: held is 150, the add-on alone.
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 1000, cardType: 'Company Card',
+    supplierCharges: 10, supplierBookingCharge: 5, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 10, supplierWillReturn: 140,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -140,
+    'held = 1150 - 1000 = 150, still above the 140 the supplier returns');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 10,
+    '0 fare + 150 add-on - 140 credit = 10.00, exactly totalSupplierTook');
+  ok('the fare line reading 0.00 does not mean the supplier holds nothing');
+}
+
+{
+  // The cap still bites when it should: no add-on, so held equals the fare line.
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1000, paymentFromCard: 1000, cardType: 'Company Card',
+    supplierCharges: 25, supplierBookingCharge: 5, supplierUpdationCharge: 0,
+    cancellation: { isCancelled: true, totalSupplierTook: 25, supplierWillReturn: 1582.52,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'cancelCredit').length, 0,
+    'held is 0, so there is no credit to give');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 25,
+    'the capped credit un-suppresses the 5 fee and the derived 20 charge: 25.00');
+  ok('with no add-on the cap is unchanged, so BEBGWI-shaped bookings still behave');
+}
+
 console.log('\nsupplierWillReturn at or below zero');
 
 {
