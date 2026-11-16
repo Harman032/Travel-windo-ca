@@ -189,10 +189,11 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // Report B: Payment to Suppliers — a per-supplier statement of what we owe.
 //
 // Replaces the old Unverified Payments report and the old Payment to Supplier report. Verification
-// is no longer part of this screen (it moved to Verified Payments); it is shown as a column here
-// and never used as a filter, because we owe a supplier from the moment a ticket is issued, not
-// from the moment our own accounts team ticks a box. Filtering by it would make our statement
-// disagree with the supplier's own for reasons they cannot see.
+// is no longer part of this screen (it moved to Verified Payments): this statement neither shows
+// it nor filters on it, because we owe a supplier from the moment a ticket is issued, not from
+// the moment our own accounts team ticks a box. Filtering by it would make our statement disagree
+// with the supplier's own for reasons they cannot see, and showing it would put our internal
+// state on a document we hand them.
 //
 // Included: non-Draft bookings with a supplier id, by dateOfSubmission in the Toronto range.
 // Every line is returned; there is no paging, because a statement that stops at 50 rows is wrong.

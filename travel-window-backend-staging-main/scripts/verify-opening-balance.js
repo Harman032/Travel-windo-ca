@@ -6,10 +6,21 @@
  * expected total, so the opening balance cancels out of the residual and is never checked. This
  * script recomputes it from raw documents, through the native driver, with:
  *
- *   - no import of utils/supplier-statement.js for the independent figure
- *   - no import of utils/tz.js at all
+ *   - no use of buildStatement for the independent figure
+ *   - no use of utils/tz.js: the Toronto day boundary is located here, from Intl's own output
+ *     (NOTE: tz.js is still loaded transitively, because this file imports supplier-statement.js
+ *     at the bottom to fetch the number it compares against. Nothing above that comparison calls
+ *     into either.)
  *   - no mongoose models (raw collections, so no schema casting or defaults)
  *   - no line objects: amounts are accumulated per booking as plain numbers
+ *
+ * READ THIS BEFORE TRUSTING AN "AGREE": the predicates below -- net, held, credit, capped,
+ * absorbed, the derived charge -- are TRANSCRIPTIONS of the implementation, not a second
+ * derivation from the business rules. When the cap basis changed, this script had to be edited to
+ * match it, which is exactly what a genuinely independent check would not need. So an agreement
+ * certifies that two transcriptions of the same rules agree, and that the opening balance is not
+ * an artefact of buildStatement's line-and-filter machinery, its date arithmetic or tz.js. It
+ * does NOT certify that any rule is correct.
  *
  * It is an independent IMPLEMENTATION of the same documented rules, not an independent
  * specification. A rule that is wrong in both places will agree in both places.
