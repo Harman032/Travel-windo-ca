@@ -633,6 +633,176 @@ console.log('\nSupplierPayment record');
   ok('reference and note are optional');
 }
 
+console.log('\nintersection matrix: the nine cells nothing reached');
+
+/**
+ * Measured, not guessed: bookingLines was instrumented to record
+ * {live|cancelled} x {card|nocard} x {addon|noaddon} x {fee|nofee} x {capped|uncapped}
+ * for every call the suite made. 15 of the 24 reachable cells were covered; these are the
+ * other 9. Three money defects have now been found in cells nothing exercised, and all three
+ * were invisible to the reconciliation because it shares the implementation's predicates.
+ *
+ * `capped` is n/a on a live booking: there is no credit to cap.
+ */
+
+// ---- live x card x addon x FEE -------------------------------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    ourCost: 1150, paymentFromCard: 900, supplierBookingCharge: 15, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }]
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 100, 'base 1000 - card 900');
+  assert.strictEqual(lines.find(l => l.kind === 'addon').fare, 150, 'the add-on is its own line');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 270,
+    '100 fare + 15 + 5 fees + 150 add-on; fees are additive, never inside the fare');
+  ok('live, card, add-on, fees: all four components stay separate');
+}
+
+// ---- live x nocard x addon x FEE -----------------------------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    ourCost: 1150, paymentFromCard: 0, supplierBookingCharge: 15, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }]
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'fare').fare, 1000,
+    'no card: the fare is the BASE cost, with the add-on still billed separately');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 1170,
+    '1000 + 150 add-on + 20 fees = 1170, and ourCost 1150 is never billed twice');
+  ok('live, no card, add-on, fees: the add-on strip holds without a card');
+}
+
+// ---- cancelled x card x addon x fee x CAPPED -----------------------------------------------
+{
+  // Held = 1150 - 1140 = 10, far below the 140 the engine says the supplier returns, so the
+  // cap bites AND un-suppresses the fees AND emits the derived cancellation charge.
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 1140,
+    supplierCharges: 30, supplierBookingCharge: 5, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 30, supplierWillReturn: 140,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -10,
+    'the credit is capped at the 10 the supplier actually holds');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 3,
+    'capped: booking 5, updation 5 and the derived cancellation charge 20 are all billed');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 30,
+    '-140 fare + 150 add-on - 10 credit + 30 fees = 30.00; the card overpaid the base cost, '
+    + 'so the fare line is itself a credit and only the fees are left standing');
+  ok('cancelled, card, add-on, fees, capped: the cap bites on the held amount, not the fare');
+}
+
+// ---- cancelled x card x addon x nofee x CAPPED ---------------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 1145,
+    supplierCharges: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 140,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -5, 'capped at held = 5');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 0,
+    'nothing to un-suppress and nothing to derive when every charge field is 0');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 0,
+    '-145 fare + 150 add-on - 5 credit = 0.00, which is what the supplier is left holding');
+  ok('cancelled, card, add-on, no fees, capped: a capped credit with nothing to un-suppress');
+}
+
+// ---- cancelled x card x addon x nofee x UNCAPPED -------------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 900,
+    supplierCharges: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 140,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -140,
+    'held is 250, so the full credit survives');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 110,
+    '100 fare + 150 add-on - 140 credit = 110.00');
+  ok('cancelled, card, add-on, no fees, uncapped: the add-on counts toward the ceiling');
+}
+
+// ---- cancelled x nocard x addon x fee x UNCAPPED -------------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 0,
+    supplierCharges: 30, supplierBookingCharge: 5, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 30, supplierWillReturn: 800,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.find(l => l.kind === 'cancelCredit').fare, -800,
+    'no card means no cap, whatever the add-ons are');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 0,
+    'uncapped with a non-zero totalSupplierTook: the credit already contains the fees');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 350,
+    '1000 fare + 150 add-on - 800 credit = 350.00');
+  ok('cancelled, no card, add-on, fees, uncapped: suppression is unaffected by add-ons');
+}
+
+// ---- cancelled x nocard x addon x fee x CAPPED (via a zero credit) -------------------------
+{
+  // Non-card is never capped by the card rule, but a credit of 0 absorbed nothing, so it counts
+  // as capped and the fees must still be billed. This is the latent hole 1bdb3b1 closed, now
+  // with an add-on in play.
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 0,
+    supplierCharges: 30, supplierBookingCharge: 5, supplierUpdationCharge: 5,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 30, supplierWillReturn: 0,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'cancelCredit').length, 0,
+    'a zero credit is no line at all');
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 3,
+    'a zero credit absorbed nothing, so 5 + 5 and the derived 20 are all billed');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 1180,
+    '1000 fare + 150 add-on + 30 fees = 1180.00, the fully non-refundable case');
+  ok('cancelled, no card, add-on, fees, zero credit: nothing the supplier kept is dropped');
+}
+
+// ---- cancelled x nocard x addon x nofee x UNCAPPED -----------------------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 0,
+    supplierCharges: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 1150,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 0,
+    '1000 fare + 150 add-on - 1150 credit = 0.00: a clean full reversal');
+  ok('cancelled, no card, add-on, no fees, uncapped: a full reversal nets to zero');
+}
+
+// ---- cancelled x nocard x addon x nofee x CAPPED (zero credit) -----------------------------
+{
+  const changedAt = new Date('2026-09-20T18:00:00Z');
+  const lines = bookingLines(booking({
+    status: 'Cancelled', ourCost: 1150, paymentFromCard: 0,
+    supplierCharges: 0, supplierBookingCharge: 0, supplierUpdationCharge: 0,
+    dateChanges: [{ ourCostAddon: 150, changedAt }],
+    cancellation: { isCancelled: true, totalSupplierTook: 0, supplierWillReturn: 0,
+                    cancelledAt: new Date('2026-09-25T15:00:00Z') }
+  }));
+  assert.strictEqual(lines.filter(l => l.kind === 'fee').length, 0,
+    'no charge fields are set, so a zero credit has nothing to un-suppress');
+  assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 1150,
+    'nothing comes back: 1000 fare + 150 add-on = the whole ourCost, once');
+  ok('cancelled, no card, add-on, no fees, zero credit: the whole cost stays owed, billed once');
+}
+
 console.log('\nroute guards');
 
 (async () => {
