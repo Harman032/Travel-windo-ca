@@ -73,6 +73,31 @@ function project(doc, fields) {
 
   const out = {};
   for (const n of names) {
+    // '+field' is Mongoose's opt-in for a path declared `select: false` in the schema. It means
+    // "everything as usual, PLUS this one", not "only this one". Treating the + as part of the
+    // field name made the lookup miss and collapsed the document to { _id } -- the same failure
+    // the exclusion branch above exists to prevent.
+    if (n.startsWith('+')) {
+      Object.assign(out, doc);
+      const key = n.slice(1);
+      const v = dig(doc, key);
+      if (v !== undefined) plant(out, key, v);
+      continue;
+    }
+    // A path through an array ('dateChanges.ourCostAddon') projects each element down to that
+    // subset in Mongo. dig() walks objects only and would silently return undefined.
+    const head = n.split('.')[0];
+    if (n.includes('.') && Array.isArray(doc[head])) {
+      const rest = n.slice(head.length + 1);
+      const prior = Array.isArray(out[head]) ? out[head] : null;
+      out[head] = doc[head].map((el, i) => {
+        const sub = prior && prior[i] ? prior[i] : {};
+        const v = dig(el, rest);
+        if (v !== undefined) plant(sub, rest, v);
+        return sub;
+      });
+      continue;
+    }
     const v = dig(doc, n);
     if (v !== undefined) plant(out, n, v);
   }

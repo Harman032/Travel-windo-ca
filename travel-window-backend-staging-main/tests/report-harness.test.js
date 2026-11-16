@@ -116,4 +116,71 @@ console.log('\nprojection: no projection');
   ok('no select() means the whole document, by identity');
 }
 
-console.log('\n' + n + ' assertions passed');
+console.log('\nprojection: the two forms that used to collapse the document');
+
+{
+  // '+field' is Mongoose's opt-in for a schema path marked `select: false`. It means "the usual
+  // document PLUS this one", not "only this one".
+  const out = project(doc, '+password');
+  assert.strictEqual(out.password, 'secret', 'the opted-in field is there');
+  assert.strictEqual(out.pnr, 'ABC123', 'and so is everything else');
+  assert.strictEqual(out.ourCost, 100);
+  ok('+password adds a field rather than collapsing the document to { _id }');
+}
+
+{
+  // A path through an array projects each ELEMENT down to that subset.
+  const out = project(doc, 'pnr dateChanges.ourCostAddon');
+  assert.deepStrictEqual(out.dateChanges, [{ ourCostAddon: 150 }],
+    'each element keeps only the named leaf');
+  assert.strictEqual(out.pnr, 'ABC123');
+  ok('an array path yields a subset per element, not undefined');
+}
+
+console.log('\nsort runs on the stored document, not the projection');
+
+(async () => {
+  // The reordering fix had no test: project() in isolation cannot see it. This drives the real
+  // find().sort().select() chain, sorting on a field that is NOT projected -- which is the only
+  // shape where the old project-then-sort order produced the wrong answer. Mongo sorts, skips and
+  // limits the stored document and projects last.
+  const { startReports } = require('./report-harness');
+  const mongoose = require('mongoose');
+  const oid = () => new mongoose.Types.ObjectId();
+
+  // A throwaway route that sorts on ourCost while projecting only the PNR.
+  const path = require('path');
+  const fs = require('fs');
+  const routeFile = path.join(__dirname, 'tmp-sort-route.js');
+  fs.writeFileSync(routeFile,
+    "const express = require('express');\n" +
+    "const Booking = require('../models/Booking');\n" +
+    "const router = express.Router();\n" +
+    "router.get('/sorted', async (req, res) => {\n" +
+    "  const rows = await Booking.find({}).select('pnr').sort({ ourCost: 1 }).skip(1).limit(2).lean();\n" +
+    "  res.json(rows);\n" +
+    "});\n" +
+    "module.exports = router;\n");
+
+  try {
+    const bookings = [
+      { _id: oid(), pnr: 'HIGH', ourCost: 900, status: 'Ticketed' },
+      { _id: oid(), pnr: 'LOW', ourCost: 100, status: 'Ticketed' },
+      { _id: oid(), pnr: 'MID', ourCost: 500, status: 'Ticketed' },
+      { _id: oid(), pnr: 'TOP', ourCost: 999, status: 'Ticketed' }
+    ];
+    const api = await startReports(routeFile, bookings);
+    const rows = await api.get('sorted');
+
+    assert.deepStrictEqual(rows.map(r => r.pnr), ['MID', 'HIGH'],
+      'sorted by ourCost ascending, then skip 1 and limit 2 -- LOW, MID, HIGH, TOP');
+    assert.strictEqual('ourCost' in rows[0], false,
+      'and ourCost is still absent from the result: it was sorted on, not returned');
+    ok('a route may sort on a field it does not project, exactly as Mongo allows');
+    api.close();
+  } finally {
+    fs.unlinkSync(routeFile);
+  }
+})().then(() => {
+  console.log('\n' + n + ' assertions passed');
+}).catch(e => { console.error('\nFAILED:', e.message); process.exit(1); });
