@@ -1,6 +1,6 @@
 'use strict';
 
-const { dayInTz, inRange } = require('./tz');
+const { inRange } = require('./tz');
 
 const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
