@@ -356,6 +356,18 @@ import { ToastrService } from 'ngx-toastr';
           <button type="button" class="btn btn-secondary" (click)="printStatement()">Print / Save as PDF</button>
         </div>
 
+        <!--
+          Screen only, never printed. The caveat is about OUR inability to recover the
+          cancellation scenario from OUR own stored data; printing it on a document the supplier
+          receives would invite a dispute over every cancelled line, including the correct ones.
+          Deliberately unconditional and uncounted: narrowing it to the affected bookings would
+          need cancellationMode in the statement's projection and a flag in the payload.
+        -->
+        <div class="statement-provisional no-print">
+          <b>Provisional:</b> cancelled lines in this period may have no stored cancellation mode;
+          supplier charges on those lines may be understated. <i>(Screen only — not printed.)</i>
+        </div>
+
         <!-- Company block -->
         <div class="statement-head">
           <div class="statement-company">
@@ -378,14 +390,13 @@ import { ToastrService } from 'ngx-toastr';
           <thead>
             <!-- A thead row, not a floating div: only thead repeats on every printed page. -->
             <tr class="print-running-head">
-              <th colspan="9">
+              <th colspan="8">
                 {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
               </th>
             </tr>
             <tr class="statement-band">
               <th>Issue Dt</th>
               <th>Invoice No</th>
-              <th>Remarks</th>
               <th>Ticket No</th>
               <th>Passenger</th>
               <th>Vendor</th>
@@ -396,7 +407,7 @@ import { ToastrService } from 'ngx-toastr';
           </thead>
           <tbody>
             <tr *ngIf="statementData.openingBalance" class="statement-opening">
-              <td colspan="8">Opening balance</td>
+              <td colspan="7">Opening balance</td>
               <td class="text-right">{{ statementData.openingBalance | number:'1.2-2' }}</td>
             </tr>
 
@@ -406,12 +417,11 @@ import { ToastrService } from 'ngx-toastr';
                 <tr class="statement-line-1">
                   <td>{{ line.date | tzDate:'yyyy-MM-dd' }}</td>
                   <td>{{ line.invoiceNo }}</td>
-                  <td class="statement-remarks">{{ line.remarks }}</td>
                   <td colspan="6"></td>
                 </tr>
                 <!-- line 2: Ticket No, Passenger, Vendor, Start Dt, Itinerary, Fare -->
                 <tr class="statement-line-2">
-                  <td colspan="3"></td>
+                  <td colspan="2"></td>
                   <td>{{ line.ticketNo }}</td>
                   <td>{{ clean(line.passenger) }}</td>
                   <td>{{ line.vendor | uppercase }}</td>
@@ -420,30 +430,30 @@ import { ToastrService } from 'ngx-toastr';
                   <td class="text-right" [class.credit]="line.fare < 0">{{ line.fare | number:'1.2-2' }}</td>
                 </tr>
                 <tr *ngIf="line.kind === 'payment'" class="statement-line-2 no-print">
-                  <td colspan="8"></td>
+                  <td colspan="7"></td>
                   <td class="text-right">
                     <button type="button" class="text-xs text-red-600 underline" (click)="deleteSupplierPayment(line.paymentId)">delete</button>
                   </td>
                 </tr>
               </ng-container>
               <tr *ngIf="inv.showSubtotal" class="statement-subtotal">
-                <td colspan="8" class="text-right">Subtotal {{ inv.invoiceNo }}</td>
+                <td colspan="7" class="text-right">Subtotal {{ inv.invoiceNo }}</td>
                 <td class="text-right">{{ inv.subtotal | number:'1.2-2' }}</td>
               </tr>
             </ng-container>
 
             <tr *ngIf="statementData.lineCount === 0">
-              <td colspan="9" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
+              <td colspan="8" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
             </tr>
 
             <!-- In tbody, NOT tfoot: a tfoot is a table-footer-group, which browsers repeat on
                  every printed page. Totals belong once, at the end. -->
             <tr class="statement-total">
-              <td colspan="8" class="text-right">Total Open</td>
+              <td colspan="7" class="text-right">Total Open</td>
               <td class="text-right">{{ statementData.totals?.totalOpen | number:'1.2-2' }}</td>
             </tr>
             <tr class="statement-total">
-              <td colspan="8" class="text-right">Account Balance</td>
+              <td colspan="7" class="text-right">Account Balance</td>
               <td class="text-right">{{ statementData.totals?.accountBalance | number:'1.2-2' }}</td>
             </tr>
           </tbody>
@@ -722,7 +732,8 @@ import { ToastrService } from 'ngx-toastr';
     .statement-total td { border-top: 2px solid #111; font-weight: 700; }
     .credit { color: #b91c1c; }
     .text-right { text-align: right; }
-    .statement-remarks { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
+    .statement-provisional { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px;
+                             padding: 8px 12px; margin-bottom: 12px; font-size: 11px; color: #78350f; }
     .print-running-head { display: none; }
     .print-running-head th { background: none; border: 0; font-weight: 400; text-transform: none;
                              font-size: 10px; color: #374151; padding: 0 0 4px 0; text-align: left; }

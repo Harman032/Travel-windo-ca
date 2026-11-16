@@ -9,7 +9,7 @@ if (tzArg !== -1 && process.argv[tzArg + 1]) process.env.TZ = process.argv[tzArg
 
 const assert = require('assert');
 const mongoose = require('mongoose');
-const { buildStatement, bookingLines, buildItinerary, vendorLabel, CARD_FEE_CEILING, r2 } = require('../utils/supplier-statement');
+const { buildStatement, bookingLines, paymentLine, buildItinerary, vendorLabel, CARD_FEE_CEILING, r2 } = require('../utils/supplier-statement');
 const { buildRange } = require('../utils/tz');
 
 let passed = 0;
@@ -54,9 +54,10 @@ console.log('\nline rules');
   assert.strictEqual(lines[0].fare, 1000);
   ok('a plain booking is one fare line of ourCost');
   assert.strictEqual(lines[0].invoiceNo, 'AAA111');
-  assert.strictEqual(lines[0].remarks, 'AAA111');
   assert.strictEqual(lines[0].ticketNo, 'AAA111');
-  ok('invoice no, remarks and ticket no are all the PNR, as the client chose');
+  assert.strictEqual('remarks' in lines[0], false,
+    'the Remarks column is gone: it was a third copy of the PNR');
+  ok('invoice no and ticket no are both the PNR, as the client chose; remarks is not emitted');
   assert.strictEqual(lines[0].vendor, 'AC');
   ok('vendor is the stored airline value, as-is');
 }
@@ -826,6 +827,47 @@ console.log('\nintersection matrix: the nine cells nothing reached');
   assert.strictEqual(r2(lines.reduce((s, l) => s + l.fare, 0)), 1150,
     'nothing comes back: 1000 fare + 150 add-on = the whole ourCost, once');
   ok('cancelled, no card, add-on, no fees, zero credit: the whole cost stays owed, billed once');
+}
+
+console.log('\nthe internal note never reaches the statement');
+
+{
+  /**
+   * STANDING CONSTRAINT. SupplierPayment.note is an internal commercial field -- real rows in
+   * the copy read "ISSUED WITH 1% COMM" and "PAWAN SIR REF". The statement is a document we hand
+   * the supplier. The note used to ride onto it as the payment line's `remarks`; the Remarks
+   * column is gone and the field with it, so the note is not even on the wire.
+   *
+   * This test is the guard. If anyone puts it back, this fails.
+   */
+  const secret = 'ISSUED WITH 1% COMM / PAWAN SIR REF';
+  const line = paymentLine({
+    _id: 'p1', paymentDate: new Date('2026-09-15T16:00:00Z'), amount: 5000,
+    reference: 'WIRE-88421', note: secret
+  });
+
+  assert.strictEqual(JSON.stringify(line).includes('COMM'), false,
+    'the internal note must not appear anywhere in a statement line');
+  assert.strictEqual(JSON.stringify(line).includes('PAWAN'), false,
+    'nor any part of it');
+  assert.strictEqual('remarks' in line, false, 'the remarks field is gone entirely');
+  assert.strictEqual(line.invoiceNo, 'WIRE-88421',
+    'the reference is supplier-facing by design and does stay');
+  assert.strictEqual(line.fare, -5000, 'a payment is a credit');
+  ok('a payment line carries the reference and the amount, never the note');
+}
+
+{
+  // The same, through the whole statement rather than the one helper, so a future caller that
+  // re-attaches the note somewhere else is caught too.
+  const st = buildStatement([], [{
+    _id: 'p2', paymentDate: new Date('2026-09-15T16:00:00Z'), amount: 1200,
+    reference: 'CHQ-77', note: 'ISSUED WITH 1% COMM'
+  }], null);
+  assert.strictEqual(JSON.stringify(st).includes('COMM'), false,
+    'no internal note anywhere in the statement payload');
+  assert.strictEqual(st.totals.totalOpen, -1200);
+  ok('the whole statement payload is free of the note');
 }
 
 console.log('\nroute guards');

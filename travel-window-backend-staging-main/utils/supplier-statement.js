@@ -89,7 +89,6 @@ function bookingLines(b) {
   const common = {
     bookingId: String(b._id),
     invoiceNo: pnr,            // there is no invoice entity; the client chose the PNR
-    remarks: pnr,
     ticketNo: pnr,             // there is no ticket-number field on the schema
     passenger: b.paxName,
     startDate: b.travelDate,
@@ -331,7 +330,11 @@ function paymentLine(p) {
     kind: 'payment',
     date: p.paymentDate,
     invoiceNo: p.reference || '',
-    remarks: p.note || 'Payment',
+    // STANDING CONSTRAINT: `note` is internal commercial data -- real rows read
+    // "ISSUED WITH 1% COMM" and "PAWAN SIR REF". It must never reach the statement, which is a
+    // document we hand the supplier. It used to ride here as `remarks`; that column is gone and
+    // the field is gone with it, so the note is not even on the wire. Do not reintroduce it, and
+    // do not use it as a source for any other supplier-facing output.
     ticketNo: '',
     passenger: '',
     vendor: 'Payment',
