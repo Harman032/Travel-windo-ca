@@ -241,12 +241,14 @@ function bookingLines(b) {
    *
    * Until it is fixed, a cancelled line on the statement should be read as provisional.
    *
-   * NOT YET SAID ANYWHERE THE READER CAN SEE IT. A footer disclaimer has been drafted and is
-   * awaiting approval; it is deliberately not built. `buildStatement` returns only
-   * { openingBalance, invoices, lineCount, totals } and the route adds only company, supplier
-   * name, the dates, generatedAt and timezone — there is no footer field, and `cancellationMode`
-   * is not even in the statement's projection, so the condition could not be evaluated today.
-   * When the wording is approved, both of those have to change with it.
+   * Said on screen, and ONLY on screen: a banner above the statement table, inside `.no-print`,
+   * in reports.component.ts. It is not printed by design — the caveat is about OUR inability to
+   * recover the scenario from OUR own stored data, and putting it on a document the supplier
+   * receives would invite a dispute over every cancelled line, including the correct ones.
+   *
+   * The banner is unconditional and names no count. Narrowing it to the affected bookings would
+   * need `cancellationMode` in this route's projection (it is not there) and a flag in the
+   * payload; if that is ever wanted, both have to change together.
    */
   const feesAlreadyInCredit = cancelled && r2(b.cancellation.totalSupplierTook) !== 0 && !creditWasCapped;
   if (!feesAlreadyInCredit) {
