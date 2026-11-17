@@ -75,6 +75,11 @@ const DIRECTIONS = [
 
   let totalMatched = 0, totalModified = 0;
 
+  // A booking can be matched by more than one direction (verified by BOTH admin and account),
+  // so the sum of the four counts overstates how many bookings were touched. Collect the ids
+  // before writing, so the figure is the number of distinct bookings this run changes.
+  const touched = new Set();
+
   // THE ONLY WRITE CALL SITE IN THIS FILE.
   const runUpdate = async (label, filter, update) => {
     const res = await col.updateMany(filter, update);
@@ -85,6 +90,9 @@ const DIRECTIONS = [
   };
 
   for (const d of DIRECTIONS) {
+    const willChange = await col.find({ [d.from]: true, [d.set]: { $ne: true } },
+      { projection: { _id: 1 } }).toArray();
+    for (const r of willChange) touched.add(String(r._id));
     await runUpdate(
       d.label,
       // `$ne: true` also covers the field being absent, which is how most legacy rows store it.
@@ -95,6 +103,7 @@ const DIRECTIONS = [
 
   console.log('-'.repeat(78));
   console.log(`${'TOTAL'.padEnd(44)} matched ${String(totalMatched).padStart(6)}   modified ${String(totalModified).padStart(6)}`);
+  console.log(`${'DISTINCT BOOKINGS TOUCHED'.padEnd(44)} ${String(touched.size).padStart(21)}`);
 
   // Prove the two populations now agree, from the data rather than from the counts above.
   const live = { status: { $ne: 'Cancelled' } };
