@@ -147,10 +147,29 @@ const FIELDS = [
   const reportSays = live.filter(b => b.adminVerified || b.accountVerified).length;
   const verifiedMismatch = lockSays - reportSays;
 
+  /**
+   * The backfill runs in BOTH directions, and they are not equally harmless.
+   *
+   * Forward (adminVerified <- verifiedByAdmin) only makes the reports agree with a lock that is
+   * already closed. Reverse (verifiedByAdmin <- adminVerified) sets a flag that
+   * routes/bookings.js:471 reads as the EDIT LOCK, so it can newly lock a booking that staff can
+   * edit today -- and routes/bookings.js:301 filters the booking list on verifiedByAccount, so
+   * rows move too.
+   *
+   * It is 0 on the copy. It must be checked on live BEFORE the write is approved, because a
+   * non-zero reverse count is a user-visible change nobody has asked for.
+   */
+  const reverseAdmin = docs.filter(b => b.adminVerified === true && b.verifiedByAdmin !== true).length;
+  const reverseAccount = docs.filter(b => b.accountVerified === true && b.verifiedByAccount !== true).length;
+  const forwardAdmin = docs.filter(b => b.verifiedByAdmin === true && b.adminVerified !== true).length;
+  const forwardAccount = docs.filter(b => b.verifiedByAccount === true && b.accountVerified !== true).length;
+
   if (JSON_OUT) {
     console.log(JSON.stringify({
       ranAt: new Date().toISOString(), database: actual, bookings: docs.length,
       dateOnlyPending: pendingTotal, outOfRangeYear: oorTotal, verifiedMismatch,
+      backfill: { forwardAdmin, forwardAccount, reverseAdmin, reverseAccount,
+                  reverseTotal: reverseAdmin + reverseAccount },
       byField: rows.map(({ field, present, alreadyNoon, pending, outOfRange, unparseable }) =>
         ({ field, present, alreadyNoon, pending, outOfRange, unparseable }))
     }));
@@ -178,6 +197,16 @@ const FIELDS = [
       console.log('TOTAL PENDING because they wait on a human, not on the migration.');
     }
     console.log(`\nverified-flag mismatch (lock says ${lockSays}, reports say ${reportSays}) : ${verifiedMismatch}`);
+    console.log(`  forward  adminVerified   <- verifiedByAdmin    : ${forwardAdmin}`);
+    console.log(`  forward  accountVerified <- verifiedByAccount  : ${forwardAccount}`);
+    console.log(`  REVERSE  verifiedByAdmin   <- adminVerified    : ${reverseAdmin}`);
+    console.log(`  REVERSE  verifiedByAccount <- accountVerified  : ${reverseAccount}`);
+    if (reverseAdmin + reverseAccount > 0) {
+      console.log(`\n  WARNING: the reverse direction would newly set the EDIT LOCK on`);
+      console.log(`  ${reverseAdmin + reverseAccount} booking(s) (routes/bookings.js:471) and move rows in the`);
+      console.log('  booking-list filter (:301). It is 0 on the copy. Do not approve the');
+      console.log('  backfill on a non-zero reverse count without deciding that explicitly.');
+    }
     console.log('\n' + (pendingTotal === 0
       ? 'TOTAL PENDING is 0 — this is what GATES 3, 6, 8 and 9 require.'
       : `TOTAL PENDING is ${pendingTotal}. Expected before the migration write (GATE 2); a FAILURE at gates 3, 6, 8 and 9.`));
