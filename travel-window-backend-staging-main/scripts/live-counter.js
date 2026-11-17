@@ -110,11 +110,11 @@ const FIELDS = [
   }).toArray();
 
   const rows = [];
-  let pendingTotal = 0;
+  let pendingTotal = 0, oorTotal = 0;
 
   for (const f of FIELDS) {
-    let present = 0, alreadyNoon = 0, pending = 0, unparseable = 0;
-    const pnrs = [];
+    let present = 0, alreadyNoon = 0, pending = 0, unparseable = 0, outOfRange = 0;
+    const pnrs = [], oorPnrs = [];
     for (const b of docs) {
       for (const { v } of f.get(b)) {
         if (v === undefined || v === null || v === '') continue;
@@ -122,12 +122,23 @@ const FIELDS = [
         const d = new Date(v);
         if (Number.isNaN(d.getTime())) { unparseable++; continue; }
         if (isNoonUtc(d)) { alreadyNoon++; continue; }
+        // $dateFromParts refuses a year outside 1..9999, so the migration skips these by design
+        // rather than aborting the whole updateMany on them. They are NOT pending: counted apart
+        // so TOTAL PENDING can legitimately reach 0 at gates 3, 6, 8 and 9 while these still
+        // wait on a human decision.
+        const y = d.getUTCFullYear();
+        if (y < 1 || y > 9999) {
+          outOfRange++;
+          if (oorPnrs.length < SAMPLES) oorPnrs.push(String(b.pnr || '?').trim());
+          continue;
+        }
         pending++;
         if (pnrs.length < SAMPLES) pnrs.push(String(b.pnr || '?').trim());
       }
     }
     pendingTotal += pending;
-    rows.push({ field: f.path, present, alreadyNoon, pending, unparseable, pnrs });
+    oorTotal += outOfRange;
+    rows.push({ field: f.path, present, alreadyNoon, pending, outOfRange, unparseable, pnrs, oorPnrs });
   }
 
   // The verified-flag mismatch, for the backfill counter. Same criteria as the backfill script.
@@ -139,9 +150,9 @@ const FIELDS = [
   if (JSON_OUT) {
     console.log(JSON.stringify({
       ranAt: new Date().toISOString(), database: actual, bookings: docs.length,
-      dateOnlyPending: pendingTotal, verifiedMismatch,
-      byField: rows.map(({ field, present, alreadyNoon, pending, unparseable }) =>
-        ({ field, present, alreadyNoon, pending, unparseable }))
+      dateOnlyPending: pendingTotal, outOfRangeYear: oorTotal, verifiedMismatch,
+      byField: rows.map(({ field, present, alreadyNoon, pending, outOfRange, unparseable }) =>
+        ({ field, present, alreadyNoon, pending, outOfRange, unparseable }))
     }));
   } else {
     const pad = s => String(s).padEnd(46);
@@ -152,14 +163,20 @@ const FIELDS = [
     console.log(`ran at   : ${new Date().toISOString()}`);
     console.log(`bookings : ${docs.length}`);
     console.log('='.repeat(84));
-    console.log(`\n${pad('date-only field')}${n('present')}${n('at noon')}${n('PENDING')}${n('bad')}`);
-    console.log('-'.repeat(84));
+    console.log(`\n${pad('date-only field')}${n('present')}${n('at noon')}${n('PENDING')}${n('bad yr')}${n('bad')}`);
+    console.log('-'.repeat(93));
     for (const r of rows) {
-      console.log(`${pad(r.field)}${n(r.present)}${n(r.alreadyNoon)}${n(r.pending)}${n(r.unparseable)}`);
+      console.log(`${pad(r.field)}${n(r.present)}${n(r.alreadyNoon)}${n(r.pending)}${n(r.outOfRange)}${n(r.unparseable)}`);
       if (r.pnrs.length) console.log(`    sample PNRs: ${r.pnrs.join(', ')}`);
+      if (r.oorPnrs.length) console.log(`    year outside 1..9999, NOT migrated: ${r.oorPnrs.join(', ')}`);
     }
-    console.log('-'.repeat(84));
-    console.log(`${pad('TOTAL PENDING')}${' '.repeat(18)}${n(pendingTotal)}`);
+    console.log('-'.repeat(93));
+    console.log(`${pad('TOTAL PENDING')}${' '.repeat(18)}${n(pendingTotal)}${n(oorTotal)}`);
+    if (oorTotal) {
+      console.log(`\n${oorTotal} value(s) carry a year outside 1..9999. $dateFromParts refuses those, so the`);
+      console.log('migration skips them by design rather than aborting on them. They are excluded from');
+      console.log('TOTAL PENDING because they wait on a human, not on the migration.');
+    }
     console.log(`\nverified-flag mismatch (lock says ${lockSays}, reports say ${reportSays}) : ${verifiedMismatch}`);
     console.log('\n' + (pendingTotal === 0
       ? 'TOTAL PENDING is 0 — this is what GATES 3, 6, 8 and 9 require.'
