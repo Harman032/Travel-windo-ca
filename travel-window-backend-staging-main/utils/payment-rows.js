@@ -1,7 +1,7 @@
 'use strict';
 
 const { parseDateInput, validateDateOnly } = require('./date-only');
-const { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES } = require('./receiving-accounts');
+const { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES } = require('./receiving-accounts');
 
 /**
  * Route-layer validation for a booking's payments[] array.
@@ -53,15 +53,34 @@ const str = (v) => (v === undefined || v === null ? '' : String(v).trim());
  * Editing only the sender name on an existing row is not a change for this purpose, and the row
  * already carries both fields anyway.
  *
- * E-Transfer is the single mode for e-transfers, cheques and bank transfers. Cheque and
- * Bank Transfer remain in PAYMENT_MODES as legacy values and are offered by no dropdown, so they
- * can only arrive on a row that is already stored -- which is exactly the row this function lets
- * through untouched.
+ * LEGACY MODES. E-Transfer is the single mode for e-transfers, cheques and bank transfers.
+ * Cheque and Bank Transfer stay in PAYMENT_MODES because ~500 stored rows carry them, and no
+ * dropdown offers either -- but "no dropdown offers it" is not the same as "it cannot arrive".
+ * A hand-crafted request can post a BRAND NEW row with paymentMode 'Cheque', which passes the
+ * schema enum, skips the E-Transfer bank-detail requirement, and lands in the "Not recorded"
+ * bucket: exactly the gap this requirement exists to close.
+ *
+ * So a legacy mode is rejected when the request cannot be editing an existing row -- that is,
+ * when there are no stored rows to match against at all. That covers create and both
+ * append-only change routes, where every incoming row is new by construction.
+ *
+ * It is NOT rejected on an edit of a booking that has stored payments, because a row whose
+ * amount or date changed looks identical to a brand-new row: no client sends subdocument _ids,
+ * so "edited legacy Cheque row" and "newly crafted Cheque row" are the same bytes. Rejecting
+ * there would make an amount correction on a legacy Cheque payment impossible rather than
+ * merely awkward -- the form shows the bank fields only for E-Transfer, so there would be no way
+ * to satisfy it -- and legacy rows must keep saving. The residual gap needs an authenticated
+ * staff member to craft a request, and produces a row indistinguishable from the legacy data
+ * already there.
  *
  * Returns { error } or { payments }.
  */
 const validatePaymentRows = (incoming, existing = []) => {
   if (!Array.isArray(incoming)) return { payments: [] };
+
+  // Nothing stored to match against means every incoming row is new by construction, which is
+  // what lets the legacy-mode check below be safe.
+  const noStoredRows = !(existing || []).length;
 
   const pool = new Map();
   for (const p of (existing || [])) {
@@ -108,6 +127,11 @@ const validatePaymentRows = (incoming, existing = []) => {
       ? str(p.senderName)
       : str(candidate && candidate.senderName);
 
+    // A legacy deposit mode on a row that cannot be an edit of a stored one. See the note above.
+    if (!unchanged && noStoredRows && LEGACY_DEPOSIT_MODES.includes(paymentMode)) {
+      return { error: `payments[${i}].paymentMode "${paymentMode}" is a legacy value and cannot be used for a new payment: use E-Transfer, which covers cheques and bank transfers` };
+    }
+
     if (!unchanged && paymentMode === 'E-Transfer') {
       if (!receivingAccount) {
         return { error: `payments[${i}].receivingAccount is required for an E-Transfer (${RECEIVING_ACCOUNTS.join(' or ')})` };
@@ -144,5 +168,5 @@ const isUnrecordedAccount = (p) => isBankDeposit(p) && !str(p && p.receivingAcco
 
 module.exports = {
   paymentKey, validatePaymentRows, isBankDeposit, isUnrecordedAccount,
-  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES
+  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES
 };

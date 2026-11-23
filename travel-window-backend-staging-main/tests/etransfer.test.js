@@ -22,7 +22,7 @@ const User = require('../models/User');
 const { startReports } = require('./report-harness');
 const {
   validatePaymentRows, isBankDeposit, isUnrecordedAccount,
-  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES
+  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES
 } = require('../utils/payment-rows');
 
 let passed = 0;
@@ -123,7 +123,10 @@ t('the error names the ROW INDEX, so a multi-row form can point at it', () => {
 console.log('\nvalidatePaymentRows — EVERY OTHER MODE is unaffected');
 
 t('Cash, UPI, Credit Card and the rest need neither field', () => {
-  for (const mode of Booking.PAYMENT_MODES.filter(m => m !== 'E-Transfer')) {
+  // Legacy deposit modes are excluded here: they are rejected outright on a row that cannot be
+  // an edit of a stored one. See the legacy-mode block below.
+  const nonDeposit = Booking.PAYMENT_MODES.filter(m => !BANK_DEPOSIT_MODES.includes(m));
+  for (const mode of nonDeposit) {
     const r = validatePaymentRows([{ paidAmount: 50, paymentMode: mode, paymentDate: D }], []);
     assert.strictEqual(r.error, undefined, `${mode}: ${r.error}`);
     assert.strictEqual(r.payments[0].receivingAccount, '');
@@ -131,11 +134,51 @@ t('Cash, UPI, Credit Card and the rest need neither field', () => {
   }
 });
 
-t('a new Cheque row is accepted even though no dropdown offers it', () => {
-  // The mode is legacy, not forbidden: rejecting it at the route would break the import paths and
-  // any stored row round-tripping through a form.
-  const r = validatePaymentRows([{ paidAmount: 50, paymentMode: 'Cheque', paymentDate: D }], []);
-  assert.strictEqual(r.error, undefined, r.error);
+console.log('');
+console.log('legacy deposit modes cannot be used for a NEW payment');
+
+t('LEGACY_DEPOSIT_MODES is the two modes E-Transfer replaced', () => {
+  assert.deepStrictEqual(LEGACY_DEPOSIT_MODES, ['Cheque', 'Bank Transfer']);
+  // Still in the enum, because ~500 stored rows carry them and must keep saving.
+  for (const m of LEGACY_DEPOSIT_MODES) assert.ok(Booking.PAYMENT_MODES.includes(m), m);
+});
+
+t('a brand-new Cheque or Bank Transfer row is rejected', () => {
+  // The evasion this closes: no dropdown offers these two, but a hand-crafted request could post
+  // one as a NEW row -- passing the schema enum, skipping the E-Transfer bank-detail requirement
+  // entirely, and landing in the "Not recorded" bucket. That is the gap the requirement exists
+  // to close, reached by renaming the mode.
+  for (const mode of LEGACY_DEPOSIT_MODES) {
+    const r = validatePaymentRows([{ paidAmount: 50, paymentMode: mode, paymentDate: D }], []);
+    assert.ok(r.error && /legacy value/.test(r.error), `${mode}: ${r.error}`);
+    // And naming an account does not make it acceptable either -- the mode itself is retired.
+    const r2 = validatePaymentRows([{ paidAmount: 50, paymentMode: mode, paymentDate: D,
+      receivingAccount: RBC, senderName: 'Ravi' }], []);
+    assert.ok(r2.error && /legacy value/.test(r2.error), `${mode} with details: ${r2.error}`);
+  }
+});
+
+t('but a STORED legacy row still saves, changed or unchanged', () => {
+  // The line that must not be crossed: legacy rows keep saving. An edit cannot be distinguished
+  // from a new row (no client sends subdocument _ids), so where a stored row exists to match
+  // against, a legacy mode is allowed through.
+  const stored = [{ paidAmount: 50, paymentMode: 'Cheque', referenceNo: '',
+    paymentDate: new Date('2026-11-17T12:00:00Z') }];
+  assert.strictEqual(
+    validatePaymentRows([{ paidAmount: 50, paymentMode: 'Cheque', referenceNo: '', paymentDate: D }], stored).error,
+    undefined, 'unchanged');
+  assert.strictEqual(
+    validatePaymentRows([{ paidAmount: 75, paymentMode: 'Cheque', referenceNo: '', paymentDate: D }], stored).error,
+    undefined, 'amount corrected');
+  assert.strictEqual(
+    validatePaymentRows([{ paidAmount: 50, paymentMode: 'Cheque', referenceNo: '', paymentDate: '2026-11-18' }], stored).error,
+    undefined, 'date corrected');
+});
+
+t('a booking with NO stored payments cannot gain a legacy row by edit either', () => {
+  // Nothing stored means nothing to be editing, so the same rule applies on a PUT.
+  const r = validatePaymentRows([{ paidAmount: 50, paymentMode: 'Bank Transfer', paymentDate: D }], []);
+  assert.ok(r.error && /legacy value/.test(r.error), r.error);
 });
 
 console.log('\nvalidatePaymentRows — an UNCHANGED legacy row passes through untouched');

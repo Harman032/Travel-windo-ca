@@ -33,4 +33,11 @@ const RECEIVING_ACCOUNTS = ['RBC 6336', 'TD 0638'];
  */
 const BANK_DEPOSIT_MODES = ['E-Transfer', 'Cheque', 'Bank Transfer'];
 
-module.exports = { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES };
+/**
+ * The two bank-deposit modes E-Transfer replaced. Kept in PAYMENT_MODES because ~500 stored rows
+ * carry them, offered by no dropdown, and -- see utils/payment-rows.js -- not accepted on a row
+ * that cannot be an edit of a stored one.
+ */
+const LEGACY_DEPOSIT_MODES = BANK_DEPOSIT_MODES.filter(m => m !== 'E-Transfer');
+
+module.exports = { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES };
