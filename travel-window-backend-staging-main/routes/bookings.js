@@ -499,6 +499,9 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Cannot edit verified bookings' });
     }
 
+    // True when the request body contained nothing but issueDate; see the delete below.
+    let issueDateOnly = false;
+
     // ISSUE DATE is handled here for every role rather than per branch, and then removed from
     // `updates` so no branch sees it again. One code path means the ADMIN branch -- which has no
     // allowlist and assigns unknown keys straight through -- cannot skip the validation or the
@@ -522,6 +525,11 @@ router.put('/:id', auth, async (req, res) => {
         });
       }
       delete updates.issueDate;
+      // After the delete, an empty `updates` means the request carried NOTHING but issueDate.
+      // The verification reset below must not fire for it: correcting an issue date is the one
+      // edit ACCOUNT and ADMIN are explicitly allowed to make on a verified booking, and
+      // un-verifying it would undo the verification instead of correcting the date.
+      issueDateOnly = Object.keys(updates).length === 0;
     }
 
     // Date-only guards run ONCE here, before the role branches, so all three branches — including
@@ -615,11 +623,15 @@ router.put('/:id', auth, async (req, res) => {
         addProgressHistory(booking, 'Payments Updated', req.user, { payments: updates.payments });
       }
       calculateTotals(booking);
-      // Reset verification when booking is edited
-      booking.adminVerified = false;
-      booking.verifiedByAdmin = false;
-      booking.accountVerified = false;
-      booking.verifiedByAccount = false;
+      // Reset verification when booking is edited. Not for an issueDate-only request: see the
+      // issueDateOnly note above. (Unreachable for an agent, who is already 403 on a verified
+      // booking, but the rule is the same in all three branches so it cannot drift.)
+      if (!issueDateOnly) {
+        booking.adminVerified = false;
+        booking.verifiedByAdmin = false;
+        booking.accountVerified = false;
+        booking.verifiedByAccount = false;
+      }
       if (Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated', req.user, changes);
       }
@@ -699,8 +711,11 @@ router.put('/:id', auth, async (req, res) => {
         changes[key] = updates[key];
       });
       calculateTotals(booking);
-      // Reset verification when booking is edited (skip if this IS a verification action)
-      if (!updates.accountVerified && !updates.adminVerified) {
+      // Reset verification when booking is edited (skip if this IS a verification action, and
+      // skip for an issueDate-only request -- correcting the issue date of a verified booking is
+      // explicitly allowed for this role, and resetting the flags would undo the verification
+      // rather than correct the date).
+      if (!issueDateOnly && !updates.accountVerified && !updates.adminVerified) {
         booking.adminVerified = false;
         booking.verifiedByAdmin = false;
         booking.accountVerified = false;
@@ -805,8 +820,9 @@ router.put('/:id', auth, async (req, res) => {
       
       calculateTotals(booking);
       
-      // Reset verification when booking is edited (skip if this IS a verification action)
-      if (!updates.adminVerified && !updates.accountVerified) {
+      // Reset verification when booking is edited (skip if this IS a verification action, and
+      // skip for an issueDate-only request -- see the ACCOUNT branch above for why).
+      if (!issueDateOnly && !updates.adminVerified && !updates.accountVerified) {
         booking.adminVerified = false;
         booking.verifiedByAdmin = false;
         booking.accountVerified = false;

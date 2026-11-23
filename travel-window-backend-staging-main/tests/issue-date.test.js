@@ -342,6 +342,84 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     ok(`${role} CAN correct the issue date of a verified booking, and it is audited`);
   }
 
+  console.log('\nPUT /bookings/:id — correcting the issue date must NOT un-verify the booking');
+  // The whole point of letting ACCOUNT and ADMIN edit a verified booking's issue date is to
+  // CORRECT it. All three PUT branches reset the verification flags on any edit, so an
+  // issueDate-only request used to silently destroy the verification it was allowed to work
+  // around: the statement's Verified column flipped from Both to a dash on a document already
+  // sent, the booking migrated from Verified Payments to the unverified queue, both screens'
+  // totals moved by its full sale price and margin, and the booking-detail edit lock re-opened
+  // so an agent could edit it again. For ADMIN the only audit entry was "Issue Date Changed",
+  // which says nothing about verification.
+  const verified = (over = {}) => newBooking(Object.assign({
+    issueDate: ISSUED_OCT,
+    status: 'Admin Verified',
+    verifiedByAccount: true, accountVerified: true,
+    verifiedByAdmin: true, adminVerified: true
+  }, over));
+
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    const doc = verified();
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, { issueDate: '2026-11-02' });
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    assert.strictEqual(dayInTz(doc.issueDate), '2026-11-02', `${role}: corrected`);
+    for (const f of ['adminVerified', 'accountVerified', 'verifiedByAdmin', 'verifiedByAccount']) {
+      assert.strictEqual(doc[f], true, `${role}: ${f} must survive an issueDate-only correction`);
+    }
+    assert.ok(doc.progressHistory.find(h => h.action === 'Issue Date Changed'), `${role}: audited`);
+    api.close();
+    ok(`${role}: an issueDate-only correction keeps all four verification flags`);
+  }
+
+  console.log('\nPUT /bookings/:id — but any OTHER edit still resets verification');
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    {
+      // issueDate alongside a real edit: this is an edit, so the reset must fire.
+      const doc = verified();
+      const api = await startBookings(doc, role);
+      const res = await api.put(`/${doc._id}`, { issueDate: '2026-11-02', salePrice: 4321 });
+      assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+      assert.strictEqual(doc.salePrice, 4321);
+      for (const f of ['adminVerified', 'accountVerified', 'verifiedByAdmin', 'verifiedByAccount']) {
+        assert.strictEqual(doc[f], false, `${role}: ${f} must reset when something else changed`);
+      }
+      api.close();
+    }
+    {
+      // No issueDate at all: unchanged behaviour.
+      const doc = verified();
+      const api = await startBookings(doc, role);
+      await api.put(`/${doc._id}`, { salePrice: 4321 });
+      assert.strictEqual(doc.adminVerified, false, `${role}: plain edit still resets`);
+      api.close();
+    }
+    {
+      // An issueDate request that does not actually CHANGE the date is still issueDate-only.
+      const doc = verified();
+      const api = await startBookings(doc, role);
+      await api.put(`/${doc._id}`, { issueDate: '2026-10-31' });
+      assert.strictEqual(doc.adminVerified, true, `${role}: a no-op issueDate keeps verification`);
+      assert.strictEqual(
+        doc.progressHistory.filter(h => h.action === 'Issue Date Changed').length, 0,
+        `${role}: and writes no audit entry`);
+      api.close();
+    }
+    ok(`${role}: a real edit still resets verification; a no-op issueDate does not`);
+  }
+
+  console.log('\nPUT /bookings/:id — an AGENT still cannot touch a verified booking at all');
+  for (const role of ['AGENT1', 'AGENT2']) {
+    const doc = verified();
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, { issueDate: '2026-11-02' });
+    assert.strictEqual(res.status, 403, `${role}: got ${res.status}`);
+    assert.strictEqual(doc.adminVerified, true, `${role}: flags untouched`);
+    assert.strictEqual(dayInTz(doc.issueDate), '2026-10-31', `${role}: date untouched`);
+    api.close();
+    ok(`${role}: 403, and neither the date nor the flags move`);
+  }
+
   console.log('\nPUT /bookings/:id — bounds are enforced on edit too, for every role');
   for (const role of ROLES) {
     const doc = newBooking();
