@@ -80,10 +80,20 @@ const isLateEntry = (b) => {
 /**
  * Validate an issue date being written now.
  *
- * Two rules, both on Toronto calendar days:
- *   - not after today, because a ticket cannot be issued in the future;
- *   - not more than ISSUE_DATE_MAX_BACKDATE_DAYS days before the entry date, because unbounded
- *     backdating would let an agent move a booking into a closed period after the fact.
+ * The window is [entry day - ISSUE_DATE_MAX_BACKDATE_DAYS, entry day], clamped so it can never
+ * extend past today. Both ends are Toronto calendar days.
+ *
+ * BOTH ends are anchored to the booking's own entry date, and that matters. An earlier version
+ * bounded the lower end on the entry date but the upper end on *today*, which for an old booking
+ * are months apart: a booking entered 2026-09-02 accepted an issue date of 2026-11-23, 82 days
+ * AFTER it was keyed in. That moved the whole booking -- sale, cost and margin -- out of a closed
+ * September and into November across Reports C, E and F and the supplier statement, with no "late
+ * entry" marker to show for it, because isLateEntry only fires when entry comes after issue. The
+ * audit trail recorded the change; no report flagged it.
+ *
+ * A ticket is issued and then keyed in, never the other way round, so issue day <= entry day is
+ * the real constraint. "Not after today" survives as the clamp: on a new booking the entry date
+ * IS today, so the two bounds coincide and nothing changes there.
  *
  * Day arithmetic runs through noon UTC, which is 07:00 or 08:00 in Toronto whatever DST is doing,
  * so "three days earlier" never lands on the wrong side of a clock change.
@@ -104,6 +114,10 @@ const validateIssueDate = (value, submittedAt) => {
   }
 
   const submissionDay = dayInTz(submittedAt || new Date());
+  if (issueDay > submissionDay) {
+    return `issueDate ${issueDay} is after the entry date ${submissionDay}: a ticket cannot be issued after it was entered`;
+  }
+
   const earliestDay = dayInTz(new Date(noonOnDay(submissionDay).getTime() - ISSUE_DATE_MAX_BACKDATE_DAYS * DAY_MS));
   if (issueDay < earliestDay) {
     return `issueDate ${issueDay} is more than ${ISSUE_DATE_MAX_BACKDATE_DAYS} days before the entry date ${submissionDay} (earliest is ${earliestDay})`;

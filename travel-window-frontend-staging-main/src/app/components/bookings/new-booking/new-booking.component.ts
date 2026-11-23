@@ -148,8 +148,9 @@ import { ToastrService } from 'ngx-toastr';
                 <input type="date" formControlName="issueDate" class="input"
                        [min]="minIssueDate" [max]="maxIssueDate" />
                 <p class="text-gray-500 text-xs mt-1">
-                  The day the ticket was issued. Defaults to today; may be backdated up to
-                  {{ issueDateMaxBackdateDays }} days.
+                  The day the ticket was issued: {{ minIssueDate }} to {{ maxIssueDate }}.
+                  Never after the entry date, and at most
+                  {{ issueDateMaxBackdateDays }} days before it.
                 </p>
               </div>
             </div>
@@ -799,26 +800,36 @@ export class NewBookingComponent implements OnInit {
   /** Mirrors RECEIVING_ACCOUNTS in travel-window-backend-staging-main/utils/receiving-accounts.js. */
   readonly receivingAccounts = ['RBC 6336', 'TD 0638'];
 
-  /** Issue Date cannot be in the future: a ticket cannot have been issued tomorrow. */
-  get maxIssueDate(): string {
-    return todayInTz();
+  /**
+   * The day this booking was entered, in Toronto. Today for a new booking; the stored
+   * dateOfSubmission when editing an existing one.
+   *
+   * Both issue-date bounds hang off this, because the server's window is
+   * [entry - issueDateMaxBackdateDays, entry] and NOT a window around today. Anchoring the
+   * picker on today instead would offer an editor of an old booking nothing but dates the server
+   * rejects: for a booking entered in September, today-3..today is five weeks past its entry day.
+   */
+  get entryDay(): string {
+    return toDateInputValue(this.bookingForm.get('dateOfSubmission')?.value) || todayInTz();
   }
 
   /**
-   * Earliest selectable issue date: `issueDateMaxBackdateDays` days before today in Toronto.
-   *
-   * On a NEW booking today is the entry date, so this matches the server exactly. On an EDIT of
-   * an older booking the server compares against that booking's own dateOfSubmission, so this
-   * input may offer a day the server then rejects with a message naming both dates. Narrowing it
-   * correctly would mean duplicating the rule here; the server stays the single authority.
+   * Latest selectable issue date: the entry day, never later. A ticket is issued and then keyed
+   * in, not the other way round. Clamped to today as well, which only bites if a stored
+   * dateOfSubmission were somehow in the future.
    */
+  get maxIssueDate(): string {
+    const entry = this.entryDay;
+    const today = todayInTz();
+    return entry < today ? entry : today;
+  }
+
+  /** Earliest selectable issue date: `issueDateMaxBackdateDays` days before the entry day. */
   get minIssueDate(): string {
-    const d = new Date(Date.UTC(
-      Number(todayInTz().slice(0, 4)), Number(todayInTz().slice(5, 7)) - 1,
-      Number(todayInTz().slice(8, 10)), 12, 0, 0
-    ));
-    d.setUTCDate(d.getUTCDate() - this.issueDateMaxBackdateDays);
-    return toDateInputValue(d);
+    const [y, m, d] = this.entryDay.split('-').map(Number);
+    const at = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    at.setUTCDate(at.getUTCDate() - this.issueDateMaxBackdateDays);
+    return toDateInputValue(at);
   }
 
   /** Min date for Travel Date = today in Toronto (cannot select a past date in a new booking) */

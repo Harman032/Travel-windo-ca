@@ -36,6 +36,8 @@ console.log(`issue-date tests — server TZ = ${serverTz}`);
 // The driving case.
 const ISSUED_OCT = new Date('2026-10-31T12:00:00Z');       // date-only, noon UTC
 const ENTERED_NOV = new Date('2026-11-02T14:30:00Z');      // an instant
+// A booking entered months before today, for the forward-dating bound.
+const ENTERED_SEP = new Date('2026-09-02T14:30:00Z');
 const OCTOBER = { dateFrom: '2026-10-01', dateTo: '2026-10-31' };
 const NOVEMBER = { dateFrom: '2026-11-01', dateTo: '2026-11-30' };
 
@@ -126,6 +128,30 @@ t(`exactly ${ISSUE_DATE_MAX_BACKDATE_DAYS} days back is accepted`, () => {
 t(`${ISSUE_DATE_MAX_BACKDATE_DAYS + 1} days back is rejected`, () => {
   const msg = validateIssueDate(dayOffset(-(ISSUE_DATE_MAX_BACKDATE_DAYS + 1)), new Date());
   assert.ok(msg && /days before the entry date/.test(msg), msg);
+});
+
+t('an issue date AFTER the entry date is rejected, however far back the booking is', () => {
+  // The defect this closes: the upper bound used to be anchored on TODAY while the lower bound
+  // was anchored on the entry date, so for an old booking they were months apart. A booking
+  // entered 2026-09-02 accepted an issue date of 2026-11-23 -- 82 days after it was keyed in --
+  // which moved its whole sale, cost and margin out of a closed September and into November
+  // across Reports C, E and F and the supplier statement, with no late-entry marker to show for
+  // it, because isLateEntry only fires when entry comes AFTER issue.
+  for (const d of ['2026-09-03', '2026-09-20', '2026-10-15', '2026-11-23']) {
+    const msg = validateIssueDate(d, ENTERED_SEP);
+    assert.ok(msg && /after the entry date/.test(msg), d + ': ' + msg);
+  }
+  // The entry day itself is fine, and so is the whole backdating window below it.
+  assert.strictEqual(validateIssueDate('2026-09-02', ENTERED_SEP), null);
+  assert.strictEqual(validateIssueDate('2026-08-30', ENTERED_SEP), null);
+  assert.ok(validateIssueDate('2026-08-29', ENTERED_SEP), 'and 4 days back is still rejected');
+});
+
+t('on a NEW booking the two bounds coincide, so nothing changes there', () => {
+  // The entry date IS today, so "not after today" and "not after the entry date" are one rule.
+  const now = new Date();
+  assert.strictEqual(validateIssueDate(todayTor, now), null);
+  assert.ok(/future/.test(validateIssueDate(dayOffset(1), now) || ''), 'tomorrow still reads as future');
 });
 
 t('bounds are measured against the BOOKING\'s entry date, not today', () => {
