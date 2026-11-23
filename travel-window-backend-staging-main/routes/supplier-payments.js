@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 const SupplierPayment = require('../models/SupplierPayment');
 const Supplier = require('../models/Supplier');
-const { parseDateInput } = require('../utils/date-only');
+const { parseDateInput, validateDateOnly } = require('../utils/date-only');
 const { buildRange } = require('../utils/tz');
 const { parseStrictNumber } = require('../utils/validate-financial');
 
@@ -52,6 +52,15 @@ router.post('/', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
     }
 
     // Date-only: noon UTC, so the recorded day is the same day for every reader.
+    //
+    // Year-guarded like every other date-only input, and this one earns it twice over: the
+    // statement decides opening balance vs period purely on this date (utils/supplier-statement.js
+    // filters every line on inRange(l.date, range)). A payment typed as year 22026 would sit
+    // outside every range anyone ever selects -- neither in the opening balance nor in any
+    // period -- so the money would simply vanish from the statement rather than look wrong.
+    const invalidDate = validateDateOnly(paymentDate, 'paymentDate');
+    if (invalidDate) return res.status(400).json({ message: invalidDate });
+
     const date = parseDateInput(paymentDate);
     if (!date) return res.status(400).json({ message: 'paymentDate is required (YYYY-MM-DD)' });
 

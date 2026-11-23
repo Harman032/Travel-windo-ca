@@ -573,6 +573,66 @@ const paymentRow = (paymentDate) => ({ paidAmount: 200, paymentMode: 'Cash', pay
     ok('dateChanges[].changedAt stays an instant while newTravelDate goes to noon');
   }
 
+  // ---- supplier payments: the date that decides opening balance vs period ----
+  console.log('\nPOST /api/supplier-payments — paymentDate');
+  {
+    const Supplier = require('../models/Supplier');
+    const SupplierPayment = require('../models/SupplierPayment');
+    Supplier.exists = async () => true;
+    const made = [];
+    SupplierPayment.create = async (payload) => { made.push(payload); return { ...payload, _id: oid() }; };
+    // The route echoes the stored row back through findById().populate().
+    SupplierPayment.findById = () => {
+      const row = made[made.length - 1] || {};
+      const chain = { populate: () => chain, then: (res, rej) => Promise.resolve(row).then(res, rej) };
+      return chain;
+    };
+
+    const user = { _id: oid(), role: 'ACCOUNT', isActive: true, name: 'ACCOUNT' };
+    User.findById = () => ({ select: () => Promise.resolve(user) });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => { req.id = 'test'; next(); });
+    app.use('/api/supplier-payments', require('../routes/supplier-payments'));
+    const server = await new Promise(r => { const s = app.listen(0, () => r(s)); });
+    const token = jwt.sign({ userId: String(user._id), role: 'ACCOUNT' }, SECRET);
+    const call = async (body) => {
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/supplier-payments`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      return { status: res.status, body: await res.json().catch(() => null) };
+    };
+    const base = { supplier: String(oid()), amount: 100 };
+
+    for (const [label, input] of SHAPES) {
+      made.length = 0;
+      const res = await call({ ...base, paymentDate: input });
+      assert.strictEqual(res.status, 201, `${label}: ${res.status} ${JSON.stringify(res.body)}`);
+      assert.strictEqual(made[0].paymentDate.toISOString(), NOV17, label);
+    }
+    ok('all five shapes store 2026-11-17T12:00Z');
+
+    for (const bad of ['1927-02-22', '22026-11-17']) {
+      made.length = 0;
+      const res = await call({ ...base, paymentDate: bad });
+      assert.strictEqual(res.status, 400, `${bad}: got ${res.status}`);
+      assert.ok(/paymentDate/.test(res.body.message), res.body.message);
+      assert.strictEqual(made.length, 0, 'nothing created');
+    }
+    ok('years 1927 and 22026 rejected with 400, nothing created');
+
+    {
+      const res = await call({ ...base, paymentDate: '2026-11-18T00:30:00Z' });
+      assert.strictEqual(res.status, 201, JSON.stringify(res.body));
+      assert.strictEqual(made[made.length - 1].paymentDate.toISOString(), NOV17);
+    }
+    ok('an instant at 00:30Z is recorded on Toronto\'s day, not UTC\'s');
+
+    server.close();
+  }
+
   console.log(`\n${passed} assertions passed (server TZ ${serverTz})`);
   process.exit(0);
 })().catch(e => { console.error('\nFAILED:', e.message); process.exit(1); });
