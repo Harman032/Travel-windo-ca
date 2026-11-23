@@ -188,12 +188,23 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 
 // Report B: Payment to Suppliers — a per-supplier statement of what we owe.
 //
-// Replaces the old Unverified Payments report and the old Payment to Supplier report. Verification
-// is no longer part of this screen (it moved to Verified Payments): this statement neither shows
-// it nor filters on it, because we owe a supplier from the moment a ticket is issued, not from
-// the moment our own accounts team ticks a box. Filtering by it would make our statement disagree
-// with the supplier's own for reasons they cannot see, and showing it would put our internal
-// state on a document we hand them.
+// Replaces the old Unverified Payments report and the old Payment to Supplier report.
+//
+// VERIFICATION: shown, NOT filtered on. The client has asked for a Verified column on this
+// statement, on screen and in print, reading Account / Admin / Both / —. That reverses c844446,
+// which dropped the computation as unused; the decision is the client's and it is recorded here
+// rather than argued with.
+//
+// The distinction that still holds is between showing and filtering. We owe a supplier from the
+// moment a ticket is issued, not from the moment our own accounts team ticks a box, so filtering
+// by verification would make our statement disagree with the supplier's own for reasons they
+// cannot see. Inclusion therefore remains purely date-based. The column is informational.
+//
+// Note that this does put our internal verification state on a document we hand to a supplier.
+// That was the original objection and it has been answered by the client, who wants it; it is a
+// disclosure decision, not a technical one. It does NOT widen to anything else: `note` still
+// never reaches supplier-facing output (see the standing constraint beside paymentLine in
+// utils/supplier-statement.js), because that field carries internal commercial data.
 //
 // Included: non-Draft bookings with a supplier id, by dateOfSubmission in the Toronto range.
 // Every line is returned; there is no paging, because a statement that stops at 50 rows is wrong.
@@ -224,7 +235,7 @@ router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (
       // charge. Leaving them out does not error — Mongoose returns undefined and the arithmetic
       // quietly falls back to the pre-fix behaviour.
       .select('pnr paxName dateOfSubmission travelDate from to sectorType multipleSectors airline ' +
-              'status ourCost paymentFromCard supplierCharges ' +
+              'status ourCost paymentFromCard supplierCharges adminVerified accountVerified ' +
               'supplierBookingCharge supplierUpdationCharge cancellation ' +
               'dateChanges flightChanges')
       .lean();

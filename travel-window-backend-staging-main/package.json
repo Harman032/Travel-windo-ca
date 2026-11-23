@@ -18,8 +18,9 @@
     "test:cancellation-schema": "node tests/cancellation-schema.test.js",
     "test:removed-reports": "node tests/removed-reports.test.js",
     "test:harness": "node tests/report-harness.test.js",
+    "test:statement-render": "node tests/statement-render.test.js",
     "test:supplier-statement": "node tests/supplier-statement.test.js --tz UTC && node tests/supplier-statement.test.js --tz Asia/Kolkata && node tests/supplier-statement.test.js --tz America/Los_Angeles",
-    "test": "npm run test:cancellation && npm run test:hardening && npm run test:reports && npm run test:report-paging && npm run test:payment-modes && npm run test:timezone && npm run test:date-only && npm run test:date-only-hotfix && npm run test:verification && npm run test:cancellation-schema && npm run test:removed-reports && npm run test:harness && npm run test:supplier-statement"
+    "test": "npm run test:cancellation && npm run test:hardening && npm run test:reports && npm run test:report-paging && npm run test:payment-modes && npm run test:timezone && npm run test:date-only && npm run test:date-only-hotfix && npm run test:verification && npm run test:cancellation-schema && npm run test:removed-reports && npm run test:harness && npm run test:statement-render && npm run test:supplier-statement"
   },
   "dependencies": {
     "axios": "^1.16.1",

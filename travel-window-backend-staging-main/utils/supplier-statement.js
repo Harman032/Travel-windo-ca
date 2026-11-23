@@ -47,6 +47,26 @@ const CARD_FEE_CEILING = 100;
  * misleading. The sign tells which: a negative net means the card paid more than our cost, which
  * the supplier's own statement shows as Discount/Adjustments.
  */
+/**
+ * Who has verified this booking, for the client-requested Verified column.
+ *
+ * Reads adminVerified / accountVerified — the report-facing pair. The other pair,
+ * verifiedByAdmin / verifiedByAccount, drives the booking-detail edit lock; the two are written
+ * together by every current path (routes/bookings.js PUT and the two verify routes), and the
+ * 2026-11-17 backfill reconciled the 204 legacy rows where they had drifted.
+ *
+ * Both fields must be in the statement route's .select(). An unprojected field reads as
+ * `undefined`, not an error, so a missing projection would quietly label every booking '—'.
+ */
+function verifiedLabel(booking) {
+  const admin = booking.adminVerified === true;
+  const account = booking.accountVerified === true;
+  if (admin && account) return 'Both';
+  if (admin) return 'Admin';
+  if (account) return 'Account';
+  return '—';
+}
+
 function vendorLabel(booking, net) {
   const cardPaid = r2(booking.paymentFromCard) !== 0;
   const airline = String(booking.airline || '').trim();
@@ -92,7 +112,8 @@ function bookingLines(b) {
     ticketNo: pnr,             // there is no ticket-number field on the schema
     passenger: b.paxName,
     startDate: b.travelDate,
-    itinerary: buildItinerary(b)
+    itinerary: buildItinerary(b),
+    verified: verifiedLabel(b)
   };
 
   /**
@@ -355,6 +376,9 @@ function paymentLine(p) {
     vendor: 'Payment',
     startDate: null,
     itinerary: '',
+    // A payment to the supplier is not a booking, so there is nothing to have verified. Set
+    // explicitly rather than left undefined so the Verified column renders a dash, not a blank.
+    verified: '—',
     fare: -r2(p.amount),
     paymentId: String(p._id)
   };

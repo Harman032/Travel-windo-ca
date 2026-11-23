@@ -395,7 +395,7 @@ import { ToastrService } from 'ngx-toastr';
           <thead>
             <!-- A thead row, not a floating div: only thead repeats on every printed page. -->
             <tr class="print-running-head">
-              <th colspan="8">
+              <th colspan="9">
                 {{ statementData.generatedAt | tzDate:'long' }} &nbsp;|&nbsp; Client Statement: {{ statementData.company?.name }}
               </th>
               <!--
@@ -413,12 +413,13 @@ import { ToastrService } from 'ngx-toastr';
               <th>Vendor</th>
               <th>Start Dt</th>
               <th>Itinerary</th>
+              <th>Verified</th>
               <th class="text-right">Fare</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngIf="statementData.openingBalance" class="statement-opening">
-              <td colspan="7">Opening balance</td>
+              <td colspan="8">Opening balance</td>
               <td class="text-right">{{ statementData.openingBalance | number:'1.2-2' }}</td>
             </tr>
 
@@ -428,7 +429,7 @@ import { ToastrService } from 'ngx-toastr';
                 <tr class="statement-line-1">
                   <td>{{ line.date | tzDate:'yyyy-MM-dd' }}</td>
                   <td>{{ line.invoiceNo }}</td>
-                  <td colspan="6"></td>
+                  <td colspan="7"></td>
                 </tr>
                 <!-- line 2: Ticket No, Passenger, Vendor, Start Dt, Itinerary, Fare -->
                 <tr class="statement-line-2">
@@ -438,33 +439,34 @@ import { ToastrService } from 'ngx-toastr';
                   <td>{{ line.vendor | uppercase }}</td>
                   <td>{{ line.startDate ? (line.startDate | tzDate:'yyyy-MM-dd') : '' }}</td>
                   <td>{{ line.itinerary }}</td>
+                  <td class="statement-verified">{{ line.verified }}</td>
                   <td class="text-right" [class.credit]="line.fare < 0">{{ line.fare | number:'1.2-2' }}</td>
                 </tr>
                 <tr *ngIf="line.kind === 'payment'" class="statement-line-2 no-print">
-                  <td colspan="7"></td>
+                  <td colspan="8"></td>
                   <td class="text-right">
                     <button type="button" class="text-xs text-red-600 underline" (click)="deleteSupplierPayment(line.paymentId)">delete</button>
                   </td>
                 </tr>
               </ng-container>
               <tr *ngIf="inv.showSubtotal" class="statement-subtotal">
-                <td colspan="7" class="text-right">Subtotal {{ inv.invoiceNo }}</td>
+                <td colspan="8" class="text-right">Subtotal {{ inv.invoiceNo }}</td>
                 <td class="text-right">{{ inv.subtotal | number:'1.2-2' }}</td>
               </tr>
             </ng-container>
 
             <tr *ngIf="statementData.lineCount === 0">
-              <td colspan="8" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500">No activity for this supplier in the selected period.</td>
             </tr>
 
             <!-- In tbody, NOT tfoot: a tfoot is a table-footer-group, which browsers repeat on
                  every printed page. Totals belong once, at the end. -->
             <tr class="statement-total">
-              <td colspan="7" class="text-right">Total Open</td>
+              <td colspan="8" class="text-right">Total Open</td>
               <td class="text-right">{{ statementData.totals?.totalOpen | number:'1.2-2' }}</td>
             </tr>
             <tr class="statement-total">
-              <td colspan="7" class="text-right">Account Balance</td>
+              <td colspan="8" class="text-right">Account Balance</td>
               <td class="text-right">{{ statementData.totals?.accountBalance | number:'1.2-2' }}</td>
             </tr>
           </tbody>
@@ -741,6 +743,9 @@ import { ToastrService } from 'ngx-toastr';
     /* Underline above a subtotal, as in the client's statement. */
     .statement-subtotal td { border-top: 1px solid #111; font-weight: 600; }
     .statement-total td { border-top: 2px solid #111; font-weight: 700; }
+    /* Client-requested Verified column: Account / Admin / Both / em dash. Narrow, and
+       deliberately NOT .no-print -- the client asked for it on screen AND in print. */
+    .statement-verified { white-space: nowrap; font-size: 11px; }
     .credit { color: #b91c1c; }
     .text-right { text-align: right; }
     .statement-provisional { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px;
