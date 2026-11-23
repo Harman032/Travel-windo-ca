@@ -175,14 +175,29 @@ t('an unparseable value is rejected as a date, not silently dropped', () => {
 
 // ------------------------------------------------------------------ the write path ------------
 
+/**
+ * A booking as it comes back from findById: NOT new, and with no modified paths.
+ *
+ * `new Booking({...})` is $isNew with every supplied path marked modified, so a route that asks
+ * the document what actually changed sees everything. That is not what a loaded document looks
+ * like, and the difference is not cosmetic: it is why twelve assertions about the verification
+ * reset passed while the product path was still broken. The double has to model document state,
+ * not just document shape -- the same lesson as making select() real in report-harness.
+ */
+function asLoaded(doc) {
+  doc.$isNew = false;
+  doc.$__reset();
+  return doc;
+}
+
 function newBooking(over = {}) {
-  return new Booking(Object.assign({
+  return asLoaded(new Booking(Object.assign({
     pnr: 'TEST01', paxName: 'X', contactNumber: '+1 5550000', sectorType: 'One Way',
     travelDate: new Date('2026-12-01T12:00:00Z'), from: 'YYZ', to: 'DEL',
     submittedBy: oid(), submittedByName: 'Agent One',
     status: 'Pending Verification', salePrice: 1000, ourCost: 900,
     dateOfSubmission: ENTERED_NOV
-  }, over));
+  }, over)));
 }
 
 async function startBookings(doc, role) {
@@ -368,8 +383,167 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
       assert.strictEqual(doc[f], true, `${role}: ${f} must survive an issueDate-only correction`);
     }
     assert.ok(doc.progressHistory.find(h => h.action === 'Issue Date Changed'), `${role}: audited`);
+    // Exactly ONE entry, and it is the right one. The ACCOUNT branch used to add an empty
+    // 'Booking Updated by Account' alongside it, claiming an edit that did not happen.
+    assert.strictEqual(doc.progressHistory.length, 1,
+      `${role}: one audit entry, got ${doc.progressHistory.map(h => h.action).join(' | ')}`);
     api.close();
-    ok(`${role}: an issueDate-only correction keeps all four verification flags`);
+    ok(`${role}: an issueDate-only correction keeps all four verification flags, with one audit entry`);
+  }
+
+  console.log('\nPUT /bookings/:id — the body the EDIT FORM actually posts, not a hand-made one');
+  // This is the assertion that was missing. new-booking.component.ts builds its PUT from
+  // bookingForm.getRawValue() -- the WHOLE form, ~25 keys -- and deletes only dateOfSubmission,
+  // submittedBy and submittedByName. So changing just the Issue Date field posts every other
+  // field back at its stored value. Any guard that counts keys in the request body sees a
+  // 25-field edit and resets the verification it was supposed to protect.
+  const formBody = (doc, over = {}) => Object.assign({
+    pnr: doc.pnr,
+    paxName: doc.paxName,
+    contactPerson: doc.contactPerson || '',
+    contactNumber: doc.contactNumber,
+    sectorType: doc.sectorType,
+    travelDate: dayInTz(doc.travelDate),
+    from: doc.from,
+    to: doc.to,
+    returnDate: null,
+    multipleSectors: [],
+    note: doc.note || '',
+    airline: doc.airline || '',
+    ourCost: doc.ourCost,
+    salePrice: doc.salePrice,
+    supplierCharges: doc.supplierCharges || 0,
+    additionalService: '',
+    additionalServicePrice: 0,
+    additionalServices: [],
+    paymentType: doc.paymentType || 'Full',
+    payments: (doc.payments || []).map(p => ({
+      paidAmount: p.paidAmount,
+      paymentMode: p.paymentMode,
+      paymentDate: dayInTz(p.paymentDate),
+      referenceNo: p.referenceNo || '',
+      receivingAccount: p.receivingAccount || '',
+      senderName: p.senderName || ''
+    })),
+    paymentFromCard: doc.paymentFromCard || 0,
+    cardType: doc.cardType || '',
+    cardLast4Digits: doc.cardLast4Digits || '',
+    issueDate: dayInTz(doc.issueDate)
+  }, over);
+
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    const doc = verified({
+      payments: [{ paidAmount: 200, paymentMode: 'Cash', referenceNo: '',
+        paymentDate: new Date('2026-11-01T12:00:00Z') }]
+    });
+    const api = await startBookings(doc, role);
+    const body = formBody(doc, { issueDate: '2026-11-02' });
+    assert.ok(Object.keys(body).length > 20, `the fixture must be a full form: ${Object.keys(body).length} keys`);
+    const res = await api.put(`/${doc._id}`, body);
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    assert.strictEqual(dayInTz(doc.issueDate), '2026-11-02', `${role}: the date was corrected`);
+    for (const f of ['adminVerified', 'accountVerified', 'verifiedByAdmin', 'verifiedByAccount']) {
+      assert.strictEqual(doc[f], true,
+        `${role}: ${f} must survive a full-form post whose only change is the issue date`);
+    }
+    api.close();
+    ok(`${role}: a ${Object.keys(body).length}-key form post that changes only the issue date keeps verification`);
+  }
+
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    // And the same full-form post WITH a real change must still reset.
+    const doc = verified();
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, formBody(doc, { issueDate: '2026-11-02', salePrice: 9999 }));
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    assert.strictEqual(doc.salePrice, 9999);
+    assert.strictEqual(doc.adminVerified, false, `${role}: a real change still resets`);
+    api.close();
+    ok(`${role}: the same form post with a changed sale price does reset verification`);
+  }
+
+  console.log('\nPUT /bookings/:id — an unchanged payments array is not rewritten');
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    const doc = verified({
+      payments: [{ paidAmount: 200, paymentMode: 'Cash', referenceNo: '',
+        paymentDate: new Date('2026-11-01T12:00:00Z') }]
+    });
+    const idsBefore = doc.payments.map(x => String(x._id));
+    const api = await startBookings(doc, role);
+    await api.put(`/${doc._id}`, formBody(doc, { issueDate: '2026-11-02' }));
+    const idsAfter = doc.payments.map(x => String(x._id));
+    // The incoming rows are plain objects, so reassigning the array mints new subdocument _ids.
+    // Skipping the write when nothing changed is what lets the diff tell an issue-date
+    // correction from a payments edit -- and it stops every save churning these ids.
+    assert.deepStrictEqual(idsAfter, idsBefore,
+      `${role}: payment subdocument _ids must be stable when the payments did not change`);
+    api.close();
+    ok(`${role}: an unchanged payments array keeps its subdocument _ids`);
+  }
+  {
+    // The converse, which the healing asserted in tests/date-only-hotfix.test.js depends on: a
+    // stored 00:00Z date IS a difference, so the array is rewritten and the value healed.
+    const doc = verified({
+      payments: [{ paidAmount: 200, paymentMode: 'Cash', referenceNo: '',
+        paymentDate: new Date('2026-11-01T00:00:00Z') }]
+    });
+    const api = await startBookings(doc, 'ADMIN');
+    await api.put(`/${doc._id}`, formBody(doc, { issueDate: '2026-11-02' }));
+    assert.strictEqual(doc.payments[0].paymentDate.getUTCHours(), 12,
+      'a legacy 00:00Z payment date is still healed to noon on a save');
+    api.close();
+    ok('but a stored 00:00Z date counts as a difference, so it is rewritten and healed');
+  }
+
+  console.log('\nPUT /bookings/:id — keys the branch ignores do not count as an edit');
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    const doc = verified();
+    const api = await startBookings(doc, role);
+    // _id and __v are what any integration round-tripping GET /bookings/:id sends back. The
+    // ADMIN loop skips both explicitly and the ACCOUNT allowlist excludes them, so neither
+    // writes anything and neither is an edit.
+    const body = { issueDate: '2026-11-02', _id: String(doc._id), __v: 0 };
+    // `status` is dropped by the ACCOUNT allowlist, so it is inert there. The ADMIN branch has
+    // no allowlist and DOES write status, so sending it there is a real edit -- not an example
+    // of an ignored key.
+    if (role === 'ACCOUNT') body.status = 'Cancelled';
+    const res = await api.put(`/${doc._id}`, body);
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    assert.strictEqual(doc.adminVerified, true, `${role}: ignored keys are not an edit`);
+    if (role === 'ACCOUNT') {
+      assert.notStrictEqual(doc.status, 'Cancelled', 'and the dropped status was not written');
+    }
+    api.close();
+    ok(`${role}: _id and __v do not trigger the reset`);
+  }
+
+  console.log('\nPUT /bookings/:id — a resent UNCHANGED issue date is never re-validated');
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    // A stored date outside the current window can only exist from before the window was
+    // tightened, but it must not make the booking un-editable: the fix for a booking in the
+    // wrong month is an edit, so an edit has to be possible.
+    const doc = verified({
+      dateOfSubmission: ENTERED_SEP,
+      issueDate: new Date('2026-11-23T12:00:00Z')  // 82 days after entry: outside the window
+    });
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, { issueDate: '2026-11-23', salePrice: 4100 });
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    assert.strictEqual(doc.salePrice, 4100, `${role}: the unrelated edit went through`);
+    api.close();
+    ok(`${role}: an out-of-window stored issue date, resent unchanged, does not block an edit`);
+  }
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    // But actually MOVING it to another out-of-window day is still rejected.
+    const doc = verified({
+      dateOfSubmission: ENTERED_SEP,
+      issueDate: new Date('2026-11-23T12:00:00Z')
+    });
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, { issueDate: '2026-11-20' });
+    assert.strictEqual(res.status, 400, `${role}: got ${res.status}`);
+    api.close();
+    ok(`${role}: but moving it to another out-of-window day is still rejected`);
   }
 
   console.log('\nPUT /bookings/:id — but any OTHER edit still resets verification');

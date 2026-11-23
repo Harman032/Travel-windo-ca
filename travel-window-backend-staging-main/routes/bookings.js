@@ -505,8 +505,30 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Cannot edit verified bookings' });
     }
 
-    // True when the request body contained nothing but issueDate; see the delete below.
-    let issueDateOnly = false;
+    /**
+      * Did this request change anything OTHER than the issue date?
+      *
+      * Asked of the DOCUMENT, not of the request body. An earlier version counted the keys left
+      * in `updates` after issueDate was removed, which could never be zero for a request the
+      * product actually sends: the edit form posts the whole form back -- about 25 keys -- so
+      * changing only the Issue Date field still looked like a 25-field edit, and the guard below
+      * never fired. It also miscounted keys the receiving branch silently ignores: a body
+      * carrying `_id` and `__v`, which is what any integration round-tripping GET /bookings/:id
+      * produces, or a `status` the ACCOUNT allowlist drops.
+      *
+      * Mongoose only marks a path modified when the value actually differs, so modifiedPaths()
+      * is the diff. progressHistory is excluded because the audit entry itself is a modification,
+      * and issueDate because it is the thing being permitted.
+      */
+     const changedSomethingElse = () => booking.modifiedPaths().some(
+       p => p !== 'issueDate' && p.split('.')[0] !== 'progressHistory'
+     );
+     // Each branch captures this BEFORE calling calculateTotals, because calculateTotals
+     // unconditionally assigns totalSalePrice, totalPaidAmount, balanceAmount and billingStatus.
+     // On a consistent booking those assignments are no-ops and Mongoose marks nothing, but
+     // "the derived totals happen to already agree" is not something the reset should depend on.
+     // Anything that genuinely changed a total changed one of its inputs, and that input shows up
+     // in the diff on its own.
 
     // ISSUE DATE is handled here for every role rather than per branch, and then removed from
     // `updates` so no branch sees it again. One code path means the ADMIN branch -- which has no
@@ -517,25 +539,25 @@ router.put('/:id', auth, async (req, res) => {
     // correct an issue date on a verified booking, because every money report now depends on it
     // and the alternative to correcting it is cancelling the booking. Every change is audited.
     if (updates.issueDate !== undefined) {
-      const badIssueDate = validateIssueDate(updates.issueDate, booking.dateOfSubmission);
-      if (badIssueDate) {
-        return res.status(400).json({ message: badIssueDate });
-      }
       const next = parseDateInput(updates.issueDate);
       const before = booking.issueDate ? new Date(booking.issueDate).toISOString() : null;
       const after = next ? next.toISOString() : null;
+      // Validate only a value actually being WRITTEN. The edit form re-sends the stored issue
+      // date on every save, so validating a resent unchanged value would turn any stored date
+      // that falls outside the window into a hard 400 on every later edit -- blocking an
+      // unrelated price correction on the very booking most in need of one. Same principle as
+      // validateDateOnly's year guard: legacy values keep saving, only new ones are checked.
       if (before !== after) {
+        const badIssueDate = validateIssueDate(updates.issueDate, booking.dateOfSubmission);
+        if (badIssueDate) {
+          return res.status(400).json({ message: badIssueDate });
+        }
         booking.issueDate = next;
         addProgressHistory(booking, 'Issue Date Changed', req.user, {
           issueDate: { from: before, to: after }
         });
       }
       delete updates.issueDate;
-      // After the delete, an empty `updates` means the request carried NOTHING but issueDate.
-      // The verification reset below must not fire for it: correcting an issue date is the one
-      // edit ACCOUNT and ADMIN are explicitly allowed to make on a verified booking, and
-      // un-verifying it would undo the verification instead of correcting the date.
-      issueDateOnly = Object.keys(updates).length === 0;
     }
 
     // Date-only guards run ONCE here, before the role branches, so all three branches — including
@@ -556,12 +578,18 @@ router.put('/:id', auth, async (req, res) => {
     // rows alone, which is what the per-branch `Array.isArray(...) ? ... : booking.payments`
     // guards used to do.
     let checkedPayments = null;
+    let paymentsUnchanged = false;
     if (Array.isArray(updates.payments)) {
       const checked = validatePaymentRows(updates.payments, booking.payments || []);
       if (checked.error) {
         return res.status(400).json({ message: checked.error });
       }
-      checkedPayments = checked.payments;
+      // Unchanged means: don't write. Assigning plain objects mints new subdocument _ids, so a
+      // round-trip of the same payments would otherwise count as a modification -- which is both
+      // pointless churn on every edit and, before the diff above, what made an issue-date-only
+      // correction indistinguishable from a real edit.
+      paymentsUnchanged = checked.unchangedAll;
+      checkedPayments = paymentsUnchanged ? null : checked.payments;
     }
 
     // Agent1 & Agent2: full edit until verified (including payments)
@@ -618,21 +646,26 @@ router.put('/:id', auth, async (req, res) => {
             const v = (updates[key] || '').toString();
             booking[key] = v.charAt(0).toUpperCase() + v.slice(1);
           } else if (key === 'travelDate' || key === 'returnDate') {
-            booking[key] = parseDateInput(updates[key]);
+            // Nullish over nullish is not a change. A One Way booking posts returnDate: null on
+            // every save, and on a booking stored without the field at all that would flip
+            // undefined -> null and read as an edit, resetting verification on the first save.
+            const nextDate = parseDateInput(updates[key]);
+            if (nextDate !== null || booking[key] != null) booking[key] = nextDate;
           } else {
             booking[key] = updates[key];
           }
           if (key !== 'payments') changes[key] = updates[key];
         }
       });
-      if (updates.payments !== undefined) {
+      if (updates.payments !== undefined && !paymentsUnchanged) {
         addProgressHistory(booking, 'Payments Updated', req.user, { payments: updates.payments });
       }
+      const edited = changedSomethingElse();
       calculateTotals(booking);
-      // Reset verification when booking is edited. Not for an issueDate-only request: see the
-      // issueDateOnly note above. (Unreachable for an agent, who is already 403 on a verified
-      // booking, but the rule is the same in all three branches so it cannot drift.)
-      if (!issueDateOnly) {
+      // Reset verification when the booking is actually edited -- see changedSomethingElse above.
+      // (Unreachable for an agent, who is already 403 on a verified booking, but the rule is the
+      // same in all three branches so it cannot drift.)
+      if (edited) {
         booking.adminVerified = false;
         booking.verifiedByAdmin = false;
         booking.accountVerified = false;
@@ -701,7 +734,9 @@ router.put('/:id', auth, async (req, res) => {
           const v = (updates[key] || '').toString();
           booking[key] = v.charAt(0).toUpperCase() + v.slice(1);
         } else if (key === 'travelDate' || key === 'returnDate') {
-          booking[key] = parseDateInput(updates[key]);
+          // See the AGENT branch: nullish over nullish is not a change.
+          const nextDate = parseDateInput(updates[key]);
+          if (nextDate !== null || booking[key] != null) booking[key] = nextDate;
         } else if (key === 'accountVerified') {
           const val = !!updates[key];
           booking.accountVerified = val;
@@ -716,18 +751,24 @@ router.put('/:id', auth, async (req, res) => {
         }
         changes[key] = updates[key];
       });
+      const edited = changedSomethingElse();
       calculateTotals(booking);
-      // Reset verification when booking is edited (skip if this IS a verification action, and
-      // skip for an issueDate-only request -- correcting the issue date of a verified booking is
-      // explicitly allowed for this role, and resetting the flags would undo the verification
-      // rather than correct the date).
-      if (!issueDateOnly && !updates.accountVerified && !updates.adminVerified) {
+      // Reset verification when the booking is actually edited. Skipped if this IS a
+      // verification action, and skipped when nothing but the issue date moved -- correcting the
+      // issue date of a verified booking is explicitly allowed for this role, and resetting the
+      // flags would undo the verification rather than correct the date.
+      if (edited && !updates.accountVerified && !updates.adminVerified) {
         booking.adminVerified = false;
         booking.verifiedByAdmin = false;
         booking.accountVerified = false;
         booking.verifiedByAccount = false;
       }
-      addProgressHistory(booking, 'Booking Updated by Account', req.user, changes);
+      // Guarded like the AGENT and ADMIN branches, which this one alone was not. An
+      // issueDate-only correction otherwise wrote two entries: 'Issue Date Changed' and an empty
+      // 'Booking Updated by Account', the second claiming an edit that did not happen.
+      if (Object.keys(changes).length > 0) {
+        addProgressHistory(booking, 'Booking Updated by Account', req.user, changes);
+      }
       
       if (booking.status === 'Cancelled') {
         recalculateCancellationValues(booking);
@@ -777,7 +818,9 @@ router.put('/:id', auth, async (req, res) => {
               changes[key] = val;
             }
           } else if (key === 'travelDate' || key === 'returnDate') {
-            booking[key] = parseDateInput(updates[key]);
+            // See the AGENT branch: nullish over nullish is not a change.
+            const nextDate = parseDateInput(updates[key]);
+            if (nextDate !== null || booking[key] != null) booking[key] = nextDate;
             changes[key] = updates[key];
           } else if (key === 'payments') {
             // This branch has no allowlist, so `payments` used to fall through to the generic
@@ -824,11 +867,12 @@ router.put('/:id', auth, async (req, res) => {
         }
       }
       
+      const edited = changedSomethingElse();
       calculateTotals(booking);
       
-      // Reset verification when booking is edited (skip if this IS a verification action, and
-      // skip for an issueDate-only request -- see the ACCOUNT branch above for why).
-      if (!issueDateOnly && !updates.adminVerified && !updates.accountVerified) {
+      // Reset verification when the booking is actually edited (skip if this IS a verification
+      // action, and skip when nothing but the issue date moved -- see the ACCOUNT branch above).
+      if (edited && !updates.adminVerified && !updates.accountVerified) {
         booking.adminVerified = false;
         booking.verifiedByAdmin = false;
         booking.accountVerified = false;

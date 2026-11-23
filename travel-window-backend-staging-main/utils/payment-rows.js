@@ -73,10 +73,15 @@ const str = (v) => (v === undefined || v === null ? '' : String(v).trim());
  * staff member to craft a request, and produces a row indistinguishable from the legacy data
  * already there.
  *
- * Returns { error } or { payments }.
+ * Returns { error }, or { payments, unchangedAll }. `unchangedAll` is true when every incoming
+ * row matched a stored one and the counts are equal -- that is, the array came back exactly as it
+ * went out. A caller can then skip reassigning booking.payments entirely, which matters because
+ * the incoming rows are plain objects: assigning them mints NEW subdocument _ids, so Mongoose
+ * sees the array as modified on every edit even when nothing about the payments changed. That
+ * made it impossible to tell a payments edit from a payments round-trip.
  */
 const validatePaymentRows = (incoming, existing = []) => {
-  if (!Array.isArray(incoming)) return { payments: [] };
+  if (!Array.isArray(incoming)) return { payments: [], unchangedAll: true };
 
   // Nothing stored to match against means every incoming row is new by construction, which is
   // what lets the legacy-mode check below be safe.
@@ -90,6 +95,7 @@ const validatePaymentRows = (incoming, existing = []) => {
   }
 
   const out = [];
+  let matchedCount = 0;
   for (let i = 0; i < incoming.length; i++) {
     const p = incoming[i] || {};
     const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
@@ -104,7 +110,7 @@ const validatePaymentRows = (incoming, existing = []) => {
     // No incoming date at all also counts as unchanged: the row is being passed back untouched.
     const unchanged = !!candidate && (!p.paymentDate || dateUnchanged);
 
-    if (unchanged) candidates.shift();
+    if (unchanged) { candidates.shift(); matchedCount += 1; }
 
     let paymentDate = parseDateInput(p.paymentDate);
     if (!paymentDate) {
@@ -146,7 +152,33 @@ const validatePaymentRows = (incoming, existing = []) => {
 
     out.push({ paidAmount, paymentMode, paymentDate, referenceNo, receivingAccount, senderName });
   }
-  return { payments: out };
+  // `unchangedAll` means: writing `out` would store exactly what is already stored, so the caller
+  // can skip the assignment entirely.
+  //
+  // That is a stricter test than the match-key one above, and it has to be. The match key is
+  // amount + mode + reference; the comparison here is every field INCLUDING the normalised date,
+  // positionally. A stored row at 00:00Z resent without a date matches its candidate, but the row
+  // we would write carries noon -- a real difference, and the one that heals the legacy value.
+  // Comparing only the match key would report it unchanged, skip the write, and silently remove
+  // the healing that re-saving a booking is supposed to perform.
+  const stored = existing || [];
+  const sameDate = (a, b) => {
+    const x = a ? new Date(a).getTime() : null;
+    const y = b ? new Date(b).getTime() : null;
+    return x === y;
+  };
+  const unchangedAll = matchedCount === incoming.length
+    && incoming.length === stored.length
+    && out.every((row, i) => {
+      const was = stored[i] || {};
+      return (Number(was.paidAmount) || 0) === row.paidAmount
+        && ((was.paymentMode) || '') === row.paymentMode
+        && str(was.referenceNo) === row.referenceNo
+        && str(was.receivingAccount) === row.receivingAccount
+        && str(was.senderName) === row.senderName
+        && sameDate(was.paymentDate, row.paymentDate);
+    });
+  return { payments: out, unchangedAll };
 };
 
 /** Is this row a deposit into one of our bank accounts, and so answerable by the bank filter? */
