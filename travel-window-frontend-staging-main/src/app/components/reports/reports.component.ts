@@ -510,6 +510,16 @@ import { ToastrService } from 'ngx-toastr';
               <option value="unverified-cancellation">Not yet verified — cancellation</option>
             </select>
           </div>
+          <div>
+            <!-- Option (i): this filters the BOOKING LIST and the four summary tiles above it.
+                 This screen's rows are bookings and its totals are sale price, cost and margin,
+                 so "RBC 6336" here means "bookings with at least one E-Transfer into RBC 6336".
+                 Payment-amount totals live on the Payments screen. -->
+            <label class="block text-sm font-medium text-gray-700 mb-1">Receiving Bank</label>
+            <select formControlName="receivingAccount" class="input">
+              <option *ngFor="let a of receivingAccountFilters" [value]="a">{{ a }}</option>
+            </select>
+          </div>
           <div class="flex items-end md:col-span-1">
             <button type="submit" class="btn btn-primary w-full">Generate Report</button>
           </div>
@@ -552,6 +562,8 @@ import { ToastrService } from 'ngx-toastr';
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier Charges</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Our Margin</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference No</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Receiving Bank</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sender</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Verified By</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Verified At</th>
                 <th *ngIf="showingUnverified()" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
@@ -568,6 +580,10 @@ import { ToastrService } from 'ngx-toastr';
                 <td class="px-4 py-2 text-sm">{{ b.supplierCharges | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm font-bold text-green-700">{{ (b.totalSalePrice - b.ourCost - b.supplierCharges) | number:'1.2-2' }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.payments && b.payments.length > 0 ? b.payments[0].referenceNo : '-' }}</td>
+                <!-- First payment row, matching the Reference No column beside it. A booking with
+                     several payments shows the first; the Payments screen lists them all. -->
+                <td class="px-4 py-2 text-sm">{{ (b.payments && b.payments.length > 0 && b.payments[0].receivingAccount) || '—' }}</td>
+                <td class="px-4 py-2 text-sm">{{ (b.payments && b.payments.length > 0 && b.payments[0].senderName) || '—' }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminUser?.name }}</td>
                 <td class="px-4 py-2 text-sm">{{ b.verifiedByAdminDate | tzDate:'dd-MM-yyyy' }}</td>
                 <td *ngIf="showingUnverified()" class="px-4 py-2 text-sm">
@@ -575,7 +591,7 @@ import { ToastrService } from 'ngx-toastr';
                 </td>
               </tr>
               <tr *ngIf="verifiedPaymentsData.bookings.length === 0">
-                <td [attr.colspan]="showingUnverified() ? 12 : 11" class="px-4 py-8 text-center text-gray-500">
+                <td [attr.colspan]="showingUnverified() ? 14 : 13" class="px-4 py-8 text-center text-gray-500">
                   {{ showingUnverified() ? 'Nothing is waiting to be verified for the selected filters.' : 'No verified payments found for the selected filters.' }}
                 </td>
               </tr>
@@ -796,6 +812,13 @@ export class ReportsComponent implements OnInit {
   readonly showLateEntry = true;
 
   /**
+   * Bank filter values for Verified Payments. The two account labels mirror RECEIVING_ACCOUNTS in
+   * travel-window-backend-staging-main/utils/receiving-accounts.js; 'Not recorded' covers an
+   * E-Transfer saved before the fields existed plus every legacy Cheque and Bank Transfer row.
+   */
+  readonly receivingAccountFilters = ['All', 'RBC 6336', 'TD 0638', 'Not recorded'];
+
+  /**
    * Display-only tidy-up for stored text: trim the ends and collapse runs of internal
    * whitespace. 80 stored PNRs carry stray whitespace and passenger names have the same
    * problem. Never written back -- the stored value is left exactly as it is.
@@ -849,7 +872,7 @@ export class ReportsComponent implements OnInit {
     this.agentBookingListForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.agentMarginReportForm = this.fb.group({ dateFrom: [''], dateTo: [''], employee: [''] });
     this.financialSummaryForm = this.fb.group({ dateFrom: [''], dateTo: [''] });
-    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['both'] });
+    this.verifiedPaymentsForm = this.fb.group({ dateFrom: [''], dateTo: [''], agent: ['all'], verificationType: ['both'], receivingAccount: ['All'] });
     this.supplierStatementForm = this.fb.group({ supplier: [''], dateFrom: [''], dateTo: [''] });
     this.supplierPaymentForm = this.fb.group({
       paymentDate: [this.today, Validators.required],

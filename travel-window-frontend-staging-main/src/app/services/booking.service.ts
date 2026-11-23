@@ -64,6 +64,11 @@ export interface Payment {
   paymentMode: 'Cash' | 'Machine Charge' | 'E-Transfer' | 'Kotak Bank' | 'SkyLight' | 'Travobirds' | 'Credit Card' | string;
   paymentDate: Date;
   referenceNo?: string;
+  // E-Transfer only, and optional: a row stored before these fields existed has neither, which
+  // is what the "Not recorded" bank filter finds. Mirrors paymentSchema, which carries no
+  // `required` and no enum for exactly that reason.
+  receivingAccount?: string;
+  senderName?: string;
 }
 
 import { environment } from '../../environments/environment';

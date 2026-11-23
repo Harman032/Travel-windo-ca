@@ -369,6 +369,7 @@ import { ToastrService } from 'ngx-toastr';
                         <option value="Credit Card">Credit Card</option>
                       </select>
                       <p *ngIf="payment.get('paymentMode')?.invalid && payment.get('paymentMode')?.touched" class="text-red-500 text-xs mt-1">Payment mode is required</p>
+                      <p class="text-gray-500 text-xs mt-1" *ngIf="payment.get('paymentMode')?.value === 'E-Transfer'">Includes cheques and bank transfers.</p>
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Payment Date <span class="text-red-500">*</span></label>
@@ -378,6 +379,19 @@ import { ToastrService } from 'ngx-toastr';
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Reference No</label>
                       <input type="text" formControlName="referenceNo" class="input" />
+                    </div>
+                    <!-- E-Transfer only. The server is the authority: it requires both on a new
+                         or changed E-Transfer row and leaves every legacy row alone. -->
+                    <div *ngIf="payment.get('paymentMode')?.value === 'E-Transfer'">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Receiving Bank <span class="text-red-500">*</span></label>
+                      <select formControlName="receivingAccount" class="input">
+                        <option value="">Select account</option>
+                        <option *ngFor="let a of receivingAccounts" [value]="a">{{ a }}</option>
+                      </select>
+                    </div>
+                    <div *ngIf="payment.get('paymentMode')?.value === 'E-Transfer'">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Sender Name <span class="text-red-500">*</span></label>
+                      <input type="text" formControlName="senderName" class="input" />
                     </div>
                   </div>
                   <button type="button" (click)="removePayment(i)" class="btn btn-danger mt-2" *ngIf="bookingForm.get('paymentType')?.value === 'Installments' && paymentsArray.controls.length > 1">Remove</button>
@@ -643,7 +657,9 @@ export class NewBookingComponent implements OnInit {
       paidAmount: [0, Validators.required],
       paymentMode: ['Cash', Validators.required],
       paymentDate: [this.toDateInputValue(new Date()), Validators.required],
-      referenceNo: ['']
+      referenceNo: [''],
+      receivingAccount: [''],
+      senderName: ['']
     });
     this.paymentsArray.push(paymentGroup);
   }
@@ -721,7 +737,9 @@ export class NewBookingComponent implements OnInit {
               paidAmount: [payment.paidAmount ?? 0, Validators.required],
               paymentMode: [payment.paymentMode || 'Cash', Validators.required],
               paymentDate: [dateStr, Validators.required],
-              referenceNo: [payment.referenceNo || '']
+              referenceNo: [payment.referenceNo || ''],
+              receivingAccount: [payment.receivingAccount || ''],
+              senderName: [payment.senderName || '']
             }));
           });
         } else if (this.bookingForm.get('paymentType')?.value === 'Full') {
@@ -777,6 +795,9 @@ export class NewBookingComponent implements OnInit {
 
   /** How far back an issue date may be set. Mirrors ISSUE_DATE_MAX_BACKDATE_DAYS on the server. */
   readonly issueDateMaxBackdateDays = 3;
+
+  /** Mirrors RECEIVING_ACCOUNTS in travel-window-backend-staging-main/utils/receiving-accounts.js. */
+  readonly receivingAccounts = ['RBC 6336', 'TD 0638'];
 
   /** Issue Date cannot be in the future: a ticket cannot have been issued tomorrow. */
   get maxIssueDate(): string {
@@ -849,7 +870,9 @@ export class NewBookingComponent implements OnInit {
         paidAmount,
         paymentMode: p.paymentMode || 'Cash',
         paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
-        referenceNo: p.referenceNo || ''
+        referenceNo: p.referenceNo || '',
+        receivingAccount: p.receivingAccount || '',
+        senderName: p.senderName || ''
       };
     });
 

@@ -139,69 +139,13 @@ const toNoonUtc = (date) => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), NOON_UTC, 0, 0));
 };
 
-/** Identity key for matching an incoming payment row against a stored one. Dates excluded. */
-const paymentKey = (p) => [
-  Number(p && p.paidAmount) || 0,
-  (p && p.paymentMode) || '',
-  ((p && p.referenceNo) || '').toString().trim()
-].join('|');
-
-/**
- * Validate incoming payment rows against what is already stored.
- *
- * A row with no usable date is rejected — but only when it is new or changed. This function used
- * to invent one (`|| new Date()`), which stamped the current instant onto a date-only field: on
- * Vercel, a row saved at 19:30 Toronto became 00:30Z the next day. A 400 is a better outcome than
- * a payment dated by accident.
- *
- * "Unchanged" is matched on amount + mode + reference, not on _id: every frontend path rebuilds
- * the array from form state and sends no _id (new-booking.component.ts:806,
- * booking-detail.component.ts:1606 and :1645). A matched row keeps its stored date, normalised,
- * so a legacy row with a missing or malformed date still saves through edit, date change, flight
- * change, seat book, cancel and verify — and re-saving heals a legacy 00:00Z value to noon.
- *
- * Returns { error } or { payments }.
- */
-const validatePaymentRows = (incoming, existing = []) => {
-  if (!Array.isArray(incoming)) return { payments: [] };
-
-  const pool = new Map();
-  for (const p of (existing || [])) {
-    const k = paymentKey(p);
-    if (!pool.has(k)) pool.set(k, []);
-    pool.get(k).push(p);
-  }
-
-  const out = [];
-  for (let i = 0; i < incoming.length; i++) {
-    const p = incoming[i] || {};
-    const paidAmount = typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0;
-    const paymentMode = p.paymentMode || 'Cash';
-    const referenceNo = p.referenceNo || '';
-
-    let paymentDate = parseDateInput(p.paymentDate);
-
-    if (!paymentDate) {
-      // No usable date. Only an unchanged stored row may pass, carrying its own date forward.
-      const match = (pool.get(paymentKey(p)) || []).shift();
-      if (!match) {
-        return { error: `payments[${i}].paymentDate is required (YYYY-MM-DD)` };
-      }
-      paymentDate = match.paymentDate ? parseDateInput(match.paymentDate) : null;
-    } else {
-      const bad = validateDateOnly(p.paymentDate, `payments[${i}].paymentDate`);
-      if (bad) return { error: bad };
-      (pool.get(paymentKey(p)) || []).shift();
-    }
-
-    out.push({ paidAmount, paymentMode, paymentDate, referenceNo });
-  }
-  return { payments: out };
-};
-
 /**
  * Normalize payments so paidAmount is a number and paymentDate lands on noon UTC.
- * For callers that have already validated through validatePaymentRows; it no longer invents a date.
+ *
+ * For callers that have already validated through utils/payment-rows.js validatePaymentRows,
+ * which is where the row rules (a new or changed row needs a date; a new or changed E-Transfer
+ * needs its bank details) now live -- bank accounts have no business in a file about dates.
+ * This no longer invents a date.
  */
 const normalizePayments = (payments) => {
   if (!Array.isArray(payments)) return [];
@@ -216,5 +160,5 @@ const normalizePayments = (payments) => {
 module.exports = {
   NOON_UTC, MIN_YEAR, MAX_YEAR,
   parseDateInput, validateDateOnly, validateDateOnlyFields, isNoonUtc, toNoonUtc,
-  normalizePayments, validatePaymentRows, paymentKey
+  normalizePayments
 };

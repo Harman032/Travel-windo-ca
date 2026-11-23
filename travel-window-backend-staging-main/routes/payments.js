@@ -2,16 +2,27 @@ const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 const { buildRange, inRange } = require('../utils/tz');
+const { isUnrecordedAccount, RECEIVING_ACCOUNTS } = require('../utils/payment-rows');
 
 const router = express.Router();
 
 /**
  * GET /api/payments - List all payments (flattened from bookings). Admin only.
- * Query: pnr, paymentMode, startDate, endDate
+ * Query: pnr, paymentMode, startDate, endDate, receivingAccount
+ *
+ * receivingAccount: 'All' (or absent) | one of RECEIVING_ACCOUNTS | 'Not recorded'.
+ * 'Not recorded' means an E-Transfer saved before the two fields existed, plus every legacy
+ * Cheque and Bank Transfer row -- written as "has no receivingAccount" rather than as a list of
+ * modes, so there is no mode list to keep in step.
  */
 router.get('/', auth, authorize('ADMIN'), async (req, res) => {
   try {
-    const { pnr, paymentMode, startDate, endDate } = req.query;
+    const { pnr, paymentMode, startDate, endDate, receivingAccount } = req.query;
+    const bankFilter = (receivingAccount || '').trim();
+    if (bankFilter && bankFilter !== 'All' && bankFilter !== 'Not recorded'
+        && !RECEIVING_ACCOUNTS.includes(bankFilter)) {
+      return res.status(400).json({ message: `Unknown receivingAccount "${bankFilter}"` });
+    }
 
     const filter = {};
     if (pnr && pnr.trim()) {
@@ -25,7 +36,7 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
     }
 
     const bookings = await Booking.find(filter)
-      .select('pnr paxName submittedByName payments')
+      .select('pnr paxName submittedByName payments')  // payments carries receivingAccount + senderName
       .lean();
 
     const rows = [];
@@ -37,6 +48,15 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
         // The Mongo filter above matches a BOOKING that has any payment in range; each payment
         // row still has to be tested individually, against the same range.
         if (!inRange(p.paymentDate, range)) continue;
+        // Applied HERE, before rows are pushed, so the summary below is the total of the filtered
+        // set rather than of everything. This route has no paging at all -- it returns every
+        // matching row and totals the array it built -- so there is no truncation to get wrong.
+        if (bankFilter && bankFilter !== 'All') {
+          const matchesBank = bankFilter === 'Not recorded'
+            ? isUnrecordedAccount(p)
+            : (p.receivingAccount || '').trim() === bankFilter;
+          if (!matchesBank) continue;
+        }
         rows.push({
           date: p.paymentDate,
           bookingPnr: b.pnr,
@@ -44,6 +64,8 @@ router.get('/', auth, authorize('ADMIN'), async (req, res) => {
           amount: p.paidAmount,
           mode: p.paymentMode,
           reference: p.referenceNo || '—',
+          receivingAccount: p.receivingAccount || '',
+          senderName: p.senderName || '',
           addedBy,
           bookingId: b._id.toString(),
         });

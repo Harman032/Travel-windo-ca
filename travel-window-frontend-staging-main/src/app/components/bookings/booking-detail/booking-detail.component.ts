@@ -232,6 +232,8 @@ import { ToastrService } from 'ngx-toastr';
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Receiving Bank</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sender</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -246,6 +248,11 @@ import { ToastrService } from 'ngx-toastr';
                       </span>
                     </td>
                     <td class="px-4 py-2 text-sm">{{ payment.referenceNo || 'N/A' }}</td>
+                    <!-- Blank on every mode but E-Transfer, and on legacy E-Transfer rows saved
+                         before the fields existed. "Not recorded" is the filter value that finds
+                         them. -->
+                    <td class="px-4 py-2 text-sm">{{ payment.receivingAccount || '—' }}</td>
+                    <td class="px-4 py-2 text-sm">{{ payment.senderName || '—' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -572,6 +579,9 @@ import { ToastrService } from 'ngx-toastr';
                     <div><label class="block text-xs text-gray-600 mb-1">Payment Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="E-Transfer">E-Transfer</option><option value="Machine Charge">Machine Charge</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Payment Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No (Optional)</label><input type="text" formControlName="referenceNo" class="input" /></div>
+                    <!-- E-Transfer only; the server requires both on a new row. -->
+                    <div *ngIf="p.get('paymentMode')?.value === 'E-Transfer'"><label class="block text-xs text-gray-600 mb-1">Receiving Bank <span class="text-red-500">*</span></label><select formControlName="receivingAccount" class="input"><option value="">Select</option><option *ngFor="let a of receivingAccounts" [value]="a">{{ a }}</option></select><p class="text-gray-500 text-xs mt-1">Includes cheques and bank transfers.</p></div>
+                    <div *ngIf="p.get('paymentMode')?.value === 'E-Transfer'"><label class="block text-xs text-gray-600 mb-1">Sender Name <span class="text-red-500">*</span></label><input type="text" formControlName="senderName" class="input" /></div>
                     <button type="button" (click)="removeDateChangePayment(i)" class="btn btn-danger">Remove</button>
                   </div>
                 </div>
@@ -631,6 +641,9 @@ import { ToastrService } from 'ngx-toastr';
                     <div><label class="block text-xs text-gray-600 mb-1">Mode</label><select formControlName="paymentMode" class="input"><option value="Cash">Cash</option><option value="Credit Card">Credit Card</option><option value="UPI">UPI</option><option value="E-Transfer">E-Transfer</option><option value="Machine Charge">Machine Charge</option></select></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Date</label><input type="date" formControlName="paymentDate" class="input" /></div>
                     <div><label class="block text-xs text-gray-600 mb-1">Reference No</label><input type="text" formControlName="referenceNo" class="input" /></div>
+                    <!-- E-Transfer only; the server requires both on a new row. -->
+                    <div *ngIf="p.get('paymentMode')?.value === 'E-Transfer'"><label class="block text-xs text-gray-600 mb-1">Receiving Bank <span class="text-red-500">*</span></label><select formControlName="receivingAccount" class="input"><option value="">Select</option><option *ngFor="let a of receivingAccounts" [value]="a">{{ a }}</option></select><p class="text-gray-500 text-xs mt-1">Includes cheques and bank transfers.</p></div>
+                    <div *ngIf="p.get('paymentMode')?.value === 'E-Transfer'"><label class="block text-xs text-gray-600 mb-1">Sender Name <span class="text-red-500">*</span></label><input type="text" formControlName="senderName" class="input" /></div>
                     <button type="button" (click)="removeFlightChangePayment(i)" class="btn btn-danger">Remove</button>
                   </div>
                 </div>
@@ -1043,7 +1056,9 @@ export class BookingDetailComponent implements OnInit {
       paidAmount: [0],
       paymentMode: ['Cash'],
       paymentDate: [todayInTz()],
-      referenceNo: ['']
+      referenceNo: [''],
+      receivingAccount: [''],
+      senderName: ['']
     }));
   }
 
@@ -1060,7 +1075,9 @@ export class BookingDetailComponent implements OnInit {
       paidAmount: [0],
       paymentMode: ['Cash'],
       paymentDate: [todayInTz()],
-      referenceNo: ['']
+      referenceNo: [''],
+      receivingAccount: [''],
+      senderName: ['']
     }));
   }
 
@@ -1075,6 +1092,9 @@ export class BookingDetailComponent implements OnInit {
    * ticket issued at 23:00 and entered at 00:30 is one day late by the clock and zero by the
    * calendar, and the calendar is what the supplier bills on.
    */
+  /** Mirrors RECEIVING_ACCOUNTS in travel-window-backend-staging-main/utils/receiving-accounts.js. */
+  readonly receivingAccounts = ['RBC 6336', 'TD 0638'];
+
   get isLateEntry(): boolean {
     if (!this.booking?.issueDate || !this.booking?.dateOfSubmission) return false;
     return toDateInputValue(this.booking.dateOfSubmission) > toDateInputValue(this.booking.issueDate);
@@ -1628,7 +1648,9 @@ export class BookingDetailComponent implements OnInit {
         paidAmount: typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0,
         paymentMode: p.paymentMode || 'Cash',
         paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
-        referenceNo: p.referenceNo || ''
+        referenceNo: p.referenceNo || '',
+        receivingAccount: p.receivingAccount || '',
+        senderName: p.senderName || ''
       }));
       const payload = {
         changeTravelDate: formValue.changeTravelDate,
@@ -1667,7 +1689,9 @@ export class BookingDetailComponent implements OnInit {
         paidAmount: typeof p.paidAmount === 'number' ? p.paidAmount : parseFloat(p.paidAmount) || 0,
         paymentMode: p.paymentMode || 'Cash',
         paymentDate: toDateInputValue(p.paymentDate) || todayInTz(),
-        referenceNo: p.referenceNo || ''
+        referenceNo: p.referenceNo || '',
+        receivingAccount: p.receivingAccount || '',
+        senderName: p.senderName || ''
       }));
 
       this.bookingService.flightChange(this.booking._id!, {

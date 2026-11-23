@@ -7,6 +7,7 @@ const SupplierPayment = require('../models/SupplierPayment');
 const { inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
 const { buildRange, TZ } = require('../utils/tz');
 const { effectiveDate, effectiveRangeConditions } = require('../utils/effective-date');
+const { isUnrecordedAccount, RECEIVING_ACCOUNTS } = require('../utils/payment-rows');
 const { buildStatement } = require('../utils/supplier-statement');
 const { COMPANY } = require('../utils/company');
 
@@ -589,9 +590,22 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
 
 router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { dateFrom, dateTo, agent, verificationType = 'original' } = req.query;
+    const { dateFrom, dateTo, agent, verificationType = 'original', receivingAccount } = req.query;
 
     const matchQuery = {};
+
+    // BANK FILTER, option (i): it filters the BOOKING LIST and leaves the summary alone.
+    //
+    // This screen is booking-level -- its rows are bookings and its summary is sale price, our
+    // cost and margin, not payment amounts. So "RBC 6336" here can only mean "bookings with at
+    // least one E-Transfer received into RBC 6336", and a payment-amount total would be a second,
+    // different kind of total on a screen that has one. The Payments screen owns payment-amount
+    // totals; this one answers "which bookings involved that account".
+    const bankFilter = (receivingAccount || '').trim();
+    if (bankFilter && bankFilter !== 'All' && bankFilter !== 'Not recorded'
+        && !RECEIVING_ACCOUNTS.includes(bankFilter)) {
+      return res.status(400).json({ message: `Unknown receivingAccount "${bankFilter}"` });
+    }
 
     // 'unverified' is the other side of the same population, so this one screen owns the whole
     // verification workflow: it lists what still needs verifying and the verify action acts here.
@@ -637,14 +651,24 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       .sort({ dateOfSubmission: -1 })
       .lean();
 
+    // Filtered BEFORE the summary, so the figures describe the rows on screen. A booking matches
+    // when any of its payment rows does; 'Not recorded' therefore means "has a payment with no
+    // receiving account", which covers an undated-era E-Transfer and every legacy Cheque and
+    // Bank Transfer row.
+    const shown = (bankFilter && bankFilter !== 'All')
+      ? bookings.filter(b => (b.payments || []).some(p => (bankFilter === 'Not recorded'
+          ? isUnrecordedAccount(p)
+          : (p.receivingAccount || '').trim() === bankFilter)))
+      : bookings;
+
     const summary = {
-      totalBookings: bookings.length,
-      totalSalePrice: bookings.reduce((sum, b) => sum + (b.totalSalePrice ?? 0), 0),
-      totalOurCost: bookings.reduce((sum, b) => sum + (b.ourCost ?? 0), 0),
-      totalMargin: bookings.reduce((sum, b) => sum + ((b.totalSalePrice ?? 0) - (b.ourCost ?? 0) - (b.supplierCharges ?? 0)), 0)
+      totalBookings: shown.length,
+      totalSalePrice: shown.reduce((sum, b) => sum + (b.totalSalePrice ?? 0), 0),
+      totalOurCost: shown.reduce((sum, b) => sum + (b.ourCost ?? 0), 0),
+      totalMargin: shown.reduce((sum, b) => sum + ((b.totalSalePrice ?? 0) - (b.ourCost ?? 0) - (b.supplierCharges ?? 0)), 0)
     };
 
-    const bookingsWithCRDR = bookings.map(b => ({ ...b, crdr: getCRDR(b) }));
+    const bookingsWithCRDR = shown.map(b => ({ ...b, crdr: getCRDR(b) }));
     res.json({ bookings: bookingsWithCRDR, summary });
   } catch (error) {
     console.error('Verified payments report error:', error);

@@ -18,9 +18,9 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const {
-  parseDateInput, validateDateOnly, validateDateOnlyFields, validatePaymentRows,
-  MIN_YEAR, MAX_YEAR
+  parseDateInput, validateDateOnly, validateDateOnlyFields, MIN_YEAR, MAX_YEAR
 } = require('../utils/date-only');
+const { validatePaymentRows } = require('../utils/payment-rows');
 
 let passed = 0;
 const ok = (name) => { passed++; console.log(`  ok  ${name}`); };

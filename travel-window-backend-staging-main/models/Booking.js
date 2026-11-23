@@ -11,6 +11,11 @@ const PAYMENT_MODES = [
   'Cheque', 'Bank Transfer', 'SkyLight'
 ];
 
+// Single definition, in utils/receiving-accounts.js, so utils/payment-rows.js can validate
+// against it without a util importing a model. Re-exported below as Booking.RECEIVING_ACCOUNTS,
+// alongside PAYMENT_MODES.
+const { RECEIVING_ACCOUNTS } = require('../utils/receiving-accounts');
+
 const paymentSchema = new mongoose.Schema({
   paidAmount: {
     type: Number,
@@ -26,6 +31,22 @@ const paymentSchema = new mongoose.Schema({
     required: true
   },
   referenceNo: {
+    type: String,
+    default: ''
+  },
+  // E-Transfer only: which of our accounts received it, and who sent it.
+  //
+  // NO `required`, and NO enum, deliberately. Mongoose re-validates every loaded path on save, so
+  // either one would make the ~500 stored Cheque / Bank Transfer / bare E-Transfer rows block
+  // every edit, date change, cancellation and verification on their bookings -- the Cheque
+  // incident, which took out 440 bookings. The requirement is enforced in the route layer
+  // instead, and only for a row that is new or whose mode, amount or date has changed:
+  // see utils/payment-rows.js.
+  receivingAccount: {
+    type: String,
+    default: ''
+  },
+  senderName: {
     type: String,
     default: ''
   }
@@ -490,5 +511,6 @@ bookingSchema.index({ dateOfSubmission: 1, status: 1 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
 Booking.PAYMENT_MODES = PAYMENT_MODES;
+Booking.RECEIVING_ACCOUNTS = RECEIVING_ACCOUNTS;
 
 module.exports = Booking;

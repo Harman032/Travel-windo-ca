@@ -9,8 +9,9 @@ const { resolvePagination } = require('../utils/pagination');
 const { safeSearchTerm } = require('../utils/search-safety');
 const { buildRange, startOfDayTz, startOfTodayTz } = require('../utils/tz');
 const {
-  parseDateInput, normalizePayments, validateDateOnlyFields, validatePaymentRows
+  parseDateInput, normalizePayments, validateDateOnlyFields
 } = require('../utils/date-only');
+const { validatePaymentRows } = require('../utils/payment-rows');
 const { validateIssueDate } = require('../utils/effective-date');
 
 const router = express.Router();

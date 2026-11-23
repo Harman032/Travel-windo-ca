@@ -3,7 +3,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { PaymentService, PaymentRow, PaymentsResponse, PaymentModeFilter } from '../../../services/payment.service';
+import { PaymentService, PaymentRow, PaymentsResponse, PaymentModeFilter,
+         ReceivingAccountFilter, RECEIVING_ACCOUNT_FILTERS } from '../../../services/payment.service';
 import { ToastrService } from 'ngx-toastr';
 const PAYMENT_MODES: PaymentModeFilter[] = [
   'All Modes',
@@ -78,6 +79,18 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
             </select>
           </div>
           <div>
+            <!-- 'Not recorded' = an E-Transfer saved before the two fields existed, plus every
+                 legacy Cheque and Bank Transfer row. Applied server-side, before the totals. -->
+            <label class="block text-sm font-medium text-gray-700 mb-1">Receiving Bank</label>
+            <select
+              [(ngModel)]="filters.receivingAccount"
+              (ngModelChange)="loadPayments()"
+              class="input"
+            >
+              <option *ngFor="let a of receivingAccountFilters" [value]="a">{{ a }}</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
             <input
               type="date"
@@ -111,6 +124,8 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiving Bank</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added By</th>
               </tr>
             </thead>
@@ -122,6 +137,8 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
                 <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-14 h-4"></div></td>
                 <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-20 h-4"></div></td>
                 <td class="px-6 py-4"><div class="skeleton-line w-24 h-4"></div></td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-20 h-4"></div></td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-16 h-4"></div></td>
                 <td class="px-6 py-4 whitespace-nowrap"><div class="skeleton-line w-20 h-4"></div></td>
               </tr>
             </tbody>
@@ -136,12 +153,14 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiving Bank</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added By</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr *ngIf="payments.length === 0" class="bg-white">
-                <td colspan="7" class="px-6 py-8 text-center text-gray-500">No payments found.</td>
+                <td colspan="9" class="px-6 py-8 text-center text-gray-500">No payments found.</td>
               </tr>
               <tr *ngFor="let p of payments" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.date | tzDate:'dd-MM-yyyy' }}</td>
@@ -165,6 +184,10 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
                   </div>
                   <span *ngIf="!p.reference">-</span>
                 </td>
+                <!-- Blank on every mode but E-Transfer, and on a legacy E-Transfer row saved
+                     before the fields existed: the "Not recorded" filter value finds those. -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.receivingAccount || '—' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p.senderName || '—' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ p.addedBy }}</td>
               </tr>
             </tbody>
@@ -179,11 +202,13 @@ export class PaymentsManagementComponent implements OnInit {
   summary = { totalPayments: 0, totalAmount: 0, averagePayment: 0 };
   loading = true;
   paymentModes = PAYMENT_MODES;
+  receivingAccountFilters = RECEIVING_ACCOUNT_FILTERS;
   filters = {
     pnr: '',
     paymentMode: 'All Modes' as PaymentModeFilter,
     startDate: '' as string,
     endDate: '' as string,
+    receivingAccount: 'All' as ReceivingAccountFilter,
   };
 
   constructor(
@@ -203,6 +228,7 @@ export class PaymentsManagementComponent implements OnInit {
       paymentMode: f.paymentMode === 'All Modes' ? undefined : f.paymentMode,
       startDate: f.startDate || undefined,
       endDate: f.endDate || undefined,
+      receivingAccount: f.receivingAccount === 'All' ? undefined : f.receivingAccount,
     }).subscribe({
       next: (res: PaymentsResponse) => {
         this.payments = res.payments.sort((a, b) => 
