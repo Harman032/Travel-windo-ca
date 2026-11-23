@@ -208,7 +208,12 @@ router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (r
 // never reaches supplier-facing output (see the standing constraint beside paymentLine in
 // utils/supplier-statement.js), because that field carries internal commercial data.
 //
-// Included: non-Draft bookings with a supplier id, by dateOfSubmission in the Toronto range.
+// Included: EVERY non-Draft booking for this supplier, with no date filter on the query at all.
+// That is deliberate -- lines before the range opens become the opening balance, so the
+// statement's arithmetic closes without a second mechanism. The period split happens in
+// buildStatement, which filters each LINE on its own date, and that date is now the EFFECTIVE
+// date (issueDate when set, dateOfSubmission otherwise).
+//
 // Every line is returned; there is no paging, because a statement that stops at 50 rows is wrong.
 router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
@@ -547,8 +552,9 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     // by entry date rather than strictly by issue date, which can only differ for rows where the
     // two dates straddle a sort position. Rewriting this route as an aggregation with $ifNull
     // would fix the order, and is not worth doing in the same release that introduces the field.
+    // buildRange always returns a range here: both dates are required and 400 above.
     const range = buildRange(dateFrom, dateTo);
-    const bookings = await Booking.find(range ? { $or: effectiveRangeConditions(range) } : {})
+    const bookings = await Booking.find({ $or: effectiveRangeConditions(range) })
       .sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
 
     const rows = bookings.map(b => ({

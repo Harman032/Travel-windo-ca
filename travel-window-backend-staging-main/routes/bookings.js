@@ -495,6 +495,12 @@ router.put('/:id', auth, async (req, res) => {
     // Hoisted out of the AGENT branch, which used to make this its first statement. It has to run
     // before the issueDate handling below, which mutates the document: an agent must not be able
     // to move the issue date of a verified booking even in memory.
+    //
+    // Note the ordering this creates: the issueDate block mutates `booking` and appends progress
+    // history BEFORE the date-only and payment guards further down, either of which can still
+    // return 400. That is safe only because no save() happens in between -- the mutations are
+    // discarded with the request. If a save() is ever added above those guards, move the
+    // issueDate block below them first.
     if ((userRole === 'AGENT1' || userRole === 'AGENT2') && isVerified) {
       return res.status(403).json({ message: 'Cannot edit verified bookings' });
     }
