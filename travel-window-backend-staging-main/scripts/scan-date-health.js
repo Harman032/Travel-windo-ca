@@ -26,7 +26,14 @@ const SCALAR = [
   'returnDate',
   'cancellation.cancelledAt',
   'cancellation.cancellationDate',
-  'cancellation.refundDate',
+  // cancellation.refundDate was scanned here and is NOT on the schema -- it reported 0 forever
+  // while the three cancellation dates that do exist went unscanned. These two are date-only
+  // (a user types them on the refund-status form). cancellation.refundProcessedDate is NOT
+  // listed: the route stamps it with new Date() at the moment of processing, so it is a
+  // timestamp, like cancelledAt.
+  'cancellation.refundReceivedFromSupplier.date',
+  'cancellation.refundPaidToClient.date',
+  'cancellation.upfrontCollection.collectionDate',
 ];
 const ARRAY = [
   ['payments[].paymentDate', 'payments', 'paymentDate'],

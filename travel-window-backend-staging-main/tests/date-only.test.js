@@ -47,13 +47,23 @@ t('a date-only string is parsed the same whatever the server zone', () => {
   assert.strictEqual(parseDateInput('2026-07-15').toISOString(), '2026-07-15T12:00:00.000Z');
 });
 
-t('a full ISO timestamp is kept as the instant it is', () => {
-  assert.strictEqual(parseDateInput('2026-09-07T03:27:00Z').toISOString(), '2026-09-07T03:27:00.000Z');
+// These two assertions used to pin the OPPOSITE behaviour -- a full ISO instant was stored as
+// itself, and a Date passed through by identity. That is what let three live payment dates land
+// back at 00:00Z on 2026-11-17, hours after the migration: a stale tab posted a Date, HttpClient
+// serialised it with toISOString(), and this function handed the instant straight to Mongoose.
+// A date-only field has no time of day to preserve, so there is nothing to pass through.
+t('a full ISO instant is reduced to noon on the day it falls in, in Toronto', () => {
+  // 03:27Z on the 7th is 23:27 on the 6th in Toronto (EDT, UTC-4), so the 6th is the right day.
+  assert.strictEqual(parseDateInput('2026-09-07T03:27:00Z').toISOString(), '2026-09-06T12:00:00.000Z');
+  // And an instant comfortably inside the Toronto day keeps that day.
+  assert.strictEqual(parseDateInput('2026-09-07T18:00:00Z').toISOString(), '2026-09-07T12:00:00.000Z');
 });
 
-t('a Date passes through, an invalid Date becomes null', () => {
+t('a Date is reduced the same way; an invalid Date becomes null', () => {
   const d = new Date('2026-09-07T03:27:00Z');
-  assert.strictEqual(parseDateInput(d), d);
+  assert.strictEqual(parseDateInput(d).toISOString(), '2026-09-06T12:00:00.000Z');
+  // Exactly 00:00:00.000Z is a serialised date-only value, so it keeps its UTC day.
+  assert.strictEqual(parseDateInput(new Date('2026-09-07T00:00:00Z')).toISOString(), '2026-09-07T12:00:00.000Z');
   assert.strictEqual(parseDateInput(new Date('nonsense')), null);
 });
 
@@ -84,14 +94,19 @@ t('paidAmount is coerced to a number and paymentMode defaults to Cash', () => {
   assert.strictEqual(p.referenceNo, '');
 });
 
-t('a missing paymentDate falls back to now, not to an invalid Date', () => {
+// The `|| new Date()` fallback these two used to assert is GONE. Stamping the current instant on
+// a date-only field is how a payment entered at 19:30 Toronto became 00:30Z the next day on
+// Vercel -- a date-only value a day out, dated by accident rather than by anyone. The route layer
+// now rejects a new or changed row with no usable date (see tests/date-only-hotfix.test.js), and
+// an unchanged legacy row carries its own stored date forward.
+t('a missing paymentDate is left null for the route layer to reject', () => {
   const [p] = normalizePayments([{ paidAmount: 1 }]);
-  assert.ok(p.paymentDate instanceof Date && !isNaN(p.paymentDate.getTime()));
+  assert.strictEqual(p.paymentDate, null);
 });
 
-t('an unparseable paymentDate falls back to now rather than saving Invalid Date', () => {
+t('an unparseable paymentDate is left null, never an invented instant', () => {
   const [p] = normalizePayments([{ paidAmount: 1, paymentDate: 'rubbish' }]);
-  assert.ok(p.paymentDate instanceof Date && !isNaN(p.paymentDate.getTime()));
+  assert.strictEqual(p.paymentDate, null);
 });
 
 t('a non-array is an empty list', () => {

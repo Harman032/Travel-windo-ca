@@ -8,7 +8,9 @@ const { validateFinancialFields } = require('../utils/validate-financial');
 const { resolvePagination } = require('../utils/pagination');
 const { safeSearchTerm } = require('../utils/search-safety');
 const { buildRange, startOfDayTz, startOfTodayTz } = require('../utils/tz');
-const { parseDateInput, normalizePayments } = require('../utils/date-only');
+const {
+  parseDateInput, normalizePayments, validateDateOnlyFields, validatePaymentRows
+} = require('../utils/date-only');
 
 const router = express.Router();
 
@@ -27,6 +29,11 @@ const logAndRespond500 = (res, req, route, error, bookingId) => {
   }));
   res.status(500).json({ message: 'Server error', requestId: req.id });
 };
+
+// multipleSectors[].travelDate as labelled entries, so the year guard names the offending sector.
+const sectorDateEntries = (sectors) => Object.fromEntries(
+  (Array.isArray(sectors) ? sectors : []).map((s, i) => [`multipleSectors[${i}].travelDate`, s && s.travelDate])
+);
 
 // Helper function to add progress history
 const addProgressHistory = (booking, action, user, changes = {}, remarks = '') => {
@@ -89,6 +96,14 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       supplierCharges
     } = req.body;
     
+    const invalidDate = validateDateOnlyFields({
+      travelDate, returnDate,
+      ...sectorDateEntries(multipleSectors)
+    });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
+
     const parsedTravelDate = parseDateInput(travelDate);
     const parsedReturnDate = parseDateInput(returnDate);
     const normalizedMultipleSectors = Array.isArray(multipleSectors)
@@ -97,6 +112,12 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
           travelDate: parseDateInput(s?.travelDate)
         }))
       : [];
+
+    // No stored rows to compare against on a create, so every row is new and needs its own date.
+    const checkedPayments = validatePaymentRows(payments, []);
+    if (checkedPayments.error) {
+      return res.status(400).json({ message: checkedPayments.error });
+    }
 
     // Validation
     if (!paxName || !contactNumber || !pnr || !sectorType || !travelDate || !from || !to) {
@@ -172,7 +193,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       cardType: cardType || '',
       cardLast4Digits: cardLast4Digits || '',
       paymentType: paymentType || 'Full',
-      payments: normalizePayments(payments),
+      payments: checkedPayments.payments,
       submittedBy: req.user._id,
       submittedByName: req.user.name,
       status: initialStatus,
@@ -459,6 +480,32 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
     }
 
+    // Date-only guards run ONCE here, before the role branches, so all three branches — including
+    // the ADMIN branch, which has no allowlist and used to assign payments raw — get the same
+    // normalisation and the same year check. Doing it per branch is how the ADMIN branch drifted.
+    const invalidDate = validateDateOnlyFields({
+      ...(updates.travelDate !== undefined ? { travelDate: updates.travelDate } : {}),
+      ...(updates.returnDate !== undefined ? { returnDate: updates.returnDate } : {}),
+      ...(updates.multipleSectors !== undefined ? sectorDateEntries(updates.multipleSectors) : {})
+    });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
+
+    // Validated against the rows already stored: an unchanged row may arrive without a date and
+    // keeps its own, a new or changed one must bring its own.
+    // Array.isArray, not `!== undefined`: a malformed non-array `payments` must leave the stored
+    // rows alone, which is what the per-branch `Array.isArray(...) ? ... : booking.payments`
+    // guards used to do.
+    let checkedPayments = null;
+    if (Array.isArray(updates.payments)) {
+      const checked = validatePaymentRows(updates.payments, booking.payments || []);
+      if (checked.error) {
+        return res.status(400).json({ message: checked.error });
+      }
+      checkedPayments = checked.payments;
+    }
+
     // Agent1 & Agent2: full edit until verified (including payments)
     if (userRole === 'AGENT1' || userRole === 'AGENT2') {
       if (isVerified) {
@@ -505,7 +552,7 @@ router.put('/:id', auth, async (req, res) => {
               travelDate: parseDateInput(s?.travelDate)
             })) : [];
           } else if (key === 'payments') {
-            booking.payments = Array.isArray(updates[key]) ? normalizePayments(updates[key]) : booking.payments;
+            booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
           } else if (key === 'paxName') {
             booking[key] = (updates[key] || '').toString().toUpperCase();
           } else if (key === 'pnr') {
@@ -584,7 +631,7 @@ router.put('/:id', auth, async (req, res) => {
             travelDate: parseDateInput(s?.travelDate)
           })) : [];
         } else if (key === 'payments') {
-          booking.payments = Array.isArray(updates[key]) ? normalizePayments(updates[key]) : booking.payments;
+          booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
         } else if (key === 'paxName') {
           booking[key] = (updates[key] || '').toString().toUpperCase();
         } else if (key === 'pnr') {
@@ -670,6 +717,14 @@ router.put('/:id', auth, async (req, res) => {
           } else if (key === 'travelDate' || key === 'returnDate') {
             booking[key] = parseDateInput(updates[key]);
             changes[key] = updates[key];
+          } else if (key === 'payments') {
+            // This branch has no allowlist, so `payments` used to fall through to the generic
+            // `booking[key] = updates[key]` below — bypassing the noon-UTC normalisation entirely.
+            // Mongoose then cast the frontend's 'YYYY-MM-DD' to 00:00Z, which reads a day early in
+            // Toronto: every admin payment edit silently reintroduced the bug the 2026-11-17
+            // migration fixed. 3 of 2,935 live payment dates were pending again by 2026-11-23.
+            booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
+            changes[key] = `${booking.payments.length} payment(s)`;
           } else if (key === 'multipleSectors') {
             booking.multipleSectors = Array.isArray(updates[key]) ? updates[key].map(s => ({
               ...s,
@@ -843,6 +898,11 @@ router.post('/:id/date-change', auth, async (req, res) => {
       return res.status(400).json({ message: 'Remarks are mandatory' });
     }
 
+    const invalidDate = validateDateOnlyFields({ newTravelDate, newReturnDate });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
+
     const invalidField = validateFinancialFields({ newOurCost, newSalePrice });
     if (invalidField) {
       return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
@@ -894,8 +954,13 @@ router.post('/:id/date-change', auth, async (req, res) => {
       booking.salePrice = (booking.salePrice || 0) + (parseFloat(newSalePrice) || 0);
     }
     if (Array.isArray(newPayments) && newPayments.length > 0) {
-      const merged = normalizePayments(newPayments);
-      booking.payments = (booking.payments || []).concat(merged);
+      // These rows are appended, never matched against stored ones, so each must bring its own
+      // date: there is nothing for a dateless row to inherit.
+      const checked = validatePaymentRows(newPayments, []);
+      if (checked.error) {
+        return res.status(400).json({ message: checked.error });
+      }
+      booking.payments = (booking.payments || []).concat(checked.payments);
     }
     
     // Apply Supplier Updation Charge
@@ -957,6 +1022,14 @@ router.post('/:id/flight-change', auth, async (req, res) => {
       return res.status(400).json({ message: 'Remarks are mandatory' });
     }
 
+    const invalidDate = validateDateOnlyFields({
+      'newDetails.travelDate': newDetails && newDetails.travelDate,
+      'newDetails.returnDate': newDetails && newDetails.returnDate
+    });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
+
     const invalidField = validateFinancialFields({ newOurCost, newSalePrice });
     if (invalidField) {
       return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
@@ -1003,8 +1076,13 @@ router.post('/:id/flight-change', auth, async (req, res) => {
       }
     }
     if (Array.isArray(newPayments) && newPayments.length > 0) {
-      const merged = normalizePayments(newPayments);
-      booking.payments = (booking.payments || []).concat(merged);
+      // These rows are appended, never matched against stored ones, so each must bring its own
+      // date: there is nothing for a dateless row to inherit.
+      const checked = validatePaymentRows(newPayments, []);
+      if (checked.error) {
+        return res.status(400).json({ message: checked.error });
+      }
+      booking.payments = (booking.payments || []).concat(checked.payments);
     }
     
     // Apply Supplier Updation Charge
@@ -1305,6 +1383,14 @@ router.put('/:id/refund-status', auth, authorize('ACCOUNT', 'ADMIN'), async (req
 
     const { refundReceivedFromSupplier, refundPaidToClient } = req.body;
 
+    const invalidDate = validateDateOnlyFields({
+      'refundReceivedFromSupplier.date': refundReceivedFromSupplier && refundReceivedFromSupplier.date,
+      'refundPaidToClient.date': refundPaidToClient && refundPaidToClient.date
+    });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
+
     if (refundReceivedFromSupplier !== undefined) {
       const existing = (booking.cancellation.refundReceivedFromSupplier && typeof booking.cancellation.refundReceivedFromSupplier === 'object') 
         ? booking.cancellation.refundReceivedFromSupplier 
@@ -1351,6 +1437,11 @@ router.put('/:id/upfront-collection', auth, async (req, res) => {
     }
 
     const { amountCollected, collectionDate, paymentMode, remarks } = req.body;
+
+    const invalidDate = validateDateOnlyFields({ collectionDate });
+    if (invalidDate) {
+      return res.status(400).json({ message: invalidDate });
+    }
 
     const invalidField = validateFinancialFields({ amountCollected });
     if (invalidField) {
