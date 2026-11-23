@@ -554,8 +554,30 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     // would fix the order, and is not worth doing in the same release that introduces the field.
     // buildRange always returns a range here: both dates are required and 400 above.
     const range = buildRange(dateFrom, dateTo);
-    const bookings = await Booking.find({ $or: effectiveRangeConditions(range) })
-      .sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
+    //
+    // UNPAGINATED on purpose, then sliced below.
+    //
+    // The summary tiles are RANGE totals and have to be reduced over every matching booking. The
+    // query used to carry .skip().limit() and the summary was reduced over whatever came back,
+    // so with the UI sending neither page nor limit -- getFinancialSummary in
+    // report.service.ts sets only dateFrom and dateTo -- getPaginationParams defaulted to
+    // page 1, limit 50 and the tiles described the first 50 bookings of the month. On the staging
+    // copy, September 2026: 386 bookings in range, 50 counted. Total Sale read 96,910.61 against
+    // a real 838,667.72 -- understated by 88.4%. Total Margin read 10,796.36 against 73,043.86.
+    //
+    // Reductions over a month are cheap (a few hundred documents; Reports C and E are
+    // deliberately unpaginated over the same data for the same reason), so one query serves both
+    // and the totals cannot drift from the rows the way two queries could.
+    //
+    // The sort carries an _id tie-break so the page boundary is stable: without it, two bookings
+    // sharing a dateOfSubmission millisecond have no defined order between them and a row can
+    // repeat on one page and vanish from the next. Zero such pairs exist on the copy today, which
+    // is exactly why this would have gone unnoticed.
+    const matching = await Booking.find({ $or: effectiveRangeConditions(range) })
+      .sort({ dateOfSubmission: -1, _id: -1 });
+
+    // Rows are paged as before; the summary below is NOT.
+    const bookings = matching.slice(skip, skip + limit);
 
     const rows = bookings.map(b => ({
       _id: b._id,
@@ -569,20 +591,22 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       crdr: getCRDR(b)
     }));
 
-    const totalSupplierCharges = bookings.reduce((sum, b) => sum + (b.supplierCharges || 0), 0);
-    const totalAirlineCharges = bookings
+    // Every figure below reduces over `matching`, the whole range -- never over `bookings`,
+    // which is one page of it.
+    const totalSupplierCharges = matching.reduce((sum, b) => sum + (b.supplierCharges || 0), 0);
+    const totalAirlineCharges = matching
       .filter(b => b.status === 'Cancelled')
       .reduce((sum, b) => sum + (b.cancellation?.airlineCancellationCharges || 0), 0);
-    const totalCurrentMargin = bookings.reduce((sum, b) => {
+    const totalCurrentMargin = matching.reduce((sum, b) => {
       if (b.status === 'Cancelled') return sum + (b.cancellation?.currentMargin || 0);
       return sum + ((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0));
     }, 0);
 
     const summary = {
-      totalBookings: rows.length,
-      totalSale: rows.reduce((s, r) => s + r.salePrice, 0),
-      totalPaid: rows.reduce((s, r) => s + r.totalPaidAmount, 0),
-      totalMargin: rows.reduce((s, r) => s + r.margin, 0),
+      totalBookings: matching.length,
+      totalSale: matching.reduce((s, b) => s + (b.salePrice || 0), 0),
+      totalPaid: matching.reduce((s, b) => s + (b.totalPaidAmount || 0), 0),
+      totalMargin: matching.reduce((s, b) => s + ((b.salePrice || 0) - (b.ourCost || 0) - (b.supplierCharges || 0)), 0),
       totalSupplierCharges,
       totalAirlineCharges,
       totalCurrentMargin

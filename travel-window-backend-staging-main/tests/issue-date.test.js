@@ -514,6 +514,105 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     ok('F: legacy fallback matches C and E');
   }
 
+  console.log('\nReport F — summary totals are RANGE totals, not page totals');
+  {
+    // More than one page of bookings in range. The route defaults to limit 50 and the UI sends
+    // neither page nor limit, so before the fix the tiles described the first 50 only: on the
+    // staging copy, 50 of September's 401 bookings, with Total Sale reading 102,132.16 against a
+    // real 871,361.72 -- understated by 88.3%.
+    const N = 137;
+    const many = [];
+    for (let i = 0; i < N; i++) {
+      many.push({
+        _id: oid(), pnr: 'F' + String(i).padStart(4, '0'), paxName: 'X',
+        status: i % 7 === 0 ? 'Cancelled' : 'Pending Verification',
+        // Spread across October on the EFFECTIVE date, half via issueDate and half legacy, so
+        // both clauses of the filter are exercised.
+        ...(i % 2 === 0
+          ? { issueDate: new Date(Date.UTC(2026, 9, (i % 28) + 1, 12, 0, 0)),
+              dateOfSubmission: new Date(Date.UTC(2026, 10, 2, 14, 0, 0)) }
+          : { dateOfSubmission: new Date(Date.UTC(2026, 9, (i % 28) + 1, 16, 0, 0)) }),
+        travelDate: new Date('2026-12-01T12:00:00Z'), from: 'YYZ', to: 'DEL',
+        sectorType: 'One Way', submittedBy: A._id, submittedByName: A.name,
+        salePrice: 1000 + i, ourCost: 700 + i, supplierCharges: i % 5,
+        totalPaidAmount: 500 + i, balanceAmount: 500,
+        totalSalePrice: 1000 + i,
+        cancellation: i % 7 === 0 ? { isCancelled: true, currentMargin: 11, airlineCancellationCharges: 3 } : undefined
+      });
+    }
+
+    // INDEPENDENT sums, computed here from the fixture, not read back from the response.
+    const expect = {
+      totalBookings: N,
+      totalSale: many.reduce((s2, b) => s2 + b.salePrice, 0),
+      totalPaid: many.reduce((s2, b) => s2 + b.totalPaidAmount, 0),
+      totalMargin: many.reduce((s2, b) => s2 + (b.salePrice - b.ourCost - b.supplierCharges), 0),
+      totalSupplierCharges: many.reduce((s2, b) => s2 + b.supplierCharges, 0),
+      totalAirlineCharges: many.filter(b => b.status === 'Cancelled')
+        .reduce((s2, b) => s2 + (b.cancellation.airlineCancellationCharges || 0), 0),
+      totalCurrentMargin: many.reduce((s2, b) => s2 + (b.status === 'Cancelled'
+        ? b.cancellation.currentMargin
+        : b.salePrice - b.ourCost - b.supplierCharges), 0)
+    };
+
+    const api = await startReports('../routes/reports', many);
+    const OCT = { dateFrom: '2026-10-01', dateTo: '2026-10-31' };
+
+    // Exactly what the UI sends: dates only, no page, no limit.
+    const asUiSeesIt = await api.get('financial-summary', OCT);
+    assert.strictEqual(asUiSeesIt.bookings.length, 50, 'still one page of rows');
+    for (const [k, v] of Object.entries(expect)) {
+      assert.strictEqual(asUiSeesIt.summary[k], v,
+        `${k}: got ${asUiSeesIt.summary[k]}, independent sum ${v}`);
+    }
+    ok(`F: with ${N} bookings in range the UI gets 50 rows and all seven totals over all ${N}`);
+
+    // The totals must not move with the page.
+    const p3 = await api.get('financial-summary', { ...OCT, page: 3, limit: 50 });
+    assert.deepStrictEqual(p3.summary, asUiSeesIt.summary, 'totals are identical on page 3');
+    assert.strictEqual(p3.bookings.length, N - 100, 'and the last page is the remainder');
+    ok('F: the totals are the same on every page');
+
+    // PAGING: no duplicates, no gaps, every booking exactly once.
+    const seen = [];
+    for (let page = 1; page <= Math.ceil(N / 20); page++) {
+      const r = await api.get('financial-summary', { ...OCT, page, limit: 20 });
+      seen.push(...r.bookings.map(b => b.pnr));
+    }
+    assert.strictEqual(seen.length, N, `paged through ${seen.length}, expected ${N}`);
+    assert.strictEqual(new Set(seen).size, N, 'no PNR appears twice across pages');
+    const expectedPnrs = new Set(many.map(b => b.pnr));
+    for (const pnr of seen) assert.ok(expectedPnrs.has(pnr), `unexpected ${pnr}`);
+    assert.strictEqual([...expectedPnrs].filter(x => !seen.includes(x)).length, 0, 'none missing');
+    ok(`F: paging 20 at a time returns all ${N} exactly once -- no duplicates, no gaps`);
+
+    // The tie-break is what makes that true when timestamps collide.
+    const sameMs = new Date(Date.UTC(2026, 9, 5, 16, 0, 0));
+    const tied = [];
+    for (let i = 0; i < 9; i++) {
+      tied.push({
+        _id: oid(), pnr: 'T' + i, paxName: 'X', status: 'Pending Verification',
+        dateOfSubmission: sameMs,
+        travelDate: new Date('2026-12-01T12:00:00Z'), from: 'YYZ', to: 'DEL',
+        sectorType: 'One Way', submittedBy: A._id, submittedByName: A.name,
+        salePrice: 100, ourCost: 50, supplierCharges: 0, totalPaidAmount: 0, balanceAmount: 100,
+        totalSalePrice: 100
+      });
+    }
+    api.close();
+    const api2 = await startReports('../routes/reports', tied);
+    const seen2 = [];
+    for (let page = 1; page <= 3; page++) {
+      const r = await api2.get('financial-summary', { ...OCT, page, limit: 3 });
+      seen2.push(...r.bookings.map(b => b.pnr));
+    }
+    assert.strictEqual(seen2.length, 9);
+    assert.strictEqual(new Set(seen2).size, 9,
+      'nine bookings sharing one dateOfSubmission millisecond still page without repeats');
+    api2.close();
+    ok('F: rows sharing a dateOfSubmission millisecond page cleanly, thanks to the _id tie-break');
+  }
+
   console.log('\nthe three reports that deliberately stay on the ENTRY date');
   {
     const api = await startReports('../routes/reports', [lateEntered]);
