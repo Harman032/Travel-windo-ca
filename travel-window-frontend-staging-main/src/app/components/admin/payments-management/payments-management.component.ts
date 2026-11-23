@@ -79,8 +79,9 @@ const PAYMENT_MODES: PaymentModeFilter[] = [
             </select>
           </div>
           <div>
-            <!-- 'Not recorded' = an E-Transfer saved before the two fields existed, plus every
-                 legacy Cheque and Bank Transfer row. Applied server-side, before the totals. -->
+            <!-- 'Not recorded' = a bank deposit (E-Transfer, or legacy Cheque / Bank Transfer)
+                 with no account named. Cash and card rows are not bank deposits and never appear
+                 under it. Applied server-side, before the totals. -->
             <label class="block text-sm font-medium text-gray-700 mb-1">Receiving Bank</label>
             <select
               [(ngModel)]="filters.receivingAccount"

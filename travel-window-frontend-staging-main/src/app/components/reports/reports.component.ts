@@ -813,8 +813,9 @@ export class ReportsComponent implements OnInit {
 
   /**
    * Bank filter values for Verified Payments. The two account labels mirror RECEIVING_ACCOUNTS in
-   * travel-window-backend-staging-main/utils/receiving-accounts.js; 'Not recorded' covers an
-   * E-Transfer saved before the fields existed plus every legacy Cheque and Bank Transfer row.
+   * travel-window-backend-staging-main/utils/receiving-accounts.js; 'Not recorded' means a bank
+   * deposit (E-Transfer, or legacy Cheque / Bank Transfer) with no account named -- a cash-only
+   * booking is never listed under it.
    */
   readonly receivingAccountFilters = ['All', 'RBC 6336', 'TD 0638', 'Not recorded'];
 

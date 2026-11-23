@@ -1,7 +1,7 @@
 'use strict';
 
 const { parseDateInput, validateDateOnly } = require('./date-only');
-const { RECEIVING_ACCOUNTS } = require('./receiving-accounts');
+const { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES } = require('./receiving-accounts');
 
 /**
  * Route-layer validation for a booking's payments[] array.
@@ -125,14 +125,24 @@ const validatePaymentRows = (incoming, existing = []) => {
   return { payments: out };
 };
 
+/** Is this row a deposit into one of our bank accounts, and so answerable by the bank filter? */
+const isBankDeposit = (p) => BANK_DEPOSIT_MODES.includes((p && p.paymentMode) || '');
+
 /**
  * Does this row count as "Not recorded" for the bank filter?
  *
- * True for an E-Transfer with no receivingAccount, and for every legacy Cheque and Bank Transfer
- * row. Written as "no receivingAccount" rather than as a list of modes, so there is no mode list
- * to keep in step: a Cash row has no receiving account either, and the filter is only ever applied
- * to the set of rows the screen is already showing.
+ * A BANK DEPOSIT -- E-Transfer, or legacy Cheque or Bank Transfer -- that does not name the
+ * account it arrived in. Both halves matter.
+ *
+ * This was previously just "has no receivingAccount", which swept in every Cash, Credit Card,
+ * Machine Charge, UPI, Kotak Bank, Kotak Bank UPI, Travobirds and SkyLight row: none of them is
+ * a bank deposit, none could ever have an account recorded, and so none is missing anything.
+ * On the copy that made "Not recorded" read 2,858 rows and 4,941,058.60 -- every payment ever
+ * taken -- rather than the bank-deposit rows actually lacking an account.
  */
-const isUnrecordedAccount = (p) => !str(p && p.receivingAccount);
+const isUnrecordedAccount = (p) => isBankDeposit(p) && !str(p && p.receivingAccount);
 
-module.exports = { paymentKey, validatePaymentRows, isUnrecordedAccount, RECEIVING_ACCOUNTS };
+module.exports = {
+  paymentKey, validatePaymentRows, isBankDeposit, isUnrecordedAccount,
+  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES
+};

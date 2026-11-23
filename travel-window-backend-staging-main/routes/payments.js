@@ -11,9 +11,13 @@ const router = express.Router();
  * Query: pnr, paymentMode, startDate, endDate, receivingAccount
  *
  * receivingAccount: 'All' (or absent) | one of RECEIVING_ACCOUNTS | 'Not recorded'.
- * 'Not recorded' means an E-Transfer saved before the two fields existed, plus every legacy
- * Cheque and Bank Transfer row -- written as "has no receivingAccount" rather than as a list of
- * modes, so there is no mode list to keep in step.
+ *
+ * 'Not recorded' means a BANK DEPOSIT -- E-Transfer, or legacy Cheque or Bank Transfer -- with no
+ * account named. A Cash or Credit Card row is not a bank deposit and can never name one, so it
+ * is not missing anything and does not belong under this value.
+ *
+ * Therefore RBC + TD + Not recorded = the bank-deposit rows, NOT 'All'. 'All' is still every
+ * payment row on the screen, unfiltered.
  */
 router.get('/', auth, authorize('ADMIN'), async (req, res) => {
   try {

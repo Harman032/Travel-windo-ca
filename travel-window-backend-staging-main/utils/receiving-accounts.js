@@ -17,4 +17,20 @@
  */
 const RECEIVING_ACCOUNTS = ['RBC 6336', 'TD 0638'];
 
-module.exports = { RECEIVING_ACCOUNTS };
+/**
+ * The payment modes that arrive IN one of our bank accounts, and so can meaningfully be asked
+ * which one. E-Transfer is the current mode; Cheque and Bank Transfer are the legacy values it
+ * replaced, offered by no dropdown but still carried by ~500 stored rows.
+ *
+ * This is what makes the bank filter's "Not recorded" mean something. Without it the predicate
+ * was just "has no receivingAccount", which is also true of every Cash, Credit Card, Machine
+ * Charge, UPI, Kotak Bank, Kotak Bank UPI, Travobirds and SkyLight row -- none of which is a
+ * bank deposit and none of which could ever have an account recorded against it. "Not recorded"
+ * has to mean "should name an account and does not", or it reads as a data-quality backlog of
+ * 2,858 rows when the real figure is the bank-deposit rows alone.
+ *
+ * So: RBC + TD + Not recorded = the BANK_DEPOSIT_MODES rows, not every payment row.
+ */
+const BANK_DEPOSIT_MODES = ['E-Transfer', 'Cheque', 'Bank Transfer'];
+
+module.exports = { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES };

@@ -652,9 +652,9 @@ router.get('/verified-payments', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       .lean();
 
     // Filtered BEFORE the summary, so the figures describe the rows on screen. A booking matches
-    // when any of its payment rows does; 'Not recorded' therefore means "has a payment with no
-    // receiving account", which covers an undated-era E-Transfer and every legacy Cheque and
-    // Bank Transfer row.
+    // when any of its payment rows does; 'Not recorded' means it has a BANK-DEPOSIT row
+    // (E-Transfer, or legacy Cheque or Bank Transfer) with no account named. A booking paid only
+    // in cash names no account either, but it is not missing one, so it is not listed here.
     const shown = (bankFilter && bankFilter !== 'All')
       ? bookings.filter(b => (b.payments || []).some(p => (bankFilter === 'Not recorded'
           ? isUnrecordedAccount(p)

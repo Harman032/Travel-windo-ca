@@ -28,9 +28,12 @@ export interface PaymentsResponse {
 export type PaymentModeFilter = 'All Modes' | 'Cash' | 'Credit Card' | 'UPI' | 'E-Transfer' | 'Machine Charge';
 
 /**
- * Bank filter values. 'Not recorded' covers an E-Transfer saved before the two fields existed
- * plus every legacy Cheque and Bank Transfer row -- the server tests "has no receivingAccount"
- * rather than a list of modes.
+ * Bank filter values. 'Not recorded' means a BANK DEPOSIT -- E-Transfer, or legacy Cheque or
+ * Bank Transfer -- with no account named. A Cash or Credit Card row names no account either, but
+ * it is not a bank deposit and could never name one, so it is not missing anything and is not
+ * listed under this value.
+ *
+ * So RBC + TD + Not recorded = the bank-deposit rows; 'All' is still every payment row.
  *
  * The two account labels mirror RECEIVING_ACCOUNTS in
  * travel-window-backend-staging-main/utils/receiving-accounts.js.

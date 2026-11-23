@@ -20,13 +20,17 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { startReports } = require('./report-harness');
-const { validatePaymentRows, isUnrecordedAccount, RECEIVING_ACCOUNTS } = require('../utils/payment-rows');
+const {
+  validatePaymentRows, isBankDeposit, isUnrecordedAccount,
+  RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES
+} = require('../utils/payment-rows');
 
 let passed = 0;
 const t = (name, fn) => { fn(); passed++; console.log(`  ok  ${name}`); };
 const ok = (name) => { passed++; console.log(`  ok  ${name}`); };
 const SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
 const oid = () => new mongoose.Types.ObjectId();
+const r2 = (n) => Math.round(n * 100) / 100;
 
 const RBC = 'RBC 6336';
 const TD = 'TD 0638';
@@ -215,16 +219,44 @@ t('a client that omits the fields cannot blank a stored row', () => {
 
 console.log('\nisUnrecordedAccount — what "Not recorded" means');
 
-t('an E-Transfer with no account, and every legacy mode, are Not recorded', () => {
+t('BANK_DEPOSIT_MODES is E-Transfer plus the two legacy values it replaced', () => {
+  assert.deepStrictEqual(BANK_DEPOSIT_MODES, ['E-Transfer', 'Cheque', 'Bank Transfer']);
+  for (const m of BANK_DEPOSIT_MODES) assert.ok(Booking.PAYMENT_MODES.includes(m), m);
+});
+
+t('a bank deposit with no account named IS Not recorded', () => {
   assert.strictEqual(isUnrecordedAccount({ paymentMode: 'E-Transfer' }), true);
   assert.strictEqual(isUnrecordedAccount({ paymentMode: 'Cheque' }), true);
   assert.strictEqual(isUnrecordedAccount({ paymentMode: 'Bank Transfer' }), true);
-  assert.strictEqual(isUnrecordedAccount({ paymentMode: 'Cash' }), true);
   assert.strictEqual(isUnrecordedAccount({ paymentMode: 'E-Transfer', receivingAccount: '  ' }), true);
 });
 
-t('a recorded account is not', () => {
+t('a bank deposit WITH an account named is not', () => {
   assert.strictEqual(isUnrecordedAccount({ paymentMode: 'E-Transfer', receivingAccount: RBC }), false);
+  assert.strictEqual(isUnrecordedAccount({ paymentMode: 'Cheque', receivingAccount: TD }), false);
+});
+
+t('NO non-bank mode is ever Not recorded', () => {
+  // A Cash row names no account either, but it is not a bank deposit and could never name one,
+  // so it is not missing anything. Treating it as Not recorded made that filter read 2,858 rows
+  // and 4,941,058.60 on the copy -- every payment ever taken.
+  for (const mode of Booking.PAYMENT_MODES.filter(m => !BANK_DEPOSIT_MODES.includes(m))) {
+    assert.strictEqual(isBankDeposit({ paymentMode: mode }), false, mode);
+    assert.strictEqual(isUnrecordedAccount({ paymentMode: mode }), false, mode);
+    // Not even if something has written an account onto one.
+    assert.strictEqual(isUnrecordedAccount({ paymentMode: mode, receivingAccount: RBC }), false, mode);
+  }
+  // Named explicitly, because these are the eight the client listed.
+  for (const mode of ['Cash', 'Credit Card', 'Machine Charge', 'UPI', 'Kotak Bank',
+                      'Kotak Bank UPI', 'Travobirds', 'SkyLight']) {
+    assert.strictEqual(isUnrecordedAccount({ paymentMode: mode }), false, mode);
+  }
+});
+
+t('a missing or unknown mode is not a bank deposit', () => {
+  assert.strictEqual(isUnrecordedAccount({}), false);
+  assert.strictEqual(isUnrecordedAccount({ paymentMode: '' }), false);
+  assert.strictEqual(isUnrecordedAccount(null), false);
 });
 
 // ------------------------------------------------------------------ the routes ----------------
@@ -411,7 +443,10 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
         { paidAmount: 100, paymentMode: 'E-Transfer', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '', receivingAccount: RBC, senderName: 'Ravi' },
         { paidAmount: 200, paymentMode: 'E-Transfer', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '', receivingAccount: TD, senderName: 'Sunita' },
         { paidAmount: 400, paymentMode: 'E-Transfer', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '', receivingAccount: '', senderName: '' },
-        { paidAmount: 800, paymentMode: 'Cheque', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '' }
+        { paidAmount: 800, paymentMode: 'Cheque', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '' },
+        // NOT bank deposits. Neither can ever name an account, so neither is "Not recorded".
+        { paidAmount: 1600, paymentMode: 'Cash', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '' },
+        { paidAmount: 3200, paymentMode: 'Credit Card', paymentDate: new Date('2026-11-17T12:00:00Z'), referenceNo: '' }
       ]
     }];
 
@@ -436,8 +471,10 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     };
 
     // Independent sums, computed here rather than taken from the response.
+    //   bank deposits: 100 RBC + 200 TD + 400 bare E-Transfer + 800 Cheque = 1500 over 4 rows
+    //   non-deposits:  1600 Cash + 3200 Credit Card                        = 4800 over 2 rows
     const expected = {
-      All: { count: 4, total: 1500 },
+      All: { count: 6, total: 6300 },
       [RBC]: { count: 1, total: 100 },
       [TD]: { count: 1, total: 200 },
       'Not recorded': { count: 2, total: 1200 }  // the bare E-Transfer plus the legacy Cheque
@@ -454,6 +491,35 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
       console.log(`      ${String(value).padEnd(13)} rows ${exp.count}   total ${exp.total.toFixed(2)}`);
     }
     ok('each filter value returns only matching rows, and the totals are that set\'s own sum');
+
+    // The three BANK values partition the BANK-DEPOSIT rows, not every row. 'All' is larger by
+    // exactly the non-deposit rows, which is the whole point of the fix.
+    const nParts = expected[RBC].count + expected[TD].count + expected['Not recorded'].count;
+    const sumParts = r2(expected[RBC].total + expected[TD].total + expected['Not recorded'].total);
+    const everything = await get({});
+    const depositRows = everything.body.payments.filter(r => BANK_DEPOSIT_MODES.includes(r.mode));
+    const depositTotal = r2(depositRows.reduce((s, r) => s + r.amount, 0));
+    assert.strictEqual(nParts, depositRows.length,
+      `RBC + TD + Not recorded = ${nParts} rows, bank-deposit rows = ${depositRows.length}`);
+    assert.strictEqual(sumParts, depositTotal,
+      `RBC + TD + Not recorded = ${sumParts}, bank-deposit total = ${depositTotal}`);
+    ok('RBC + TD + Not recorded = the bank-deposit rows, by count and by amount');
+
+    assert.strictEqual(expected.All.count - depositRows.length, 2,
+      "'All' is larger by exactly the two non-deposit rows");
+    assert.strictEqual(r2(expected.All.total - depositTotal), 4800);
+    ok("and 'All' stays every row: larger by exactly the Cash and Credit Card amounts");
+
+    {
+      // The regression this fix is for: a Cash row showing under "Not recorded".
+      const res = await get({ receivingAccount: 'Not recorded' });
+      const modes = [...new Set(res.body.payments.map(r => r.mode))];
+      for (const m of modes) {
+        assert.ok(BANK_DEPOSIT_MODES.includes(m), `"${m}" must never appear under Not recorded`);
+      }
+      assert.ok(!modes.includes('Cash') && !modes.includes('Credit Card'), modes.join(', '));
+      ok('no Cash or Credit Card row appears under Not recorded');
+    }
 
     {
       const res = await get({ receivingAccount: 'HSBC 1234' });
@@ -481,14 +547,16 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     const rows = [
       { ...base, _id: oid(), pnr: 'RBC001', payments: [{ paidAmount: 100, paymentMode: 'E-Transfer', receivingAccount: RBC, senderName: 'Ravi', paymentDate: new Date('2026-11-17T12:00:00Z') }] },
       { ...base, _id: oid(), pnr: 'TD001', payments: [{ paidAmount: 200, paymentMode: 'E-Transfer', receivingAccount: TD, senderName: 'Sunita', paymentDate: new Date('2026-11-17T12:00:00Z') }] },
-      { ...base, _id: oid(), pnr: 'LEG001', payments: [{ paidAmount: 800, paymentMode: 'Cheque', paymentDate: new Date('2026-11-17T12:00:00Z') }] }
+      { ...base, _id: oid(), pnr: 'LEG001', payments: [{ paidAmount: 800, paymentMode: 'Cheque', paymentDate: new Date('2026-11-17T12:00:00Z') }] },
+      // Cash only: names no account, but is not a bank deposit, so it is not "Not recorded".
+      { ...base, _id: oid(), pnr: 'CASH01', payments: [{ paidAmount: 1600, paymentMode: 'Cash', paymentDate: new Date('2026-11-17T12:00:00Z') }] }
     ];
     const api = await startReports('../routes/reports', rows);
     const q = { verificationType: 'unverified' };
 
     const all = await api.get('verified-payments', q);
-    assert.strictEqual(all.bookings.length, 3);
-    assert.strictEqual(all.summary.totalBookings, 3);
+    assert.strictEqual(all.bookings.length, 4);
+    assert.strictEqual(all.summary.totalBookings, 4);
 
     const rbc = await api.get('verified-payments', { ...q, receivingAccount: RBC });
     assert.deepStrictEqual(rbc.bookings.map(b => b.pnr), ['RBC001']);
@@ -501,8 +569,9 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
 
     const none = await api.get('verified-payments', { ...q, receivingAccount: 'Not recorded' });
     assert.deepStrictEqual(none.bookings.map(b => b.pnr), ['LEG001'],
-      'the legacy Cheque booking is the Not recorded one');
+      'the legacy Cheque booking is the only Not recorded one -- CASH01 is not');
     assert.strictEqual(none.summary.totalBookings, 1);
+    ok('a cash-only booking is NOT listed under Not recorded on Verified Payments');
 
     const bad = await api.get('verified-payments', { ...q, receivingAccount: 'HSBC 1234' });
     assert.ok(/Unknown receivingAccount/.test(bad.message || ''), JSON.stringify(bad));
