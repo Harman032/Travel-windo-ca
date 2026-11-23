@@ -19,6 +19,13 @@ function values(doc, path) {
 }
 
 function condMatches(val, cond) {
+  // In Mongo, `{ field: null }` matches documents where the field is null AND documents where it
+  // is absent entirely. The effective-date filter relies on exactly that -- its second clause is
+  // `{ issueDate: null, dateOfSubmission: range }`, which is how every legacy booking (all of
+  // them, until agents start filling issueDate) is matched. Without this, a strict `undefined ===
+  // null` comparison excluded every one of them and the double reported an empty margin report
+  // for a query the real database answers in full.
+  if (cond === null) return val === null || val === undefined;
   const isOp = cond && typeof cond === 'object' && !(cond instanceof Date) &&
     Object.keys(cond).some(k => k.startsWith('$'));
   if (!isOp) return idOf(val) === idOf(cond);
@@ -160,4 +167,4 @@ async function startReports(routerPath, bookings) {
   };
 }
 
-module.exports = { startReports, project };
+module.exports = { startReports, project, matches };

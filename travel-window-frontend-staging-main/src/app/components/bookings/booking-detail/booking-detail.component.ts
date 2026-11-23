@@ -114,6 +114,17 @@ import { ToastrService } from 'ngx-toastr';
               <p class="text-gray-900">{{ booking.sectorType }}</p>
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-500 mb-1">Issue Date</label>
+              <p class="text-gray-900">
+                {{ booking.issueDate ? (booking.issueDate | tzDate:'dd-MM-yyyy') : '—' }}
+                <span *ngIf="isLateEntry" class="ml-2 text-xs text-amber-700">Late entry</span>
+              </p>
+              <p *ngIf="!booking.issueDate" class="text-gray-500 text-xs mt-1">
+                Not recorded; reports use the entry date
+                ({{ booking.dateOfSubmission | tzDate:'dd-MM-yyyy' }}).
+              </p>
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-500 mb-1">Travel Date</label>
               <p class="text-gray-900">{{ booking.travelDate | tzDate:'dd-MM-yyyy' }}</p>
             </div>
@@ -1057,6 +1068,18 @@ export class BookingDetailComponent implements OnInit {
     this.flightChangePaymentsArray.removeAt(i);
   }
 
+  /**
+   * True when the booking was keyed in on a later Toronto day than it was issued -- the same
+   * comparison the supplier statement makes for its "Late entry" marker. Mirrors
+   * utils/effective-date.js isLateEntry; compared as calendar days, not instants, because a
+   * ticket issued at 23:00 and entered at 00:30 is one day late by the clock and zero by the
+   * calendar, and the calendar is what the supplier bills on.
+   */
+  get isLateEntry(): boolean {
+    if (!this.booking?.issueDate || !this.booking?.dateOfSubmission) return false;
+    return toDateInputValue(this.booking.dateOfSubmission) > toDateInputValue(this.booking.issueDate);
+  }
+
   /** True if travel date is before today in Toronto (checkboxes only if not past per spec) */
   isTravelDatePast(): boolean {
     if (!this.booking?.travelDate) return false;
@@ -1465,6 +1488,7 @@ export class BookingDetailComponent implements OnInit {
     const labels: Record<string, string> = {
       paxName: 'Passenger', contactPerson: 'Contact Person', contactNumber: 'Contact',
       from: 'From', to: 'To', travelDate: 'Travel Date', returnDate: 'Return Date',
+      issueDate: 'Issue Date',
       status: 'Status', supplier: 'Supplier', supplierName: 'Supplier',
       ourCost: 'Our Cost', salePrice: 'Sale Price', pnr: 'PNR',
       dateOfSubmission: 'Submitted', sectorType: 'Sector', note: 'Note',

@@ -70,6 +70,10 @@ if (!URI) {
 
 // The seven date-only fields the migration touches, in the migration's own order.
 const FIELDS = [
+  // issueDate is new in this release and has no migration: it is always written through
+  // parseDateInput, so everything here should read present == atNoon with PENDING 0. Counted
+  // anyway, because that is how a future write path that bypasses the normaliser gets noticed.
+  { path: 'issueDate', get: b => [{ v: b.issueDate }] },
   { path: 'travelDate', get: b => [{ v: b.travelDate }] },
   { path: 'returnDate', get: b => [{ v: b.returnDate }] },
   { path: 'multipleSectors[].travelDate',
@@ -101,7 +105,7 @@ const FIELDS = [
   const docs = await col.find({}, {
     projection: {
       pnr: 1, status: 1,
-      travelDate: 1, returnDate: 1, multipleSectors: 1, payments: 1,
+      issueDate: 1, travelDate: 1, returnDate: 1, multipleSectors: 1, payments: 1,
       'cancellation.upfrontCollection.collectionDate': 1,
       'cancellation.refundReceivedFromSupplier.date': 1,
       'cancellation.refundPaidToClient.date': 1,

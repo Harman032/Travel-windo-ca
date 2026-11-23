@@ -11,6 +11,7 @@ const { buildRange, startOfDayTz, startOfTodayTz } = require('../utils/tz');
 const {
   parseDateInput, normalizePayments, validateDateOnlyFields, validatePaymentRows
 } = require('../utils/date-only');
+const { validateIssueDate } = require('../utils/effective-date');
 
 const router = express.Router();
 
@@ -76,6 +77,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       pnr,
       sectorType,
       travelDate,
+      issueDate,
       from,
       to,
       returnDate,
@@ -97,7 +99,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
     } = req.body;
     
     const invalidDate = validateDateOnlyFields({
-      travelDate, returnDate,
+      travelDate, returnDate, issueDate,
       ...sectorDateEntries(multipleSectors)
     });
     if (invalidDate) {
@@ -167,6 +169,14 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
     let initialStatus = isAgent2Supplier ? 'Unticketed' : 'Pending Verification';
     let dateOfSubmissionVal = new Date();
 
+    // Bounds are checked against the entry date this booking is about to carry, not against a
+    // stored one, because there is no stored one yet.
+    const badIssueDate = validateIssueDate(issueDate, dateOfSubmissionVal);
+    if (badIssueDate) {
+      return res.status(400).json({ message: badIssueDate });
+    }
+    const parsedIssueDate = parseDateInput(issueDate);
+
     const booking = new Booking({
       paxName: paxName.toUpperCase(),
       contactPerson: contactPersonTitleCase,
@@ -174,6 +184,7 @@ router.post('/', auth, authorize('AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'), async 
       pnr: pnr.toUpperCase(),
       sectorType,
       travelDate: parsedTravelDate,
+      issueDate: parsedIssueDate,
       from: from.charAt(0).toUpperCase() + from.slice(1),
       to: to.charAt(0).toUpperCase() + to.slice(1),
       returnDate: parsedReturnDate,
@@ -480,6 +491,38 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(400).json({ message: `Invalid financial value for ${invalidField}` });
     }
 
+    // Hoisted out of the AGENT branch, which used to make this its first statement. It has to run
+    // before the issueDate handling below, which mutates the document: an agent must not be able
+    // to move the issue date of a verified booking even in memory.
+    if ((userRole === 'AGENT1' || userRole === 'AGENT2') && isVerified) {
+      return res.status(403).json({ message: 'Cannot edit verified bookings' });
+    }
+
+    // ISSUE DATE is handled here for every role rather than per branch, and then removed from
+    // `updates` so no branch sees it again. One code path means the ADMIN branch -- which has no
+    // allowlist and assigns unknown keys straight through -- cannot skip the validation or the
+    // audit entry, which is exactly how it skipped the payment normalisation before 5b51bf2.
+    //
+    // Frozen after verification for AGENTS ONLY, via the gate above: ACCOUNT and ADMIN can
+    // correct an issue date on a verified booking, because every money report now depends on it
+    // and the alternative to correcting it is cancelling the booking. Every change is audited.
+    if (updates.issueDate !== undefined) {
+      const badIssueDate = validateIssueDate(updates.issueDate, booking.dateOfSubmission);
+      if (badIssueDate) {
+        return res.status(400).json({ message: badIssueDate });
+      }
+      const next = parseDateInput(updates.issueDate);
+      const before = booking.issueDate ? new Date(booking.issueDate).toISOString() : null;
+      const after = next ? next.toISOString() : null;
+      if (before !== after) {
+        booking.issueDate = next;
+        addProgressHistory(booking, 'Issue Date Changed', req.user, {
+          issueDate: { from: before, to: after }
+        });
+      }
+      delete updates.issueDate;
+    }
+
     // Date-only guards run ONCE here, before the role branches, so all three branches — including
     // the ADMIN branch, which has no allowlist and used to assign payments raw — get the same
     // normalisation and the same year check. Doing it per branch is how the ADMIN branch drifted.
@@ -508,9 +551,6 @@ router.put('/:id', auth, async (req, res) => {
 
     // Agent1 & Agent2: full edit until verified (including payments)
     if (userRole === 'AGENT1' || userRole === 'AGENT2') {
-      if (isVerified) {
-        return res.status(403).json({ message: 'Cannot edit verified bookings' });
-      }
       const changes = {};
       if (updates.supplier !== undefined) {
         const supplierId = (updates.supplier || '').toString().trim();

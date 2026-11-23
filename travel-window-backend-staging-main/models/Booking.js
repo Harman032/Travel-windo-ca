@@ -106,6 +106,19 @@ const bookingSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  // The day the ticket was actually issued, as opposed to dateOfSubmission, the instant it was
+  // keyed in. Date-only, stored at noon UTC via parseDateInput, same as travelDate.
+  //
+  // Optional and NOT backfilled. Every legacy booking leaves it unset and falls back to
+  // dateOfSubmission through effectiveDate(), so no figure in any closed month moves.
+  //
+  // No schema validator on the date bounds: the "not in the future, not more than 3 days back"
+  // rule lives in the route layer (utils/effective-date.js validateIssueDate), because Mongoose
+  // re-validates every loaded path on save and a schema rule would make an out-of-bounds stored
+  // value block every later edit, cancellation and verification on that booking.
+  issueDate: {
+    type: Date
+  },
   from: {
     type: String,
     required: true
@@ -464,6 +477,11 @@ bookingSchema.index({ status: 1 });
 bookingSchema.index({ supplier: 1 });
 bookingSchema.index({ submittedBy: 1 });
 bookingSchema.index({ dateOfSubmission: 1 });
+// The effective-date range filter is two clauses -- { issueDate: range } and
+// { issueDate: null, dateOfSubmission: range } -- so the first needs its own index. A sparse
+// index would be smaller, but the second clause matches on issueDate: null, and a sparse index
+// cannot serve that, so a plain index is the one that keeps both clauses index-eligible.
+bookingSchema.index({ issueDate: 1 });
 bookingSchema.index({ supplier: 1, dateOfSubmission: -1 });
 bookingSchema.index({ submittedBy: 1, dateOfSubmission: -1 });
 bookingSchema.index({ status: 1, dateOfSubmission: -1 });

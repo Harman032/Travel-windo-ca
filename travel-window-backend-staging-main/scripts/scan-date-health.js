@@ -22,6 +22,7 @@ const ALLOWED_DB = 'travel_window_staging_copy';
 // most.
 const SCALAR = [
   'dateOfSubmission',
+  'issueDate',
   'travelDate',
   'returnDate',
   'cancellation.cancelledAt',

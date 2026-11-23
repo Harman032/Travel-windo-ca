@@ -6,6 +6,7 @@ const Supplier = require('../models/Supplier');
 const SupplierPayment = require('../models/SupplierPayment');
 const { inRange, changeRangeConditions, getSplitSummary } = require('../utils/margin-split');
 const { buildRange, TZ } = require('../utils/tz');
+const { effectiveDate, effectiveRangeConditions } = require('../utils/effective-date');
 const { buildStatement } = require('../utils/supplier-statement');
 const { COMPANY } = require('../utils/company');
 
@@ -234,7 +235,7 @@ router.get('/payment-to-suppliers', auth, authorize('ACCOUNT', 'ADMIN'), async (
       // basis and the cancellation-credit cap; supplierCharges drives the derived cancellation
       // charge. Leaving them out does not error — Mongoose returns undefined and the arithmetic
       // quietly falls back to the pre-fix behaviour.
-      .select('pnr paxName dateOfSubmission travelDate from to sectorType multipleSectors airline ' +
+      .select('pnr paxName dateOfSubmission issueDate travelDate from to sectorType multipleSectors airline ' +
               'status ourCost paymentFromCard supplierCharges adminVerified accountVerified ' +
               'supplierBookingCharge supplierUpdationCharge cancellation ' +
               'dateChanges flightChanges')
@@ -265,10 +266,13 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
   try {
     const { dateFrom, dateTo } = req.query;
     const query = { status: { $ne: 'Cancelled' } };
-    // A booking is in scope when it was submitted in range OR any modification was made in range.
+    // A booking is in scope when its EFFECTIVE date is in range OR any modification was made in
+    // range. Effective rather than entry date: this is a margin report, so a ticket issued on the
+    // 31st and keyed in on the 2nd belongs to the month it was issued -- the month the supplier
+    // bills it in and the month the margin was actually earned.
     const range = buildRange(dateFrom, dateTo);
     if (range) {
-      query.$or = [{ dateOfSubmission: range }, ...changeRangeConditions(range)];
+      query.$or = [...effectiveRangeConditions(range), ...changeRangeConditions(range)];
     }
 
     // Agent totals must cover every matching booking, so this query is deliberately unpaginated.
@@ -278,7 +282,9 @@ router.get('/agent-margin', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res
     const agentMap = {};
     bookings.forEach(b => {
       const split = getSplitSummary(b, range);
-      const bookingInRange = inRange(b.dateOfSubmission, range);
+      // The SAME date the query above filtered on. If these two disagree a booking is either
+      // fetched and then silently dropped, or counted without having been fetched.
+      const bookingInRange = inRange(effectiveDate(b), range);
       if (!bookingInRange && !split.hasInRange) return;
 
       const agentName = b.submittedByName || (b.submittedBy ? b.submittedBy.name : 'Unknown');
@@ -421,10 +427,12 @@ router.get('/agent-margin-report', auth, async (req, res) => {
       });
     }
 
-    // A booking is in scope when it was submitted in range OR any modification was made in range.
+    // Effective date, for the same reason as Report C: this is the per-booking view of the same
+    // margin figures and the two must agree, or an agent's total stops equalling the sum of their
+    // rows.
     const range = buildRange(dateFrom, dateTo);
     if (range) {
-      conds.push({ $or: [{ dateOfSubmission: range }, ...changeRangeConditions(range)] });
+      conds.push({ $or: [...effectiveRangeConditions(range), ...changeRangeConditions(range)] });
     }
     if (conds.length) query.$and = conds;
 
@@ -437,7 +445,9 @@ router.get('/agent-margin-report', auth, async (req, res) => {
     const result = [];
     bookings.forEach(b => {
       const split = getSplitSummary(b, range);
-      const bookingInRange = inRange(b.dateOfSubmission, range);
+      // The SAME date the query above filtered on. If these two disagree a booking is either
+      // fetched and then silently dropped, or counted without having been fetched.
+      const bookingInRange = inRange(effectiveDate(b), range);
       if (!bookingInRange && !split.hasInRange) return;
 
       const baseSalePrice = b.salePrice || 0;
@@ -521,8 +531,23 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     }
 
     const { skip, limit } = getPaginationParams(req);
-    // Include all statuses including Cancelled
-    const bookings = await Booking.find({ dateOfSubmission: buildRange(dateFrom, dateTo) })
+    // Include all statuses including Cancelled.
+    //
+    // FILTERED on the effective date, SORTED still on dateOfSubmission, deliberately.
+    //
+    // The filter has to be the effective date: this is the financial summary and it must agree
+    // with Reports C and E about which month a booking falls in. The sort cannot follow it,
+    // because `issueDate ?? dateOfSubmission` is a computed value and Mongo cannot sort on one
+    // without an aggregation. Sorting on { issueDate: -1 } instead is worse than leaving it: null
+    // is the lowest BSON value, so every legacy booking -- which is all of them until agents
+    // start filling the field -- would collect at the end of the last page.
+    //
+    // The consequence is bounded and visible: the row SET is correct, and the order within it is
+    // by entry date rather than strictly by issue date, which can only differ for rows where the
+    // two dates straddle a sort position. Rewriting this route as an aggregation with $ifNull
+    // would fix the order, and is not worth doing in the same release that introduces the field.
+    const range = buildRange(dateFrom, dateTo);
+    const bookings = await Booking.find(range ? { $or: effectiveRangeConditions(range) } : {})
       .sort({ dateOfSubmission: -1 }).skip(skip).limit(limit);
 
     const rows = bookings.map(b => ({

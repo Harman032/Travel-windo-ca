@@ -139,6 +139,21 @@ import { ToastrService } from 'ngx-toastr';
               </div>
             </div>
 
+            <!-- One Issue Date per booking, not per sector, so it sits outside the three
+                 sector-type blocks below. Defaults to today in Toronto; every role may change it
+                 within the 3-day backdating window the server enforces. -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
+                <input type="date" formControlName="issueDate" class="input"
+                       [min]="minIssueDate" [max]="maxIssueDate" />
+                <p class="text-gray-500 text-xs mt-1">
+                  The day the ticket was issued. Defaults to today; may be backdated up to
+                  {{ issueDateMaxBackdateDays }} days.
+                </p>
+              </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4" *ngIf="bookingForm.get('sectorType')?.value === 'One Way'">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Travel Date <span class="text-red-500">*</span></label>
@@ -562,6 +577,10 @@ export class NewBookingComponent implements OnInit {
       contactNumber: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
       pnr: ['', Validators.required],
       sectorType: ['One Way', Validators.required],
+      // Issue Date: the day the ticket was actually issued. Defaults to today in Toronto, and
+      // every role may change it. Bounds (not future, not more than 3 days back) are enforced
+      // server-side; [max] and [min] here are a convenience, not the guard.
+      issueDate: [todayInTz()],
       travelDate: ['', Validators.required],
       from: ['', Validators.required],
       to: ['', Validators.required],
@@ -651,6 +670,7 @@ export class NewBookingComponent implements OnInit {
           ...restBooking,
           countryCode,
           contactNumber: (localNumber || '').replace(/\D/g, ''),
+          issueDate: this.toDateInputValue(booking.issueDate),
           travelDate: this.toDateInputValue(booking.travelDate),
           returnDate: this.toDateInputValue(booking.returnDate),
           supplier: booking.supplier?._id || booking.supplier || '',
@@ -755,6 +775,31 @@ export class NewBookingComponent implements OnInit {
     return this.totalSalePrice - this.totalPaidAmount;
   }
 
+  /** How far back an issue date may be set. Mirrors ISSUE_DATE_MAX_BACKDATE_DAYS on the server. */
+  readonly issueDateMaxBackdateDays = 3;
+
+  /** Issue Date cannot be in the future: a ticket cannot have been issued tomorrow. */
+  get maxIssueDate(): string {
+    return todayInTz();
+  }
+
+  /**
+   * Earliest selectable issue date: `issueDateMaxBackdateDays` days before today in Toronto.
+   *
+   * On a NEW booking today is the entry date, so this matches the server exactly. On an EDIT of
+   * an older booking the server compares against that booking's own dateOfSubmission, so this
+   * input may offer a day the server then rejects with a message naming both dates. Narrowing it
+   * correctly would mean duplicating the rule here; the server stays the single authority.
+   */
+  get minIssueDate(): string {
+    const d = new Date(Date.UTC(
+      Number(todayInTz().slice(0, 4)), Number(todayInTz().slice(5, 7)) - 1,
+      Number(todayInTz().slice(8, 10)), 12, 0, 0
+    ));
+    d.setUTCDate(d.getUTCDate() - this.issueDateMaxBackdateDays);
+    return toDateInputValue(d);
+  }
+
   /** Min date for Travel Date = today in Toronto (cannot select a past date in a new booking) */
   get minTravelDate(): string {
     return todayInTz();
@@ -811,6 +856,7 @@ export class NewBookingComponent implements OnInit {
     const bookingData: any = {
       ...rest,
       contactNumber: fullContactNumber.trim(),
+      issueDate: formValue.issueDate || null,
       travelDate: formValue.travelDate || null,
       returnDate: formValue.returnDate || null,
       multipleSectors: (formValue.multipleSectors || []).map((s: any) => ({

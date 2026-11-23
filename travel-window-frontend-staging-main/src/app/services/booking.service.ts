@@ -12,6 +12,9 @@ export interface Booking {
   contactNumber: string;
   pnr: string;
   sectorType: 'One Way' | 'Round Trip' | 'Multiple';
+  // Optional and not backfilled: a legacy booking has none, and every report falls back to
+  // dateOfSubmission. See utils/effective-date.js on the server.
+  issueDate?: Date | string | null;
   travelDate: Date;
   from: string;
   to: string;

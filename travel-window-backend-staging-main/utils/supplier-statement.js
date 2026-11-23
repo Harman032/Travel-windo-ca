@@ -1,6 +1,7 @@
 'use strict';
 
 const { inRange } = require('./tz');
+const { effectiveDate, isLateEntry } = require('./effective-date');
 
 const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -100,7 +101,16 @@ function buildItinerary(b) {
  */
 function bookingLines(b) {
   const lines = [];
-  const issueDate = b.dateOfSubmission;
+  // The EFFECTIVE date: the day the ticket was issued when we know it, the day it was keyed in
+  // otherwise. This drives both the Issue Dt shown on every line and, through
+  // buildStatement's inRange filter, whether a line falls in the period or in the opening
+  // balance -- so a ticket issued on Saturday and entered on Monday now bills in the right week.
+  //
+  // The fee and cancellation lines below derive their own dates from this one, and the change
+  // add-on lines deliberately do not: an add-on is dated on changedAt, the day the change was
+  // made, which is a different event from the original issue.
+  const issueDate = effectiveDate(b);
+  const lateEntry = isLateEntry(b);
   const cancelled = b.status === 'Cancelled' && b.cancellation && b.cancellation.isCancelled;
 
   // 80 PNRs in the staging copy carry leading or trailing whitespace. Trim for display only;
@@ -113,7 +123,10 @@ function bookingLines(b) {
     passenger: b.paxName,
     startDate: b.travelDate,
     itinerary: buildItinerary(b),
-    verified: verifiedLabel(b)
+    verified: verifiedLabel(b),
+    // Shown as a marker beside the issue date: this booking was keyed in after the day it was
+    // issued, so its position in this period comes from issueDate rather than from entry.
+    lateEntry
   };
 
   /**
@@ -379,6 +392,8 @@ function paymentLine(p) {
     // A payment to the supplier is not a booking, so there is nothing to have verified. Set
     // explicitly rather than left undefined so the Verified column renders a dash, not a blank.
     verified: '—',
+    // Nor is there an entry-versus-issue gap to mark: a supplier payment has one date.
+    lateEntry: false,
     fare: -r2(p.amount),
     paymentId: String(p._id)
   };

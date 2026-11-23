@@ -427,7 +427,10 @@ import { ToastrService } from 'ngx-toastr';
               <ng-container *ngFor="let line of inv.lines; let first = first">
                 <!-- line 1: Issue Dt, Invoice No, Remarks -->
                 <tr class="statement-line-1">
-                  <td>{{ line.date | tzDate:'yyyy-MM-dd' }}</td>
+                  <td>
+                    {{ line.date | tzDate:'yyyy-MM-dd' }}
+                    <span *ngIf="line.lateEntry && showLateEntry" class="statement-late">late</span>
+                  </td>
                   <td>{{ line.invoiceNo }}</td>
                   <td colspan="7"></td>
                 </tr>
@@ -746,6 +749,11 @@ import { ToastrService } from 'ngx-toastr';
     /* Client-requested Verified column: Account / Admin / Both / em dash. Narrow, and
        deliberately NOT .no-print -- the client asked for it on screen AND in print. */
     .statement-verified { white-space: nowrap; font-size: 11px; }
+    /* "late" beside the issue date: the booking was keyed in after the day it was issued, which
+       is why the line falls in this period. Prints, per the client; hidden by showLateEntry. */
+    .statement-late { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em;
+                      color: #92400e; border: 1px solid #d97706; border-radius: 2px;
+                      padding: 0 2px; margin-left: 4px; vertical-align: 1px; }
     .credit { color: #b91c1c; }
     .text-right { text-align: right; }
     .statement-provisional { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px;
@@ -776,6 +784,17 @@ import { ToastrService } from 'ngx-toastr';
   `]
 })
 export class ReportsComponent implements OnInit {
+  /**
+   * The one flag that controls the "late entry" marker on the statement.
+   *
+   * true  -- marked on screen AND in print, which is what the client asked for: a late entry is
+   *          why a line sits in this period rather than the next, and the supplier can see from
+   *          our own dates that we are not moving money between weeks arbitrarily.
+   * false -- the marker disappears from both. Flip this one constant; there is no second place
+   *          to change and no print rule to keep in step, which is why the cell is not .no-print.
+   */
+  readonly showLateEntry = true;
+
   /**
    * Display-only tidy-up for stored text: trim the ends and collapse runs of internal
    * whitespace. 80 stored PNRs carry stray whitespace and passenger names have the same

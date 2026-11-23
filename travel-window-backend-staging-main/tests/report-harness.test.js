@@ -181,6 +181,45 @@ console.log('\nsort runs on the stored document, not the projection');
   } finally {
     fs.unlinkSync(routeFile);
   }
+
+// --------------------------------------------------------------------------------------------
+// `{ field: null }` must match an ABSENT field too, as it does in Mongo.
+//
+// The effective-date filter depends on it: its second clause is
+// `{ issueDate: null, dateOfSubmission: range }`, and that is the clause matching every legacy
+// booking -- which is all of them until agents start filling issueDate in. A strict
+// undefined-vs-null comparison excluded every one, so the double answered an empty margin report
+// for a query the real database answers in full. Same class of lie as a no-op select().
+console.log('');
+console.log('null matches an absent field, as it does in Mongo');
+{
+  const { matches } = require('./report-harness');
+  assert.strictEqual(matches({ pnr: 'NULL', issueDate: null }, { issueDate: null }), true,
+    'an explicit null matches');
+  assert.strictEqual(matches({ pnr: 'ABSENT' }, { issueDate: null }), true,
+    'an absent field matches');
+  assert.strictEqual(matches({ pnr: 'SET', issueDate: new Date('2026-11-17T12:00:00Z') }, { issueDate: null }), false,
+    'a field that is set does not match');
+  ok('{ field: null } matches explicit null and absent, but not a set value');
+
+  // And the whole two-clause filter, end to end.
+  const { effectiveRangeConditions } = require('../utils/effective-date');
+  const { buildRange } = require('../utils/tz');
+  const range = buildRange('2026-10-01', '2026-10-31');
+  const q = { $or: effectiveRangeConditions(range) };
+  const legacyInOct = { pnr: 'LEGACY', dateOfSubmission: new Date('2026-10-15T12:00:00Z') };
+  const issuedOct = { pnr: 'ISSUED', issueDate: new Date('2026-10-31T12:00:00Z'), dateOfSubmission: new Date('2026-11-02T14:00:00Z') };
+  const bothNov = { pnr: 'NOV', issueDate: new Date('2026-11-05T12:00:00Z'), dateOfSubmission: new Date('2026-11-05T14:00:00Z') };
+  assert.strictEqual(matches(legacyInOct, q), true, 'a legacy booking falls back to dateOfSubmission');
+  assert.strictEqual(matches(issuedOct, q), true, 'a late-entered October ticket is in October');
+  assert.strictEqual(matches(bothNov, q), false, 'a November booking is not');
+  // The one that matters: entry date in November must NOT pull it into November as well.
+  const novRange = buildRange('2026-11-01', '2026-11-30');
+  assert.strictEqual(matches(issuedOct, { $or: effectiveRangeConditions(novRange) }), false,
+    'and it is not ALSO counted in November, which would double-count the margin');
+  ok('the effective-date filter puts a late-entered ticket in exactly one month');
+}
+
 })().then(() => {
   console.log('\n' + n + ' assertions passed');
 }).catch(e => { console.error('\nFAILED:', e.message); process.exit(1); });
