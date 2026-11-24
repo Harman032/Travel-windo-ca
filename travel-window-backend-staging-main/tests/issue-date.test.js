@@ -183,21 +183,33 @@ t('an unparseable value is rejected as a date, not silently dropped', () => {
  * like, and the difference is not cosmetic: it is why twelve assertions about the verification
  * reset passed while the product path was still broken. The double has to model document state,
  * not just document shape -- the same lesson as making select() real in report-harness.
+ *
+ * Booking.hydrate, not `new Booking(...)` with the modified paths reset. The two differ in one
+ * way that matters: `new Booking` INITIALISES every path that has a schema default, so writing
+ * that default back is not a modification, while hydrate initialises only the paths actually
+ * present -- so writing a default over an absent path IS one, exactly as Mongoose behaves on a
+ * document loaded from Mongo.
+ *
+ * That difference hid a live defect. supplierCharges, paymentFromCard, cardType and
+ * cardLast4Digits all have defaults and are ABSENT on 606 of the 2,285 bookings on the staging
+ * copy; the edit form posts 0, 0, '' and '' for them on every save; so on more than a quarter of
+ * the data every save marked four paths modified and the diff that decides the verification reset
+ * reported an edit where nothing had changed. Every fixture built with `new Booking` reported no
+ * modification and the assertions passed.
  */
-function asLoaded(doc) {
-  doc.$isNew = false;
-  doc.$__reset();
-  return doc;
+function asLoaded(plain) {
+  return Booking.hydrate(plain);
 }
 
 function newBooking(over = {}) {
-  return asLoaded(new Booking(Object.assign({
+  return asLoaded(Object.assign({
+    _id: oid(),
     pnr: 'TEST01', paxName: 'X', contactNumber: '+1 5550000', sectorType: 'One Way',
     travelDate: new Date('2026-12-01T12:00:00Z'), from: 'YYZ', to: 'DEL',
     submittedBy: oid(), submittedByName: 'Agent One',
     status: 'Pending Verification', salePrice: 1000, ourCost: 900,
     dateOfSubmission: ENTERED_NOV
-  }, over)));
+  }, over));
 }
 
 async function startBookings(doc, role) {
@@ -428,7 +440,8 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     paymentFromCard: doc.paymentFromCard || 0,
     cardType: doc.cardType || '',
     cardLast4Digits: doc.cardLast4Digits || '',
-    issueDate: dayInTz(doc.issueDate)
+    // The form posts null for a booking with no issue date yet, not a blank day.
+    issueDate: doc.issueDate ? dayInTz(doc.issueDate) : null
   }, over);
 
   for (const role of ['ACCOUNT', 'ADMIN']) {
@@ -493,6 +506,106 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
       'a legacy 00:00Z payment date is still healed to noon on a save');
     api.close();
     ok('but a stored 00:00Z date counts as a difference, so it is rewritten and healed');
+  }
+
+  console.log('\nPUT /bookings/:id — a save that changes NOTHING changes nothing');
+  // The case the whole diff rests on, and the one that was still broken after f002425: the user
+  // opens a verified booking, touches nothing, and presses Save. The form posts all 24 fields
+  // back. Nothing about the booking is different, so nothing may be written -- no verification
+  // reset and no audit entry claiming an edit.
+  //
+  // It failed on 606 of the 2,285 bookings on the staging copy, because the four fields below are
+  // ABSENT on those and the form posts a number input's 0 and a text input's '' for them. Writing
+  // a schema default over an uninitialised path marks it modified, so four paths changed on a save
+  // where nothing did. The fixture is built by Booking.hydrate precisely so those paths are
+  // uninitialised here too; `new Booking({...})` initialises them and cannot reproduce it.
+  for (const role of ['ACCOUNT', 'ADMIN', 'AGENT1']) {
+    const doc = role === 'AGENT1' ? newBooking() : verified();
+    // The fixture is only a fixture if these are genuinely uninitialised, as they are on the 606
+    // stored bookings that have no such field. If a future change to newBooking starts supplying
+    // one, this assertion fails rather than the test quietly going green on the easy shape.
+    const init = doc.$__.activePaths.getStatePaths('init');
+    for (const f of ['supplierCharges', 'paymentFromCard', 'cardType', 'cardLast4Digits',
+      'contactPerson', 'multipleSectors', 'additionalServices']) {
+      assert.ok(!init[f], `the fixture must have ${f} UNINITIALISED, as a stored booking without it is`);
+    }
+    const api = await startBookings(doc, role);
+    const res = await api.put(`/${doc._id}`, formBody(doc));
+    assert.strictEqual(res.status, 200, `${role}: ${JSON.stringify(res.body)}`);
+    if (role !== 'AGENT1') {
+      for (const f of ['adminVerified', 'accountVerified', 'verifiedByAdmin', 'verifiedByAccount']) {
+        assert.strictEqual(doc[f], true,
+          `${role}: ${f} must survive a save that changed nothing`);
+      }
+    }
+    assert.deepStrictEqual((doc.progressHistory || []).map(h => h.action), [],
+      `${role}: a save that changed nothing must not write an audit entry`);
+    api.close();
+    ok(`${role}: a full-form save with no change resets nothing and writes no history`);
+  }
+
+  console.log('\nPUT /bookings/:id — but clearing a REAL value is still an edit');
+  // The other side of the guard. Declining to write an empty value over an absent one must not
+  // become declining to write it over a real one: zeroing 250.00 of supplier charges moves money.
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    for (const [field, before, after] of [
+      ['supplierCharges', 250, 0],
+      ['paymentFromCard', 900, 0],
+      ['cardType', 'Company Card', '']
+    ]) {
+      const doc = verified({ [field]: before });
+      const api = await startBookings(doc, role);
+      const res = await api.put(`/${doc._id}`, formBody(doc, { [field]: after }));
+      assert.strictEqual(res.status, 200, `${role}/${field}: ${JSON.stringify(res.body)}`);
+      assert.strictEqual(doc[field], after, `${role}: ${field} must actually be cleared`);
+      assert.strictEqual(doc.adminVerified, false,
+        `${role}: clearing a real ${field} is an edit and must reset verification`);
+      api.close();
+      ok(`${role}: clearing ${field} ${before} -> ${JSON.stringify(after)} resets verification`);
+    }
+  }
+
+  console.log('\nPUT /bookings/:id — a real change inside a subdocument array is still an edit');
+  for (const role of ['ACCOUNT', 'ADMIN']) {
+    // Round-tripping the same rows must not count; changing one must.
+    const rows = [{ serviceName: 'Seat', serviceCost: 25 }];
+    const same = verified({ additionalServices: rows });
+    let api = await startBookings(same, role);
+    await api.put(`/${same._id}`, formBody(same, { additionalServices: rows }));
+    assert.strictEqual(same.adminVerified, true,
+      `${role}: re-posting the same additional services is not an edit`);
+    api.close();
+
+    const changed = verified({ additionalServices: rows });
+    api = await startBookings(changed, role);
+    await api.put(`/${changed._id}`, formBody(changed, {
+      additionalServices: [{ serviceName: 'Seat', serviceCost: 40 }]
+    }));
+    assert.strictEqual(changed.additionalServices[0].serviceCost, 40, `${role}: the cost was written`);
+    assert.strictEqual(changed.adminVerified, false,
+      `${role}: changing a service cost is an edit and must reset verification`);
+    api.close();
+    ok(`${role}: additionalServices round-trip is not an edit, a changed cost is`);
+
+    const sector = [{ travelDate: '2026-12-05', from: 'YYZ', to: 'BOM' }];
+    const sameSec = verified({ multipleSectors: [{ travelDate: new Date('2026-12-05T12:00:00Z'), from: 'YYZ', to: 'BOM' }] });
+    api = await startBookings(sameSec, role);
+    await api.put(`/${sameSec._id}`, formBody(sameSec, { multipleSectors: sector }));
+    assert.strictEqual(sameSec.adminVerified, true,
+      `${role}: re-posting the same sectors is not an edit`);
+    api.close();
+
+    const changedSec = verified({ multipleSectors: [{ travelDate: new Date('2026-12-05T12:00:00Z'), from: 'YYZ', to: 'BOM' }] });
+    api = await startBookings(changedSec, role);
+    await api.put(`/${changedSec._id}`, formBody(changedSec, {
+      multipleSectors: [{ travelDate: '2026-12-09', from: 'YYZ', to: 'BOM' }]
+    }));
+    assert.strictEqual(dayInTz(changedSec.multipleSectors[0].travelDate), '2026-12-09',
+      `${role}: the sector date was written`);
+    assert.strictEqual(changedSec.adminVerified, false,
+      `${role}: changing a sector date is an edit and must reset verification`);
+    api.close();
+    ok(`${role}: multipleSectors round-trip is not an edit, a changed date is`);
   }
 
   console.log('\nPUT /bookings/:id — keys the branch ignores do not count as an edit');

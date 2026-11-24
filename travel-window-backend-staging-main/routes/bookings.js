@@ -523,6 +523,79 @@ router.put('/:id', auth, async (req, res) => {
      const changedSomethingElse = () => booking.modifiedPaths().some(
        p => p !== 'issueDate' && p.split('.')[0] !== 'progressHistory'
      );
+
+    /**
+     * Assigns `value` to `booking[key]` only when that write would store something different.
+     *
+     * Needed because Mongoose marks a path modified on ANY assignment unless that path was
+     * initialised from the stored document. A path that is absent in Mongo but has a schema
+     * default is not initialised: the getter reads the default, and writing that same default
+     * back still counts as a modification. 606 of the 2,285 bookings on the staging copy are
+     * stored with no supplierCharges, paymentFromCard, cardType or cardLast4Digits -- all four
+     * of which have defaults -- and the edit form posts every control back on every save, a
+     * number input's empty state being 0 and a text input's ''. So on more than a quarter of the
+     * data every save wrote 0, 0, '' and '' and marked four paths modified.
+     *
+     * The document diff above therefore reported an edit on a save that changed nothing: a
+     * verified booking lost its verification when someone opened it and pressed Save, and an
+     * issue-date-only correction -- the one edit this release exists to permit -- reset the flags
+     * on those 606. That is the same defect as counting keys in the request body, one level
+     * down, and it survived f002425 because `new Booking({...})` DOES initialise its defaults,
+     * so no fixture built that way can reproduce it. Only a hydrated document can.
+     *
+     * The comparison is against the value that would actually be stored, cast through the schema
+     * path, because a form posts "0" and "1000" as often as 0 and 1000 and a string-vs-number
+     * mismatch would make every save look like an edit again. Non-scalars (Date, ObjectId,
+     * arrays, subdocuments) are left to the assignment, as before: they compare by reference and
+     * a false "unchanged" there would be the dangerous direction.
+     *
+     * Same principle as the travelDate/returnDate guards below, which this generalises.
+     */
+    const isScalar = v => v === null || v === undefined || typeof v !== 'object';
+    const assignIfChanged = (key, value) => {
+      const current = booking[key];
+      let next = value;
+      const path = booking.schema && booking.schema.path(key);
+      // A cast failure is not this guard's business: fall through and let the assignment raise
+      // the same error it always did.
+      if (path) { try { next = path.cast(value); } catch (e) { next = value; } }
+      if (isScalar(current) && isScalar(next) && current === next) return false;
+      // A field absent with no default reads undefined; storing an empty value over it changes
+      // nothing a reader can see (`b.supplierCharges ?? 0`, `b.cardType || ''`).
+      if (current === undefined && (next === null || next === '' || next === 0)) return false;
+      booking[key] = value;
+      return true;
+    };
+
+    /**
+     * The same question for a subdocument array: would writing `rows` store anything different?
+     *
+     * Reassigning a DocumentArray from plain objects always marks the path modified, because the
+     * new subdocuments get new _ids -- so the edit form's unconditional `multipleSectors: []` and
+     * `additionalServices: []` marked two paths modified on every save of the 2,285 bookings that
+     * have neither. The payments array already had its own comparison (validatePaymentRows'
+     * unchangedAll) for exactly this reason; these two had none.
+     *
+     * Compared field by field on the fields the route itself writes, with dates by instant, so a
+     * genuine edit to a sector or a service still comes through.
+     */
+    const rowKey = (row, keys) => keys.map(k => {
+      const v = row && row[k];
+      if (v instanceof Date) return String(v.getTime());
+      return v === undefined || v === null ? '' : String(v);
+    }).join('\u0001');
+    const sameRows = (stored, rows, keys) => {
+      const a = (stored || []).map(r => rowKey(r, keys));
+      const b = (rows || []).map(r => rowKey(r, keys));
+      return a.length === b.length && a.every((x, i) => x === b[i]);
+    };
+    const assignRowsIfChanged = (key, rows, keys) => {
+      if (sameRows(booking[key], rows, keys)) return false;
+      booking[key] = rows;
+      return true;
+    };
+    const SECTOR_KEYS = ['travelDate', 'from', 'to'];
+    const SERVICE_KEYS = ['serviceName', 'serviceCost'];
      // Each branch captures this BEFORE calling calculateTotals, because calculateTotals
      // unconditionally assigns totalSalePrice, totalPaidAmount, balanceAmount and billingStatus.
      // On a consistent booking those assignments are no-ops and Mongoose marks nothing, but
@@ -625,26 +698,30 @@ router.put('/:id', auth, async (req, res) => {
       Object.keys(updates).forEach(key => {
         if (allowedKeys.includes(key)) {
           if (key === 'additionalServices') {
-            booking.additionalServices = Array.isArray(updates[key]) ? updates[key].map(x => ({
+            assignRowsIfChanged('additionalServices', Array.isArray(updates[key]) ? updates[key].map(x => ({
               serviceName: (x.serviceName || '').toString(),
               serviceCost: typeof x.serviceCost === 'number' ? x.serviceCost : parseFloat(x.serviceCost) || 0
-            })) : [];
+            })) : [], SERVICE_KEYS);
           } else if (key === 'multipleSectors') {
-            booking.multipleSectors = Array.isArray(updates[key]) ? updates[key].map(s => ({
+            assignRowsIfChanged('multipleSectors', Array.isArray(updates[key]) ? updates[key].map(s => ({
               ...s,
               travelDate: parseDateInput(s?.travelDate)
-            })) : [];
+            })) : [], SECTOR_KEYS);
           } else if (key === 'payments') {
-            booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
-          } else if (key === 'paxName') {
-            booking[key] = (updates[key] || '').toString().toUpperCase();
-          } else if (key === 'pnr') {
-            booking[key] = (updates[key] || '').toString().toUpperCase();
+            // Not `booking.payments = booking.payments` on the unchanged path: re-assigning a
+            // DocumentArray marks it modified when the path was never initialised from Mongo,
+            // which is every booking stored without a payments array -- so the self-assignment
+            // alone made a no-op save look like an edit.
+            if (checkedPayments !== null) booking.payments = checkedPayments;
+          } else if (key === 'paxName' || key === 'pnr') {
+            // Through the guard, like every other scalar: a booking stored without
+            // contactPerson received '' here on every save and the diff read it as an edit.
+            assignIfChanged(key, (updates[key] || '').toString().toUpperCase());
           } else if (key === 'contactPerson') {
-            booking[key] = (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+            assignIfChanged(key, (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()));
           } else if (key === 'from' || key === 'to') {
             const v = (updates[key] || '').toString();
-            booking[key] = v.charAt(0).toUpperCase() + v.slice(1);
+            assignIfChanged(key, v.charAt(0).toUpperCase() + v.slice(1));
           } else if (key === 'travelDate' || key === 'returnDate') {
             // Nullish over nullish is not a change. A One Way booking posts returnDate: null on
             // every save, and on a booking stored without the field at all that would flip
@@ -652,7 +729,7 @@ router.put('/:id', auth, async (req, res) => {
             const nextDate = parseDateInput(updates[key]);
             if (nextDate !== null || booking[key] != null) booking[key] = nextDate;
           } else {
-            booking[key] = updates[key];
+            assignIfChanged(key, updates[key]);
           }
           if (key !== 'payments') changes[key] = updates[key];
         }
@@ -671,7 +748,11 @@ router.put('/:id', auth, async (req, res) => {
         booking.accountVerified = false;
         booking.verifiedByAccount = false;
       }
-      if (Object.keys(changes).length > 0) {
+      // Gated on the diff, not on the request body. `changes` collects every key the form
+      // posted, which is all of them, so a save that changed nothing wrote a 'Booking Updated'
+      // entry listing 24 fields as though each had been edited -- and an issue-date-only
+      // correction wrote that entry alongside 'Issue Date Changed', contradicting it.
+      if (edited && Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated', req.user, changes);
       }
       
@@ -713,26 +794,28 @@ router.put('/:id', auth, async (req, res) => {
       allowedKeys.forEach(key => {
         if (updates[key] === undefined) return;
         if (key === 'additionalServices') {
-          booking.additionalServices = Array.isArray(updates[key]) ? updates[key].map(x => ({
+          assignRowsIfChanged('additionalServices', Array.isArray(updates[key]) ? updates[key].map(x => ({
             serviceName: (x.serviceName || '').toString(),
             serviceCost: typeof x.serviceCost === 'number' ? x.serviceCost : parseFloat(x.serviceCost) || 0
-          })) : [];
+          })) : [], SERVICE_KEYS);
         } else if (key === 'multipleSectors') {
-          booking.multipleSectors = Array.isArray(updates[key]) ? updates[key].map(s => ({
+          assignRowsIfChanged('multipleSectors', Array.isArray(updates[key]) ? updates[key].map(s => ({
             ...s,
             travelDate: parseDateInput(s?.travelDate)
-          })) : [];
+          })) : [], SECTOR_KEYS);
         } else if (key === 'payments') {
-          booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
-        } else if (key === 'paxName') {
-          booking[key] = (updates[key] || '').toString().toUpperCase();
-        } else if (key === 'pnr') {
-          booking[key] = (updates[key] || '').toString().toUpperCase();
+          // Not `booking.payments = booking.payments` on the unchanged path: re-assigning a
+            // DocumentArray marks it modified when the path was never initialised from Mongo,
+            // which is every booking stored without a payments array -- so the self-assignment
+            // alone made a no-op save look like an edit.
+            if (checkedPayments !== null) booking.payments = checkedPayments;
+        } else if (key === 'paxName' || key === 'pnr') {
+          assignIfChanged(key, (updates[key] || '').toString().toUpperCase());
         } else if (key === 'contactPerson') {
-          booking[key] = (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+          assignIfChanged(key, (updates[key] || '').toString().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()));
         } else if (key === 'from' || key === 'to') {
           const v = (updates[key] || '').toString();
-          booking[key] = v.charAt(0).toUpperCase() + v.slice(1);
+          assignIfChanged(key, v.charAt(0).toUpperCase() + v.slice(1));
         } else if (key === 'travelDate' || key === 'returnDate') {
           // See the AGENT branch: nullish over nullish is not a change.
           const nextDate = parseDateInput(updates[key]);
@@ -747,7 +830,7 @@ router.put('/:id', auth, async (req, res) => {
           }
           changes[key] = val ? 'Verified' : 'Not Verified';
         } else {
-          booking[key] = updates[key];
+          assignIfChanged(key, updates[key]);
         }
         changes[key] = updates[key];
       });
@@ -763,10 +846,10 @@ router.put('/:id', auth, async (req, res) => {
         booking.accountVerified = false;
         booking.verifiedByAccount = false;
       }
-      // Guarded like the AGENT and ADMIN branches, which this one alone was not. An
-      // issueDate-only correction otherwise wrote two entries: 'Issue Date Changed' and an empty
-      // 'Booking Updated by Account', the second claiming an edit that did not happen.
-      if (Object.keys(changes).length > 0) {
+      // Gated on the diff -- see the AGENT branch. The earlier key-count guard could not help
+      // here: the form posts 24 keys whatever the user touched, so an issueDate-only correction
+      // still wrote 'Booking Updated by Account' next to 'Issue Date Changed'.
+      if (edited && Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated by Account', req.user, changes);
       }
       
@@ -828,19 +911,34 @@ router.put('/:id', auth, async (req, res) => {
             // Mongoose then cast the frontend's 'YYYY-MM-DD' to 00:00Z, which reads a day early in
             // Toronto: every admin payment edit silently reintroduced the bug the 2026-11-17
             // migration fixed. 3 of 2,935 live payment dates were pending again by 2026-11-23.
-            booking.payments = checkedPayments !== null ? checkedPayments : booking.payments;
+            // Not `booking.payments = booking.payments` on the unchanged path: re-assigning a
+            // DocumentArray marks it modified when the path was never initialised from Mongo,
+            // which is every booking stored without a payments array -- so the self-assignment
+            // alone made a no-op save look like an edit.
+            if (checkedPayments !== null) booking.payments = checkedPayments;
             changes[key] = `${booking.payments.length} payment(s)`;
+          } else if (key === 'additionalServices') {
+            // This branch had no case for it at all, so it fell through to the generic
+            // assignment and stored the rows raw -- a drift from the AGENT and ACCOUNT branches,
+            // which coerce serviceName to a string and serviceCost to a number. Same mapping
+            // here now, and the same comparison, so a form that posts [] on every save does not
+            // mark the path modified on the 2,285 bookings that have no services.
+            assignRowsIfChanged('additionalServices', Array.isArray(updates[key]) ? updates[key].map(x => ({
+              serviceName: (x.serviceName || '').toString(),
+              serviceCost: typeof x.serviceCost === 'number' ? x.serviceCost : parseFloat(x.serviceCost) || 0
+            })) : [], SERVICE_KEYS);
+            changes[key] = updates[key];
           } else if (key === 'multipleSectors') {
-            booking.multipleSectors = Array.isArray(updates[key]) ? updates[key].map(s => ({
+            assignRowsIfChanged('multipleSectors', Array.isArray(updates[key]) ? updates[key].map(s => ({
               ...s,
               travelDate: parseDateInput(s?.travelDate)
-            })) : [];
+            })) : [], SECTOR_KEYS);
             changes[key] = updates[key];
           } else if (key === 'paxName') {
-            booking[key] = updates[key].toUpperCase();
+            assignIfChanged(key, updates[key].toUpperCase());
             changes[key] = updates[key];
           } else if (key === 'from' || key === 'to') {
-            booking[key] = updates[key].charAt(0).toUpperCase() + updates[key].slice(1);
+            assignIfChanged(key, updates[key].charAt(0).toUpperCase() + updates[key].slice(1));
             changes[key] = updates[key];
           } else if (key === 'adminVerified') {
             const val = !!updates[key];
@@ -861,7 +959,7 @@ router.put('/:id', auth, async (req, res) => {
             }
             changes[key] = val ? 'Verified' : 'Not Verified';
           } else {
-            booking[key] = updates[key];
+            assignIfChanged(key, updates[key]);
             changes[key] = updates[key];
           }
         }
@@ -879,7 +977,8 @@ router.put('/:id', auth, async (req, res) => {
         booking.verifiedByAccount = false;
       }
       
-      if (Object.keys(changes).length > 0) {
+      // Gated on the diff -- see the AGENT branch.
+      if (edited && Object.keys(changes).length > 0) {
         addProgressHistory(booking, 'Booking Updated by Admin', req.user, changes);
       }
       
