@@ -54,11 +54,26 @@ function getCRDR(booking) {
 }
 
 
+// True when the request asked to be paged at all. No report screen in this UI has paging
+// controls -- report.service.ts sends only the filter fields -- so a default limit does not page
+// a report, it TRUNCATES it: the user sees 50 rows of 386 with nothing to click for the rest, and
+// any total reduced over those rows is simply wrong. Paging therefore happens only when asked
+// for, which keeps the parameters working for a direct API caller.
+const wantsPaging = req =>
+  req.query.page !== undefined || req.query.limit !== undefined;
+
+// Applies page/limit to a Mongoose query only when the request asked for them.
+function applyPagination(query, req) {
+  if (!wantsPaging(req)) return query;
+  const { skip, limit } = getPaginationParams(req);
+  return query.skip(skip).limit(limit);
+}
+
 // Slices already-built report rows. With no page/limit the full list is returned (the UI renders
 // every row and has no paging controls); an explicit page/limit pages over the same stable order.
 function paginateRows(rows, req) {
   const total = rows.length;
-  if (req.query.page === undefined && req.query.limit === undefined) return { rows, meta: { total } };
+  if (!wantsPaging(req)) return { rows, meta: { total } };
   const { page, limit, skip } = getPaginationParams(req);
   return { rows: rows.slice(skip, skip + limit), meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
 }
@@ -74,13 +89,18 @@ router.get('/date-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) =
       return res.status(400).json({ message: 'Date range is required' });
     }
     
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({ dateOfSubmission: buildRange(dateFrom, dateTo) })
-      .populate('submittedBy', 'name email')
-      .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Every matching booking, and the summary reduced over all of them. This route carried
+    // .skip().limit() with a default limit of 50 while the UI sends neither parameter, so both the
+    // table and the four summary figures described the first 50 bookings of the range and called
+    // them the range. On the staging copy, September 2026: 386 bookings, 50 shown; total sale read
+    // 96,910.61 against a real 838,667.72. The sort gains an _id tie-break so an explicit page
+    // boundary is stable even where two bookings share a dateOfSubmission millisecond.
+    const bookings = await applyPagination(
+      Booking.find({ dateOfSubmission: buildRange(dateFrom, dateTo) })
+        .populate('submittedBy', 'name email')
+        .populate('supplier', 'name')
+        .sort({ dateOfSubmission: -1, _id: -1 }),
+      req);
 
     const summary = {
       totalBookings: bookings.length,
@@ -536,7 +556,6 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
       return res.status(400).json({ message: 'Date range is required' });
     }
 
-    const { skip, limit } = getPaginationParams(req);
     // Include all statuses including Cancelled.
     //
     // FILTERED on the effective date, SORTED still on dateOfSubmission, deliberately.
@@ -555,7 +574,7 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     // buildRange always returns a range here: both dates are required and 400 above.
     const range = buildRange(dateFrom, dateTo);
     //
-    // UNPAGINATED on purpose, then sliced below.
+    // UNPAGINATED, rows and totals both.
     //
     // The summary tiles are RANGE totals and have to be reduced over every matching booking. The
     // query used to carry .skip().limit() and the summary was reduced over whatever came back,
@@ -569,15 +588,18 @@ router.get('/financial-summary', auth, authorize('ACCOUNT', 'ADMIN'), async (req
     // deliberately unpaginated over the same data for the same reason), so one query serves both
     // and the totals cannot drift from the rows the way two queries could.
     //
-    // The sort carries an _id tie-break so the page boundary is stable: without it, two bookings
-    // sharing a dateOfSubmission millisecond have no defined order between them and a row can
-    // repeat on one page and vanish from the next. Zero such pairs exist on the copy today, which
-    // is exactly why this would have gone unnoticed.
+    // The sort keeps its _id tie-break. Nothing is paged by default any more, but page and limit
+    // still work for a direct API caller, and without the tie-break two bookings sharing a
+    // dateOfSubmission millisecond have no defined order between them, so a row can repeat on one
+    // page and vanish from the next. Zero timestamps are shared on the copy today -- which is
+    // exactly why this would never have been noticed.
     const matching = await Booking.find({ $or: effectiveRangeConditions(range) })
       .sort({ dateOfSubmission: -1, _id: -1 });
 
-    // Rows are paged as before; the summary below is NOT.
-    const bookings = matching.slice(skip, skip + limit);
+    // Every row, like Reports C and E and the statement. The summary was fixed first and the
+    // table left paged, which only moved the lie: the tiles said 386 bookings and the table
+    // showed 50, with no control anywhere in the UI to reach the other 336.
+    const { rows: bookings } = paginateRows(matching, req);
 
     const rows = bookings.map(b => ({
       _id: b._id,

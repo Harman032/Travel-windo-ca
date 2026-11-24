@@ -734,12 +734,15 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
 
     // Exactly what the UI sends: dates only, no page, no limit.
     const asUiSeesIt = await api.get('financial-summary', OCT);
-    assert.strictEqual(asUiSeesIt.bookings.length, 50, 'still one page of rows');
+    // Rows too, not just the totals. Totalling the range while still returning 50 rows only
+    // moved the lie from the tiles to the table: the tiles would say 137 and the table would show
+    // 50, with no paging control anywhere in the reports UI to reach the other 87.
+    assert.strictEqual(asUiSeesIt.bookings.length, N, 'the UI must get every row, not one page');
     for (const [k, v] of Object.entries(expect)) {
       assert.strictEqual(asUiSeesIt.summary[k], v,
         `${k}: got ${asUiSeesIt.summary[k]}, independent sum ${v}`);
     }
-    ok(`F: with ${N} bookings in range the UI gets 50 rows and all seven totals over all ${N}`);
+    ok(`F: with ${N} bookings in range the UI gets all ${N} rows and all seven totals over them`);
 
     // The totals must not move with the page.
     const p3 = await api.get('financial-summary', { ...OCT, page: 3, limit: 50 });
