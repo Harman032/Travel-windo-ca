@@ -128,13 +128,15 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
     const employeeRange = buildRange(dateFrom, dateTo);
     if (employeeRange) query.dateOfSubmission = employeeRange;
 
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find(query)
-      .populate('submittedBy', 'name email')
-      .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Unpaginated: each group's three totals are reduced over the bookings fetched here, so a
+    // default limit silently totalled one page per employee -- and an employee whose rows all
+    // fell past the cut vanished from the report entirely. Four did, on the copy in September.
+    const bookings = await applyPagination(
+      Booking.find(query)
+        .populate('submittedBy', 'name email')
+        .populate('supplier', 'name')
+        .sort({ dateOfSubmission: -1, _id: -1 }),
+      req);
     
     // Group by employee
     const employeeGroups = {};
@@ -164,15 +166,17 @@ router.get('/employee-wise', auth, authorize('ACCOUNT', 'ADMIN'), async (req, re
 // Pending Verification report
 router.get('/pending-verification', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({
-      status: { $in: ['Pending Verification', 'Unticketed'] }
-    })
-      .populate('submittedBy', 'name email')
-      .populate('supplier', 'name')
-      .sort({ dateOfSubmission: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Unpaginated: `count` below is the length of what was returned, so a default limit reported
+    // "50 pending" however many were actually pending -- a work queue that lies about its depth,
+    // and the one number on this screen a supervisor would act on. 896 on the copy, not 50.
+    const bookings = await applyPagination(
+      Booking.find({
+        status: { $in: ['Pending Verification', 'Unticketed'] }
+      })
+        .populate('submittedBy', 'name email')
+        .populate('supplier', 'name')
+        .sort({ dateOfSubmission: -1, _id: -1 }),
+      req);
     
     const bookingsWithCRDR = bookings.map(b => ({ ...(b.toObject ? b.toObject() : b), crdr: getCRDR(b) }));
     res.json({ bookings: bookingsWithCRDR, count: bookingsWithCRDR.length });
@@ -184,16 +188,20 @@ router.get('/pending-verification', auth, authorize('ACCOUNT', 'ADMIN'), async (
 // Outstanding Balance report
 router.get('/outstanding-balance', auth, authorize('ACCOUNT', 'ADMIN'), async (req, res) => {
   try {
-    const { skip, limit } = getPaginationParams(req);
-    const bookings = await Booking.find({
-      balanceAmount: { $gt: 0 },
-      status: { $ne: 'Cancelled' }
-    })
-      .populate('submittedBy', 'name email')
-      .populate('supplier', 'name')
-      .sort({ balanceAmount: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Unpaginated: totalOutstanding is reduced over what was returned. Sorted by balance
+    // descending, so the default limit kept the largest balances and dropped the tail, which is
+    // the shape of truncation hardest to notice -- every big number is present and the total
+    // looks right. On the copy it was off by only 0.21 of 78,029.79, over 52 rows of which two
+    // were missing. The same cut on the two reports above moved 741,757.11.
+    const bookings = await applyPagination(
+      Booking.find({
+        balanceAmount: { $gt: 0 },
+        status: { $ne: 'Cancelled' }
+      })
+        .populate('submittedBy', 'name email')
+        .populate('supplier', 'name')
+        .sort({ balanceAmount: -1, _id: -1 }),
+      req);
     
     const totalOutstanding = bookings.reduce((sum, b) => sum + b.balanceAmount, 0);
     const bookingsWithCRDR = bookings.map(b => ({ ...(b.toObject ? b.toObject() : b), crdr: getCRDR(b) }));

@@ -136,6 +136,35 @@ async function pagesOf(api, endpoint, limit) {
     assert.deepStrictEqual(ids, full.bookings.map(b => String(b._id)), 'page order differs from the full list');
   });
 
+  await check('employee-wise: every employee and every booking, not one page', async () => {
+    const r = await listApi.get('employee-wise', RANGE);
+    assert.strictEqual(r.groups.reduce((t, g) => t + g.bookings.length, 0), N);
+    assert.strictEqual(round2(r.groups.reduce((t, g) => t + g.totalSalePrice, 0)), sum(b => b.totalSalePrice));
+    // Both agents must appear. With every booking on the SAME day the order within the page is
+    // arbitrary, so a 50-row cut could drop an agent out of the report altogether -- which is
+    // what happened to four of the fourteen on the staging copy in September.
+    assert.deepStrictEqual(r.groups.map(g => g.employee).sort(), [A.name, B.name]);
+    for (const g of r.groups) {
+      const mine = listDocs.filter(b => b.submittedByName === g.employee);
+      assert.strictEqual(g.bookings.length, mine.length, `${g.employee} row count`);
+      assert.strictEqual(round2(g.totalSalePrice), sum(b => b.totalSalePrice, mine), `${g.employee} sale`);
+      assert.strictEqual(round2(g.totalBalance), sum(b => b.balanceAmount, mine), `${g.employee} balance`);
+    }
+  });
+
+  await check('pending-verification: count is the real depth of the queue', async () => {
+    const r = await listApi.get('pending-verification', {});
+    assert.strictEqual(r.bookings.length, N);
+    assert.strictEqual(r.count, N, 'a work queue must not report 50 when 120 are pending');
+  });
+
+  await check('outstanding-balance: totalOutstanding covers the tail, not just the top 50', async () => {
+    const r = await listApi.get('outstanding-balance', {});
+    assert.strictEqual(r.bookings.length, N);
+    assert.strictEqual(r.count, N);
+    assert.strictEqual(round2(r.totalOutstanding), sum(b => b.balanceAmount));
+  });
+
   await check('financial-summary: rows AND totals cover the whole range', async () => {
     const r = await listApi.get('financial-summary', RANGE);
     assert.strictEqual(r.bookings.length, N, `got ${r.bookings.length} rows, tiles said ${r.summary.totalBookings}`);
