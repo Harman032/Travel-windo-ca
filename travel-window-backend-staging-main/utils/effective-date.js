@@ -101,6 +101,10 @@ const isLateEntry = (b) => {
  * `submittedAt` is the booking's dateOfSubmission — the existing one on an edit, `new Date()` on a
  * create. Returns null when acceptable, or a message.
  */
+// See the note on RELOAD_HINT in utils/payment-rows.js: a tab loaded before this release has no
+// issue-date field at all, so a body it posts can only be rejected until it reloads.
+const RELOAD_HINT = ' Please reload the page (Ctrl+Shift+R).';
+
 const validateIssueDate = (value, submittedAt) => {
   if (value === undefined || value === null || value === '') return null;
 
@@ -110,17 +114,17 @@ const validateIssueDate = (value, submittedAt) => {
   const issueDay = dayInTz(parsed);
   const today = dayInTz(new Date());
   if (issueDay > today) {
-    return `issueDate ${issueDay} is in the future (today is ${today} in Toronto)`;
+    return `issueDate ${issueDay} is in the future (today is ${today} in Toronto)${RELOAD_HINT}`;
   }
 
   const submissionDay = dayInTz(submittedAt || new Date());
   if (issueDay > submissionDay) {
-    return `issueDate ${issueDay} is after the entry date ${submissionDay}: a ticket cannot be issued after it was entered`;
+    return `issueDate ${issueDay} is after the entry date ${submissionDay}: a ticket cannot be issued after it was entered${RELOAD_HINT}`;
   }
 
   const earliestDay = dayInTz(new Date(noonOnDay(submissionDay).getTime() - ISSUE_DATE_MAX_BACKDATE_DAYS * DAY_MS));
   if (issueDay < earliestDay) {
-    return `issueDate ${issueDay} is more than ${ISSUE_DATE_MAX_BACKDATE_DAYS} days before the entry date ${submissionDay} (earliest is ${earliestDay})`;
+    return `issueDate ${issueDay} is more than ${ISSUE_DATE_MAX_BACKDATE_DAYS} days before the entry date ${submissionDay} (earliest is ${earliestDay})${RELOAD_HINT}`;
   }
 
   return null;

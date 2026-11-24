@@ -24,6 +24,7 @@ const {
   validatePaymentRows, isBankDeposit, isUnrecordedAccount,
   RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES
 } = require('../utils/payment-rows');
+const { validateIssueDate } = require('../utils/effective-date');
 
 let passed = 0;
 const t = (name, fn) => { fn(); passed++; console.log(`  ok  ${name}`); };
@@ -622,6 +623,40 @@ const ROLES = ['AGENT1', 'AGENT2', 'ACCOUNT', 'ADMIN'];
     api.close();
     ok('each filter value returns only matching bookings, and the four tiles follow');
     ok('an unknown account is rejected here too');
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Every rule a tab loaded BEFORE this release cannot satisfy must tell the user to reload.
+  //
+  // Such a tab has no bank field, no sender field and no issue-date field, so it will keep posting
+  // the same rejected body for as long as it stays open, and the person at the keyboard has no way
+  // to tell a validation rule they can fix from a tab they need to refresh. The frontend shows
+  // this text verbatim, so the instruction can only live in the message.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const RELOAD = 'Please reload the page (Ctrl+Shift+R).';
+    const row = over => [Object.assign(
+      { paidAmount: 100, paymentMode: 'E-Transfer', paymentDate: '2026-11-01' }, over)];
+    const cases = [
+      ['receivingAccount missing', validatePaymentRows(row({}), []).error],
+      ['receivingAccount unknown', validatePaymentRows(row({ receivingAccount: 'HSBC 1' }), []).error],
+      ['senderName missing', validatePaymentRows(row({ receivingAccount: 'RBC 6336' }), []).error],
+      ['legacy deposit mode', validatePaymentRows(row({ paymentMode: 'Cheque' }), []).error],
+      ['issueDate in the future',
+        validateIssueDate('2099-01-01', new Date('2026-09-02T12:00:00Z'))],
+      ['issueDate after entry',
+        validateIssueDate('2026-11-23', new Date('2026-09-02T12:00:00Z'))],
+      ['issueDate too far back',
+        validateIssueDate('2026-08-20', new Date('2026-09-02T12:00:00Z'))]
+    ];
+    for (const [name, msg] of cases) {
+      assert.ok(msg, `${name}: expected a rejection, got ${JSON.stringify(msg)}`);
+      assert.ok(msg.endsWith(RELOAD), `${name}: must end with the reload instruction, got "${msg}"`);
+      // The reason has to survive in front of it, or the message says only "reload" and the user
+      // reloads a tab that was never the problem.
+      assert.ok(msg.length > RELOAD.length + 20, `${name}: the reason was lost: "${msg}"`);
+      ok(`${name}: rejected with the reason and the reload instruction`);
+    }
   }
 
   console.log(`\n${passed} assertions passed`);

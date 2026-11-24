@@ -3,6 +3,13 @@
 const { parseDateInput, validateDateOnly } = require('./date-only');
 const { RECEIVING_ACCOUNTS, BANK_DEPOSIT_MODES, LEGACY_DEPOSIT_MODES } = require('./receiving-accounts');
 
+// Appended to the rules a browser tab loaded BEFORE this release cannot satisfy: it has no bank
+// or sender field to fill and no issue-date window to respect, so it will keep posting the same
+// rejected body until it reloads. Every frontend error handler shows this text verbatim (they all
+// read err.error?.message first), so this is the only place the instruction can reach the person
+// looking at the screen.
+const RELOAD_HINT = ' Please reload the page (Ctrl+Shift+R).';
+
 /**
  * Route-layer validation for a booking's payments[] array.
  *
@@ -135,18 +142,18 @@ const validatePaymentRows = (incoming, existing = []) => {
 
     // A legacy deposit mode on a row that cannot be an edit of a stored one. See the note above.
     if (!unchanged && noStoredRows && LEGACY_DEPOSIT_MODES.includes(paymentMode)) {
-      return { error: `payments[${i}].paymentMode "${paymentMode}" is a legacy value and cannot be used for a new payment: use E-Transfer, which covers cheques and bank transfers` };
+      return { error: `payments[${i}].paymentMode "${paymentMode}" is a legacy value and cannot be used for a new payment: use E-Transfer, which covers cheques and bank transfers${RELOAD_HINT}` };
     }
 
     if (!unchanged && paymentMode === 'E-Transfer') {
       if (!receivingAccount) {
-        return { error: `payments[${i}].receivingAccount is required for an E-Transfer (${RECEIVING_ACCOUNTS.join(' or ')})` };
+        return { error: `payments[${i}].receivingAccount is required for an E-Transfer (${RECEIVING_ACCOUNTS.join(' or ')})${RELOAD_HINT}` };
       }
       if (!RECEIVING_ACCOUNTS.includes(receivingAccount)) {
-        return { error: `payments[${i}].receivingAccount "${receivingAccount}" is not one of ${RECEIVING_ACCOUNTS.join(', ')}` };
+        return { error: `payments[${i}].receivingAccount "${receivingAccount}" is not one of ${RECEIVING_ACCOUNTS.join(', ')}${RELOAD_HINT}` };
       }
       if (!senderName) {
-        return { error: `payments[${i}].senderName is required for an E-Transfer` };
+        return { error: `payments[${i}].senderName is required for an E-Transfer${RELOAD_HINT}` };
       }
     }
 
