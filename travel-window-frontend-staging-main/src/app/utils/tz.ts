@@ -19,12 +19,38 @@ export const todayInTz = (): string => dayInTz(new Date());
 /**
  * 'YYYY-MM-DD' for a value that may already be a date-only string, a Date, or an ISO timestamp.
  * Returns '' for anything unparseable so a form control gets a blank rather than "Invalid Date".
+ *
+ * Exact midnight in a stated offset means its LITERAL date part, not the Toronto day of that
+ * instant. Mirrors parseDateInput in travel-window-backend-staging-main/utils/date-only.js, which
+ * has had this rule since the date-only hotfix; this function did not, and the two disagreed.
+ *
+ * It matters for the payment dates stored at 00:00Z before that hotfix. 2026-04-03T00:00:00Z is
+ * 20:00 on 2 April in Toronto, so the plain Toronto day of it is 2026-04-02 -- a day earlier than
+ * the day the agent typed. Measured against the staging copy: a booking whose payment is stored at
+ * 2026-04-03T00:00:00Z loaded into the edit form showing 2026-04-02, and saving it wrote
+ * 2026-04-02T12:00:00Z, making the wrong day permanent. The backend heals a real 00:00Z instant to
+ * noon on the right day, but never got the chance, because the form had already moved it.
+ *
+ * A timestamp that is NOT exact midnight in a stated offset is a real instant and keeps the
+ * Toronto-day reading: that is the correct answer for dateOfSubmission and for anything else
+ * recorded as a moment rather than as a calendar day.
  */
+const OFFSET_MIDNIGHT =
+  /^(\d{4}-\d{2}-\d{2})[T ]00:00(?::00(?:\.0{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})$/i;
+
 export const toDateInputValue = (v: unknown): string => {
   if (v == null || v === '') return '';
-  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const off = OFFSET_MIDNIGHT.exec(s);
+    if (off) return off[1];
+  }
   const d = new Date(v as any);
-  return isNaN(d.getTime()) ? '' : dayInTz(d);
+  if (isNaN(d.getTime())) return '';
+  // A Date object that lands on exact UTC midnight: same rule, read off its UTC date part.
+  if (d.getTime() % 86400000 === 0) return d.toISOString().slice(0, 10);
+  return dayInTz(d);
 };
 
 /** Timestamp with the zone named, for a report's "generated at" line. */
