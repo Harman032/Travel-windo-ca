@@ -24,6 +24,20 @@ const COMPONENT = path.join(
 
 const src = fs.readFileSync(COMPONENT, 'utf8');
 
+// The company block is rendered above the table, from the route's `company` field. Asserted here
+// rather than only in supplier-statement.test.js because that file checks the VALUES and this one
+// checks they are actually placed on the printed page: a correct address the template never
+// renders is the same blank header to the supplier reading it.
+t('the statement header renders both company address lines', () => {
+  const { COMPANY } = require('../utils/company');
+  for (const line of ['addressLine1', 'addressLine2']) {
+    assert.ok(src.includes(`statementData.company?.${line}`),
+      `the template must render company.${line}`);
+    assert.ok(COMPANY[line] && !/INPUT REQUIRED|\[|TODO/i.test(COMPANY[line]),
+      `COMPANY.${line} must be a real value, not a placeholder`);
+  }
+});
+
 // The statement table only, so other reports' tables cannot interfere with the count.
 const tableStart = src.indexOf('<table class="statement-table">');
 const tableEnd = src.indexOf('</table>', tableStart);

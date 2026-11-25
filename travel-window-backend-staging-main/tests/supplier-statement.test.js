@@ -958,8 +958,14 @@ console.log('\nroute guards');
   assert.strictEqual(good.status, 200);
   assert.strictEqual(good.body.supplierName, 'TEST SUPPLIER');
   assert.strictEqual(good.body.company.name, 'TRAVEL WINDOW INC');
-  assert.ok(good.body.company.addressLine1.includes('INPUT REQUIRED'),
-    'the unresolved address line must stay visible, not be guessed');
+  // Pinned, because this block is printed on a document a supplier receives and nothing else in
+  // the suite would notice it changing. The placeholder it replaces was asserted here for the same
+  // reason -- so that an address could not be quietly guessed into a supplier-facing document.
+  assert.strictEqual(good.body.company.addressLine1, 'Unit 131, 1065 Canadian Place');
+  assert.strictEqual(good.body.company.addressLine2, 'Mississauga ON L4W 0C2');
+  assert.ok(!/INPUT REQUIRED|\[|TODO/i.test(
+    `${good.body.company.addressLine1} ${good.body.company.addressLine2}`),
+    'no placeholder may reach a supplier-facing document');
   assert.strictEqual(good.body.timezone, 'America/Toronto');
   assert.strictEqual(good.body.totals.totalOpen, good.body.totals.accountBalance);
   ok('a valid request returns the company block, the supplier name and matching totals');
